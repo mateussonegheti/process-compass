@@ -6,29 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Save, 
-  ArrowRight, 
-  Lock, 
-  Plus, 
-  Trash2,
-  AlertTriangle,
-  CheckCircle2
-} from "lucide-react";
-import { 
-  ProcessoFila, 
-  AvaliacaoDocumental, 
-  PecaProcessual,
-  ASSUNTOS_TPU, 
-  TIPOS_PECA 
-} from "@/types/cogede";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Save, ArrowRight, Lock, Plus, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU, TIPOS_PECA } from "@/types/cogede";
 import { toast } from "sonner";
 
 interface FormularioAvaliacaoProps {
@@ -38,12 +18,7 @@ interface FormularioAvaliacaoProps {
   carregando: boolean;
 }
 
-export function FormularioAvaliacao({
-  processo,
-  responsavel,
-  onSalvarEProximo,
-  carregando
-}: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, carregando }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState({
     // Campos manuais - Seção 2
@@ -52,20 +27,20 @@ export function FormularioAvaliacao({
     hierarquiaCorreta: "",
     divergenciaHierarquia: "",
     destinacaoPermanente: "",
-    
+
     // Campos manuais - Seção 3
     descricaoSituacaoArquivamento: "",
     inconsistenciaPrazo: "",
-    
+
     // Campos manuais - Seção 4
     documentoNaoLocalizado: false,
     documentoDuplicado: false,
     erroTecnico: false,
     divergenciaClassificacao: "",
-    
+
     // Campos manuais - Seção 5
     processoVazio: false,
-    observacoesGerais: ""
+    observacoesGerais: "",
   });
 
   const naoTemAssunto = processo.POSSUI_ASSUNTO?.toLowerCase() === "não";
@@ -77,17 +52,26 @@ export function FormularioAvaliacao({
   };
 
   const removerPeca = (id: string) => {
-    setPecas(pecas.filter(p => p.id !== id));
+    setPecas(pecas.filter((p) => p.id !== id));
   };
 
   const atualizarPeca = (id: string, campo: "tipo" | "idProjudi", valor: string) => {
-    setPecas(pecas.map(p => p.id === id ? { ...p, [campo]: valor } : p));
+    setPecas(pecas.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)));
   };
 
   const gerarCamposConcatenados = () => {
-    const tipos = pecas.map(p => p.tipo).filter(Boolean).join("; ");
-    const ids = pecas.map(p => p.idProjudi).filter(Boolean).join("; ");
-    const combinado = pecas.map(p => `${p.tipo}: ${p.idProjudi}`).filter(p => p !== ": ").join(" | ");
+    const tipos = pecas
+      .map((p) => p.tipo)
+      .filter(Boolean)
+      .join("; ");
+    const ids = pecas
+      .map((p) => p.idProjudi)
+      .filter(Boolean)
+      .join("; ");
+    const combinado = pecas
+      .map((p) => `${p.tipo}: ${p.idProjudi}`)
+      .filter((p) => p !== ": ")
+      .join(" | ");
     return { tipos, ids, combinado };
   };
 
@@ -97,7 +81,7 @@ export function FormularioAvaliacao({
       toast.error("Campo obrigatório: Descreva o assunto faltante");
       return;
     }
-    
+
     if (naoTemMovArquivado && !formData.descricaoSituacaoArquivamento.trim()) {
       toast.error("Campo obrigatório: Descreva a situação do arquivamento");
       return;
@@ -132,7 +116,7 @@ export function FormularioAvaliacao({
       processoVazio: formData.processoVazio,
       observacoesGerais: formData.observacoesGerais,
       responsavel,
-      dataInicioAvaliacao: processo.DATA_INICIO_AVALIACAO || new Date().toISOString()
+      dataInicioAvaliacao: processo.DATA_INICIO_AVALIACAO || new Date().toISOString(),
     };
 
     onSalvarEProximo(avaliacao);
@@ -144,7 +128,9 @@ export function FormularioAvaliacao({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">1</span>
+            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">
+              1
+            </span>
             Identificação do Processo
             <Badge variant="secondary" className="ml-auto">
               <Lock className="h-3 w-3 mr-1" />
@@ -168,7 +154,9 @@ export function FormularioAvaliacao({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span>
+            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">
+              2
+            </span>
             Assunto / TPU
           </CardTitle>
         </CardHeader>
@@ -198,37 +186,18 @@ export function FormularioAvaliacao({
               <Textarea
                 placeholder="Descreva o assunto que deveria estar cadastrado..."
                 value={formData.descricaoAssuntoFaltante}
-                onChange={(e) => setFormData({...formData, descricaoAssuntoFaltante: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, descricaoAssuntoFaltante: e.target.value })}
                 className="bg-white"
               />
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>2.3 Assunto correspondente na TPU</Label>
-            <Select 
-              value={formData.assuntoTpu} 
-              onValueChange={(v) => setFormData({...formData, assuntoTpu: v})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o assunto da TPU..." />
-              </SelectTrigger>
-              <SelectContent>
-                {ASSUNTOS_TPU.map((assunto) => (
-                  <SelectItem key={assunto} value={assunto}>
-                    {assunto}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>2.4 Hierarquia correta?</Label>
-              <Select 
+              <Label>2.3 Hierarquia correta?</Label>
+              <Select
                 value={formData.hierarquiaCorreta}
-                onValueChange={(v) => setFormData({...formData, hierarquiaCorreta: v})}
+                onValueChange={(v) => setFormData({ ...formData, hierarquiaCorreta: v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -241,10 +210,10 @@ export function FormularioAvaliacao({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>2.5 Destinação permanente?</Label>
-              <Select 
+              <Label>2.4 Destinação permanente?</Label>
+              <Select
                 value={formData.destinacaoPermanente}
-                onValueChange={(v) => setFormData({...formData, destinacaoPermanente: v})}
+                onValueChange={(v) => setFormData({ ...formData, destinacaoPermanente: v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -260,11 +229,11 @@ export function FormularioAvaliacao({
 
           {formData.hierarquiaCorreta === "Não" && (
             <div className="space-y-2">
-              <Label>2.4.1 Divergência na hierarquia</Label>
+              <Label>2.3.1 Divergência na hierarquia</Label>
               <Textarea
                 placeholder="Descreva a divergência encontrada..."
                 value={formData.divergenciaHierarquia}
-                onChange={(e) => setFormData({...formData, divergenciaHierarquia: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, divergenciaHierarquia: e.target.value })}
               />
             </div>
           )}
@@ -275,7 +244,9 @@ export function FormularioAvaliacao({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">3</span>
+            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">
+              3
+            </span>
             Movimentações e Prazos
           </CardTitle>
         </CardHeader>
@@ -296,7 +267,7 @@ export function FormularioAvaliacao({
               <Textarea
                 placeholder="Descreva a situação atual do processo em relação ao arquivamento..."
                 value={formData.descricaoSituacaoArquivamento}
-                onChange={(e) => setFormData({...formData, descricaoSituacaoArquivamento: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, descricaoSituacaoArquivamento: e.target.value })}
                 className="bg-white"
               />
             </div>
@@ -345,7 +316,7 @@ export function FormularioAvaliacao({
               <Textarea
                 placeholder="Descreva a inconsistência encontrada no prazo..."
                 value={formData.inconsistenciaPrazo}
-                onChange={(e) => setFormData({...formData, inconsistenciaPrazo: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, inconsistenciaPrazo: e.target.value })}
               />
             </div>
           )}
@@ -356,7 +327,9 @@ export function FormularioAvaliacao({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">4</span>
+            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">
+              4
+            </span>
             Peças Processuais
           </CardTitle>
         </CardHeader>
@@ -366,10 +339,7 @@ export function FormularioAvaliacao({
               <div key={peca.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
                 <span className="text-sm text-muted-foreground mt-2">{index + 1}.</span>
                 <div className="flex-1 grid grid-cols-2 gap-3">
-                  <Select 
-                    value={peca.tipo}
-                    onValueChange={(v) => atualizarPeca(peca.id, "tipo", v)}
-                  >
+                  <Select value={peca.tipo} onValueChange={(v) => atualizarPeca(peca.id, "tipo", v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Tipo da peça..." />
                     </SelectTrigger>
@@ -425,30 +395,30 @@ export function FormularioAvaliacao({
             <Label className="text-sm font-medium">Ocorrências</Label>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center space-x-2">
-                <Checkbox 
+                <Checkbox
                   id="docNaoLoc"
                   checked={formData.documentoNaoLocalizado}
-                  onCheckedChange={(c) => setFormData({...formData, documentoNaoLocalizado: c as boolean})}
+                  onCheckedChange={(c) => setFormData({ ...formData, documentoNaoLocalizado: c as boolean })}
                 />
                 <Label htmlFor="docNaoLoc" className="text-sm font-normal">
                   Documento não localizado
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox 
+                <Checkbox
                   id="docDup"
                   checked={formData.documentoDuplicado}
-                  onCheckedChange={(c) => setFormData({...formData, documentoDuplicado: c as boolean})}
+                  onCheckedChange={(c) => setFormData({ ...formData, documentoDuplicado: c as boolean })}
                 />
                 <Label htmlFor="docDup" className="text-sm font-normal">
                   Documento duplicado
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox 
+                <Checkbox
                   id="erroTec"
                   checked={formData.erroTecnico}
-                  onCheckedChange={(c) => setFormData({...formData, erroTecnico: c as boolean})}
+                  onCheckedChange={(c) => setFormData({ ...formData, erroTecnico: c as boolean })}
                 />
                 <Label htmlFor="erroTec" className="text-sm font-normal">
                   Erro técnico
@@ -462,7 +432,7 @@ export function FormularioAvaliacao({
             <Textarea
               placeholder="Descreva qualquer divergência na classificação das peças..."
               value={formData.divergenciaClassificacao}
-              onChange={(e) => setFormData({...formData, divergenciaClassificacao: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, divergenciaClassificacao: e.target.value })}
             />
           </div>
         </CardContent>
@@ -472,16 +442,18 @@ export function FormularioAvaliacao({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">5</span>
+            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">
+              5
+            </span>
             Inconsistências e Observações
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-2">
-            <Checkbox 
+            <Checkbox
               id="procVazio"
               checked={formData.processoVazio}
-              onCheckedChange={(c) => setFormData({...formData, processoVazio: c as boolean})}
+              onCheckedChange={(c) => setFormData({ ...formData, processoVazio: c as boolean })}
             />
             <Label htmlFor="procVazio" className="font-normal">
               Processo vazio (sem documentos)
@@ -493,7 +465,7 @@ export function FormularioAvaliacao({
             <Textarea
               placeholder="Adicione observações relevantes sobre o processo..."
               value={formData.observacoesGerais}
-              onChange={(e) => setFormData({...formData, observacoesGerais: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, observacoesGerais: e.target.value })}
               rows={4}
             />
           </div>
@@ -502,12 +474,7 @@ export function FormularioAvaliacao({
 
       {/* Botão de Ação */}
       <div className="sticky bottom-4 bg-background/95 backdrop-blur p-4 rounded-lg border shadow-lg">
-        <Button 
-          onClick={handleSubmit} 
-          disabled={carregando}
-          className="w-full" 
-          size="lg"
-        >
+        <Button onClick={handleSubmit} disabled={carregando} className="w-full" size="lg">
           {carregando ? (
             <>Salvando...</>
           ) : (
