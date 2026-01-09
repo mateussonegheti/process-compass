@@ -31,10 +31,14 @@ const initialFormData = {
   inconsistenciaPrazo: "",
 
   // Campos manuais - Seção 4
+  observacoesPecas: "",
   documentoNaoLocalizado: false,
   documentoDuplicado: false,
   erroTecnico: false,
+  ocorrenciasOutroDetalhe: "",
   divergenciaClassificacao: "",
+  tipoInformadoSistema: "",
+  tipoRealIdentificado: "",
 
   // Campos manuais - Seção 5
   processoVazio: false,
@@ -54,6 +58,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
   const naoTemAssunto = processo.POSSUI_ASSUNTO?.toLowerCase() === "não";
   const naoTemMovArquivado = processo.POSSUI_MOV_ARQUIVADO?.toLowerCase() === "não";
   const prazoIncompleto = processo.PRAZO_5_ANOS_COMPLETO?.toLowerCase() === "não";
+  const temDivergenciaClassificacao = formData.divergenciaClassificacao === "Sim";
 
   const adicionarPeca = () => {
     setPecas([...pecas, { id: crypto.randomUUID(), tipo: "", idProjudi: "" }]);
@@ -117,10 +122,14 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
       pecasTipos: tipos,
       pecasIds: ids,
       pecasCombinado: combinado,
+      observacoesPecas: formData.observacoesPecas,
       documentoNaoLocalizado: formData.documentoNaoLocalizado,
       documentoDuplicado: formData.documentoDuplicado,
       erroTecnico: formData.erroTecnico,
+      ocorrenciasOutroDetalhe: formData.ocorrenciasOutroDetalhe,
       divergenciaClassificacao: formData.divergenciaClassificacao,
+      tipoInformadoSistema: formData.tipoInformadoSistema,
+      tipoRealIdentificado: formData.tipoRealIdentificado,
       processoVazio: formData.processoVazio,
       observacoesGerais: formData.observacoesGerais,
       responsavel,
@@ -399,6 +408,16 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
             </div>
           )}
 
+          {/* Observações sobre peças */}
+          <div className="space-y-2">
+            <Label>4.3 Observações sobre peças</Label>
+            <Textarea
+              placeholder="Adicione observações sobre as peças processuais..."
+              value={formData.observacoesPecas}
+              onChange={(e) => setFormData({ ...formData, observacoesPecas: e.target.value })}
+            />
+          </div>
+
           <div className="space-y-3 pt-3 border-t">
             <Label className="text-sm font-medium">Ocorrências</Label>
             <div className="flex flex-wrap gap-4">
@@ -433,15 +452,57 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
                 </Label>
               </div>
             </div>
+
+            {/* Campo para outro detalhe de ocorrência */}
+            <div className="space-y-2 mt-2">
+              <Label>Outro detalhe de ocorrência</Label>
+              <Input
+                placeholder="Descreva outra ocorrência se necessário..."
+                value={formData.ocorrenciasOutroDetalhe}
+                onChange={(e) => setFormData({ ...formData, ocorrenciasOutroDetalhe: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Divergência de classificação</Label>
-            <Textarea
-              placeholder="Descreva qualquer divergência na classificação das peças..."
-              value={formData.divergenciaClassificacao}
-              onChange={(e) => setFormData({ ...formData, divergenciaClassificacao: e.target.value })}
-            />
+          <div className="space-y-4 pt-3 border-t">
+            <div className="space-y-2">
+              <Label>Divergência de classificação</Label>
+              <Select
+                value={formData.divergenciaClassificacao}
+                onValueChange={(v) => setFormData({ ...formData, divergenciaClassificacao: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sim">Sim</SelectItem>
+                  <SelectItem value="Não">Não</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {temDivergenciaClassificacao && (
+              <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="space-y-2">
+                  <Label className="text-amber-800">Tipo informado no sistema</Label>
+                  <Input
+                    placeholder="Ex: Petição Inicial"
+                    value={formData.tipoInformadoSistema}
+                    onChange={(e) => setFormData({ ...formData, tipoInformadoSistema: e.target.value })}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-amber-800">Tipo real identificado</Label>
+                  <Input
+                    placeholder="Ex: Contestação"
+                    value={formData.tipoRealIdentificado}
+                    onChange={(e) => setFormData({ ...formData, tipoRealIdentificado: e.target.value })}
+                    className="bg-white"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -12,6 +12,7 @@ export interface ProcessoFila {
   STATUS_AVALIACAO: 'PENDENTE' | 'EM_ANALISE' | 'CONCLUIDO';
   RESPONSAVEL?: string;
   DATA_INICIO_AVALIACAO?: string;
+  DATA_FIM?: string;
 }
 
 export interface PecaProcessual {
@@ -47,10 +48,14 @@ export interface AvaliacaoDocumental {
   pecasTipos: string;
   pecasIds: string;
   pecasCombinado: string;
+  observacoesPecas?: string;
   documentoNaoLocalizado?: boolean;
   documentoDuplicado?: boolean;
   erroTecnico?: boolean;
+  ocorrenciasOutroDetalhe?: string;
   divergenciaClassificacao?: string;
+  tipoInformadoSistema?: string;
+  tipoRealIdentificado?: string;
   
   // Seção 5 - Inconsistências
   processoVazio?: boolean;
