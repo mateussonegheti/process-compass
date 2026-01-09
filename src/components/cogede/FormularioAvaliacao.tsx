@@ -18,30 +18,38 @@ interface FormularioAvaliacaoProps {
   carregando: boolean;
 }
 
+const initialFormData = {
+  // Campos manuais - Seção 2
+  descricaoAssuntoFaltante: "",
+  assuntoTpu: "",
+  hierarquiaCorreta: "",
+  divergenciaHierarquia: "",
+  destinacaoPermanente: "",
+
+  // Campos manuais - Seção 3
+  descricaoSituacaoArquivamento: "",
+  inconsistenciaPrazo: "",
+
+  // Campos manuais - Seção 4
+  documentoNaoLocalizado: false,
+  documentoDuplicado: false,
+  erroTecnico: false,
+  divergenciaClassificacao: "",
+
+  // Campos manuais - Seção 5
+  processoVazio: false,
+  observacoesGerais: "",
+};
+
 export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, carregando }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
-  const [formData, setFormData] = useState({
-    // Campos manuais - Seção 2
-    descricaoAssuntoFaltante: "",
-    assuntoTpu: "",
-    hierarquiaCorreta: "",
-    divergenciaHierarquia: "",
-    destinacaoPermanente: "",
+  const [formData, setFormData] = useState(initialFormData);
 
-    // Campos manuais - Seção 3
-    descricaoSituacaoArquivamento: "",
-    inconsistenciaPrazo: "",
-
-    // Campos manuais - Seção 4
-    documentoNaoLocalizado: false,
-    documentoDuplicado: false,
-    erroTecnico: false,
-    divergenciaClassificacao: "",
-
-    // Campos manuais - Seção 5
-    processoVazio: false,
-    observacoesGerais: "",
-  });
+  // Limpar formulário quando mudar de processo
+  useEffect(() => {
+    setPecas([]);
+    setFormData(initialFormData);
+  }, [processo.CODIGO_PROCESSO]);
 
   const naoTemAssunto = processo.POSSUI_ASSUNTO?.toLowerCase() === "não";
   const naoTemMovArquivado = processo.POSSUI_MOV_ARQUIVADO?.toLowerCase() === "não";
