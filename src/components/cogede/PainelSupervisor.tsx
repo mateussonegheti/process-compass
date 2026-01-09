@@ -14,36 +14,70 @@ interface PainelSupervisorProps {
   processosCount: number;
 }
 
-// Todas as colunas disponíveis para exportação
+// Mapeamento das colunas do formulário para exportação (aba AVALIAÇÃO_DOCUMENTAL)
 const COLUNAS_EXPORTACAO = [
-  { key: "codigoProcesso", label: "Código do Processo", grupo: "Identificação" },
-  { key: "numeroCnj", label: "Número CNJ", grupo: "Identificação" },
-  { key: "possuiAssunto", label: "Possui Assunto", grupo: "Assunto/TPU" },
-  { key: "assuntoPrincipal", label: "Assunto Principal", grupo: "Assunto/TPU" },
-  { key: "descricaoAssuntoFaltante", label: "Descrição Assunto Faltante", grupo: "Assunto/TPU" },
-  { key: "assuntoTpu", label: "Assunto TPU", grupo: "Assunto/TPU" },
-  { key: "hierarquiaCorreta", label: "Hierarquia Correta", grupo: "Assunto/TPU" },
-  { key: "divergenciaHierarquia", label: "Divergência Hierarquia", grupo: "Assunto/TPU" },
-  { key: "destinacaoPermanente", label: "Destinação Permanente", grupo: "Assunto/TPU" },
-  { key: "possuiMovArquivado", label: "Possui Mov. Arquivado", grupo: "Movimentações" },
-  { key: "descricaoSituacaoArquivamento", label: "Descrição Situação Arquivamento", grupo: "Movimentações" },
-  { key: "dataDistribuicao", label: "Data Distribuição", grupo: "Movimentações" },
-  { key: "dataArquivamentoDef", label: "Data Arquivamento Def.", grupo: "Movimentações" },
-  { key: "prazo5AnosCompleto", label: "Prazo 5 Anos Completo", grupo: "Movimentações" },
-  { key: "inconsistenciaPrazo", label: "Inconsistência Prazo", grupo: "Movimentações" },
-  { key: "pecasTipos", label: "Peças - Tipos", grupo: "Peças" },
-  { key: "pecasIds", label: "Peças - IDs", grupo: "Peças" },
-  { key: "pecasCombinado", label: "Peças - Combinado", grupo: "Peças" },
-  { key: "documentoNaoLocalizado", label: "Documento Não Localizado", grupo: "Ocorrências" },
-  { key: "documentoDuplicado", label: "Documento Duplicado", grupo: "Ocorrências" },
-  { key: "erroTecnico", label: "Erro Técnico", grupo: "Ocorrências" },
-  { key: "divergenciaClassificacao", label: "Divergência Classificação", grupo: "Ocorrências" },
-  { key: "processoVazio", label: "Processo Vazio", grupo: "Inconsistências" },
-  { key: "observacoesGerais", label: "Observações Gerais", grupo: "Inconsistências" },
-  { key: "responsavel", label: "Responsável", grupo: "Metadados" },
-  { key: "dataInicioAvaliacao", label: "Data Início Avaliação", grupo: "Metadados" },
-  { key: "dataFimAvaliacao", label: "Data Fim Avaliação", grupo: "Metadados" },
+  { key: "codigoProcesso", label: "CODIGO_PROCESSO", grupo: "Identificação" },
+  { key: "numeroCnj", label: "NUMERO_CNJ", grupo: "Identificação" },
+  { key: "responsavel", label: "RESPONSAVEL", grupo: "Identificação" },
+  { key: "possuiAssunto", label: "ASSUNTO_CADASTRADO_PROJUDI", grupo: "Assunto/TPU" },
+  { key: "descricaoAssuntoFaltante", label: "REPORTAR_AUSENCIA_ASSUNTO", grupo: "Assunto/TPU" },
+  { key: "assuntoPrincipal", label: "ASSUNTO_PRINCIPAL_PROJUDI", grupo: "Assunto/TPU" },
+  { key: "assuntoTpu", label: "INSTR_ASSUNTO_PROJUDI", grupo: "Assunto/TPU" },
+  { key: "hierarquiaCorreta", label: "HIERARQUIA_CONFERE_TPU", grupo: "Assunto/TPU" },
+  { key: "divergenciaHierarquia", label: "DIVERGENCIA_HIERARQUIA", grupo: "Assunto/TPU" },
+  { key: "destinacaoPermanente", label: "DESTINACAO_PERMANENTE_TPU", grupo: "Assunto/TPU" },
+  { key: "possuiMovArquivado", label: "MOV_PROCESSO_ARQUIVADO", grupo: "Movimentações" },
+  { key: "descricaoSituacaoArquivamento", label: "SITUACAO_ATUAL_PROCESSO", grupo: "Movimentações" },
+  { key: "dataDistribuicao", label: "DATA_DISTRIBUICAO", grupo: "Movimentações" },
+  { key: "dataArquivamentoDef", label: "DATA_ARQUIVAMENTO_DEFINITIVO", grupo: "Movimentações" },
+  { key: "prazo5AnosCompleto", label: "PRAZO_5_ANOS_COMPLETO", grupo: "Movimentações" },
+  { key: "inconsistenciaPrazo", label: "REPORTAR_INCONSISTENCIA_PRAZO", grupo: "Movimentações" },
+  { key: "pecasTipos", label: "PECAS_TIPOS", grupo: "Peças" },
+  { key: "pecasIds", label: "PECAS_IDS", grupo: "Peças" },
+  { key: "pecasCombinado", label: "PECAS_TIPO_ID", grupo: "Peças" },
+  { key: "observacoesPecas", label: "OBSERVACOES_PECAS", grupo: "Peças" },
+  { key: "ocorrenciasPecas", label: "OCORRENCIAS_PECAS", grupo: "Ocorrências" },
+  { key: "ocorrenciasOutroDetalhe", label: "OCORRENCIAS_OUTRO_DETALHE", grupo: "Ocorrências" },
+  { key: "divergenciaClassificacao", label: "CLASSIFICACAO_DIVERGENTE", grupo: "Ocorrências" },
+  { key: "tipoInformadoSistema", label: "TIPO_INFORMADO_SISTEMA", grupo: "Ocorrências" },
+  { key: "tipoRealIdentificado", label: "TIPO_REAL_IDENTIFICADO", grupo: "Ocorrências" },
+  { key: "processoVazio", label: "INCONSISTENCIA_PROCESSO_VAZIO", grupo: "Inconsistências" },
 ];
+
+// Função para detectar separador e parsear linha CSV
+const parseCSVLine = (line: string, separator: string): string[] => {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === separator && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  
+  return result;
+};
+
+// Detectar separador automaticamente
+const detectSeparator = (line: string): string => {
+  const semicolonCount = (line.match(/;/g) || []).length;
+  const commaCount = (line.match(/,/g) || []).length;
+  return semicolonCount >= commaCount ? ";" : ",";
+};
 
 export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, processosCount }: PainelSupervisorProps) {
   const [colunasExportacao, setColunasExportacao] = useState<string[]>(
@@ -81,9 +115,16 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
           return;
         }
 
-        const headers = lines[0].split(";").map((h) => h.trim().replace(/"/g, ""));
+        // Detectar separador automaticamente
+        const separator = detectSeparator(lines[0]);
+        console.log(`Separador detectado: "${separator}"`);
+
+        const headers = parseCSVLine(lines[0], separator).map((h) => 
+          h.replace(/"/g, "").toUpperCase().trim()
+        );
+        console.log("Headers encontrados:", headers);
         
-        // Mapear colunas esperadas
+        // Mapear colunas esperadas (aba FILA_PROCESSOS)
         const colMap: Record<string, number> = {};
         const expectedCols = [
           "CODIGO_PROCESSO",
@@ -94,30 +135,55 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
           "DATA_DISTRIBUICAO",
           "DATA_ARQUIVAMENTO_DEF",
           "PRAZO_5_ANOS_COMPLETO",
+          "STATUS_AVALIACAO",
+          "RESPONSAVEL",
+          "DATA_INICIO",
+          "DATA_FIM",
         ];
 
         expectedCols.forEach((col) => {
-          const idx = headers.findIndex((h) => h.toUpperCase() === col);
+          const idx = headers.findIndex((h) => h === col);
           if (idx !== -1) colMap[col] = idx;
         });
 
+        console.log("Mapeamento de colunas:", colMap);
+
         const processos: ProcessoFila[] = lines.slice(1).map((line) => {
-          const values = line.split(";").map((v) => v.trim().replace(/"/g, ""));
+          const values = parseCSVLine(line, separator).map((v) => v.replace(/"/g, "").trim());
+          
+          // Preservar status original ou definir como PENDENTE
+          const statusOriginal = colMap.STATUS_AVALIACAO !== undefined 
+            ? values[colMap.STATUS_AVALIACAO] 
+            : "";
+          const status = ["PENDENTE", "EM_ANALISE", "CONCLUIDO"].includes(statusOriginal.toUpperCase())
+            ? statusOriginal.toUpperCase() as "PENDENTE" | "EM_ANALISE" | "CONCLUIDO"
+            : "PENDENTE";
+
           return {
-            CODIGO_PROCESSO: values[colMap.CODIGO_PROCESSO] || "",
-            NUMERO_CNJ: values[colMap.NUMERO_CNJ] || "",
-            POSSUI_ASSUNTO: values[colMap.POSSUI_ASSUNTO] || "",
-            ASSUNTO_PRINCIPAL: values[colMap.ASSUNTO_PRINCIPAL] || "",
-            POSSUI_MOV_ARQUIVADO: values[colMap.POSSUI_MOV_ARQUIVADO] || "",
-            DATA_DISTRIBUICAO: values[colMap.DATA_DISTRIBUICAO] || "",
-            DATA_ARQUIVAMENTO_DEF: values[colMap.DATA_ARQUIVAMENTO_DEF] || "",
-            PRAZO_5_ANOS_COMPLETO: values[colMap.PRAZO_5_ANOS_COMPLETO] || "",
-            STATUS_AVALIACAO: "PENDENTE" as const,
+            CODIGO_PROCESSO: colMap.CODIGO_PROCESSO !== undefined ? values[colMap.CODIGO_PROCESSO] || "" : "",
+            NUMERO_CNJ: colMap.NUMERO_CNJ !== undefined ? values[colMap.NUMERO_CNJ] || "" : "",
+            POSSUI_ASSUNTO: colMap.POSSUI_ASSUNTO !== undefined ? values[colMap.POSSUI_ASSUNTO] || "" : "",
+            ASSUNTO_PRINCIPAL: colMap.ASSUNTO_PRINCIPAL !== undefined ? values[colMap.ASSUNTO_PRINCIPAL] || "" : "",
+            POSSUI_MOV_ARQUIVADO: colMap.POSSUI_MOV_ARQUIVADO !== undefined ? values[colMap.POSSUI_MOV_ARQUIVADO] || "" : "",
+            DATA_DISTRIBUICAO: colMap.DATA_DISTRIBUICAO !== undefined ? values[colMap.DATA_DISTRIBUICAO] || "" : "",
+            DATA_ARQUIVAMENTO_DEF: colMap.DATA_ARQUIVAMENTO_DEF !== undefined ? values[colMap.DATA_ARQUIVAMENTO_DEF] || "" : "",
+            PRAZO_5_ANOS_COMPLETO: colMap.PRAZO_5_ANOS_COMPLETO !== undefined ? values[colMap.PRAZO_5_ANOS_COMPLETO] || "" : "",
+            STATUS_AVALIACAO: status,
+            RESPONSAVEL: colMap.RESPONSAVEL !== undefined ? values[colMap.RESPONSAVEL] || undefined : undefined,
+            DATA_INICIO_AVALIACAO: colMap.DATA_INICIO !== undefined ? values[colMap.DATA_INICIO] || undefined : undefined,
+            DATA_FIM: colMap.DATA_FIM !== undefined ? values[colMap.DATA_FIM] || undefined : undefined,
           };
         }).filter((p) => p.CODIGO_PROCESSO);
 
+        if (processos.length === 0) {
+          toast.error("Nenhum processo válido encontrado no CSV. Verifique se a coluna CODIGO_PROCESSO existe.");
+          return;
+        }
+
         onProcessosCarregados(processos);
-        toast.success(`${processos.length} processos carregados do CSV`);
+        
+        const pendentes = processos.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
+        toast.success(`${processos.length} processos carregados (${pendentes} pendentes)`);
       } catch (error) {
         toast.error("Erro ao processar arquivo CSV");
         console.error(error);
@@ -142,7 +208,7 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
       return;
     }
 
-    // Criar cabeçalho
+    // Criar cabeçalho usando os labels das colunas (nomes da aba AVALIAÇÃO_DOCUMENTAL)
     const headers = colunasExportacao
       .map((key) => COLUNAS_EXPORTACAO.find((c) => c.key === key)?.label || key)
       .join(";");
@@ -151,6 +217,15 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
     const rows = avaliacoesRealizadas.map((av) => {
       return colunasExportacao
         .map((key) => {
+          // Campo especial: ocorrenciasPecas (concatenar checkboxes)
+          if (key === "ocorrenciasPecas") {
+            const ocorrencias: string[] = [];
+            if (av.documentoNaoLocalizado) ocorrencias.push("Documento não localizado");
+            if (av.documentoDuplicado) ocorrencias.push("Documento duplicado");
+            if (av.erroTecnico) ocorrencias.push("Erro técnico");
+            return ocorrencias.join("; ");
+          }
+          
           const value = (av as unknown as Record<string, unknown>)[key];
           if (typeof value === "boolean") return value ? "Sim" : "Não";
           if (value === undefined || value === null) return "";
@@ -164,11 +239,11 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `avaliacoes_cogede_${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = "processos.csv";
     link.click();
     URL.revokeObjectURL(url);
 
-    toast.success("Avaliações exportadas com sucesso!");
+    toast.success("Avaliações exportadas para processos.csv!");
   };
 
   // Agrupar colunas
@@ -201,7 +276,7 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
             <Button variant="outline" asChild>
               <label htmlFor="upload-processos" className="cursor-pointer flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                Carregar processos.csv
+                Carregar FILA_PROCESSOS.csv
               </label>
             </Button>
             {processosCount > 0 && (
@@ -212,8 +287,8 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            O CSV deve conter as colunas: CODIGO_PROCESSO, NUMERO_CNJ, POSSUI_ASSUNTO, ASSUNTO_PRINCIPAL, etc.
-            Separador: ponto e vírgula (;)
+            O CSV deve conter as colunas: CODIGO_PROCESSO, NUMERO_CNJ, DATA_DISTRIBUICAO, POSSUI_MOV_ARQUIVADO, etc.
+            <br />Aceita separador vírgula (,) ou ponto e vírgula (;) automaticamente.
           </p>
         </div>
 
@@ -273,7 +348,7 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
           <div className="flex items-center gap-3">
             <Button onClick={exportarAvaliacoes} disabled={avaliacoesRealizadas.length === 0}>
               <Download className="h-4 w-4 mr-2" />
-              Exportar CSV ({avaliacoesRealizadas.length} avaliações)
+              Exportar processos.csv ({avaliacoesRealizadas.length} avaliações)
             </Button>
           </div>
         </div>
