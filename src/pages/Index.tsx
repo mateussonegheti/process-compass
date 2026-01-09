@@ -5,14 +5,15 @@ import { Header } from "@/components/cogede/Header";
 import { SessaoCard } from "@/components/cogede/SessaoCard";
 import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
 import { MergePlanilhas } from "@/components/cogede/MergePlanilhas";
+import { PainelSupervisor } from "@/components/cogede/PainelSupervisor";
 import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
 
-// Dados de exemplo para desenvolvimento (será substituído pela integração com Google Sheets)
+// Dados de exemplo para desenvolvimento (será substituído por upload CSV)
 const PROCESSOS_EXEMPLO: ProcessoFila[] = [
   {
-    CODIGO_PROCESSO: "0001234-56.2018.8.16.0001",
-    NUMERO_CNJ: "0001234-56.2018.8.16.0001",
+    CODIGO_PROCESSO: "2420089270151",
+    NUMERO_CNJ: "99270157020088130024",
     POSSUI_ASSUNTO: "Sim",
     ASSUNTO_PRINCIPAL: "Aposentadoria por Tempo de Contribuição",
     POSSUI_MOV_ARQUIVADO: "Sim",
@@ -22,8 +23,8 @@ const PROCESSOS_EXEMPLO: ProcessoFila[] = [
     STATUS_AVALIACAO: "PENDENTE"
   },
   {
-    CODIGO_PROCESSO: "0005678-90.2019.8.16.0002",
-    NUMERO_CNJ: "0005678-90.2019.8.16.0002",
+    CODIGO_PROCESSO: "2520067890234",
+    NUMERO_CNJ: "00567890234201981600",
     POSSUI_ASSUNTO: "Não",
     ASSUNTO_PRINCIPAL: "",
     POSSUI_MOV_ARQUIVADO: "Sim",
@@ -33,8 +34,8 @@ const PROCESSOS_EXEMPLO: ProcessoFila[] = [
     STATUS_AVALIACAO: "PENDENTE"
   },
   {
-    CODIGO_PROCESSO: "0009999-11.2017.8.16.0003",
-    NUMERO_CNJ: "0009999-11.2017.8.16.0003",
+    CODIGO_PROCESSO: "2319998811003",
+    NUMERO_CNJ: "00999881100320178160",
     POSSUI_ASSUNTO: "Sim",
     ASSUNTO_PRINCIPAL: "Mandado de Segurança",
     POSSUI_MOV_ARQUIVADO: "Não",
@@ -52,6 +53,7 @@ export default function Index() {
     iniciada: false
   });
   const [processos, setProcessos] = useState<ProcessoFila[]>(PROCESSOS_EXEMPLO);
+  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDocumental[]>([]);
   const [carregando, setCarregando] = useState(false);
 
   const totalPendentes = processos.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
@@ -104,6 +106,13 @@ export default function Index() {
   const handleSalvarEProximo = (avaliacao: AvaliacaoDocumental) => {
     setCarregando(true);
     
+    // Adicionar data de fim e salvar avaliação
+    const avaliacaoCompleta = {
+      ...avaliacao,
+      dataFimAvaliacao: new Date().toISOString(),
+    };
+    setAvaliacoes((prev) => [...prev, avaliacaoCompleta]);
+    
     // Simular salvamento
     setTimeout(() => {
       // Marcar processo atual como CONCLUIDO
@@ -148,6 +157,11 @@ export default function Index() {
     }, 1500);
   };
 
+  const handleProcessosCarregados = (novosProcessos: ProcessoFila[]) => {
+    setProcessos(novosProcessos);
+    setSessao((prev) => ({ ...prev, processoAtual: undefined }));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -166,6 +180,12 @@ export default function Index() {
           </TabsList>
 
           <TabsContent value="avaliacao" className="space-y-6">
+            <PainelSupervisor
+              onProcessosCarregados={handleProcessosCarregados}
+              avaliacoesRealizadas={avaliacoes}
+              processosCount={processos.length}
+            />
+            
             <SessaoCard
               sessao={sessao}
               onIniciarSessao={handleIniciarSessao}
