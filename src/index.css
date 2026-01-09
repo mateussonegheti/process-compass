@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 220 70% 45%;
+    --primary: 0 62.8205% 30.5882%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
@@ -53,6 +53,7 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 220 70% 40%;
     --sidebar-ring: 0 0% 100%;
+    --font-sans: Montserrat, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
   }
 
   .dark {
@@ -92,6 +93,7 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 17%;
     --sidebar-ring: 220 70% 55%;
+    --font-sans: Montserrat, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
   }
 }
 
