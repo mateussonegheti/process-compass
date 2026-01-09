@@ -1,14 +1,196 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, GitMerge } from "lucide-react";
+import { Header } from "@/components/cogede/Header";
+import { SessaoCard } from "@/components/cogede/SessaoCard";
+import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
+import { MergePlanilhas } from "@/components/cogede/MergePlanilhas";
+import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
+import { toast } from "sonner";
 
-const Index = () => {
+// Dados de exemplo para desenvolvimento (será substituído pela integração com Google Sheets)
+const PROCESSOS_EXEMPLO: ProcessoFila[] = [
+  {
+    CODIGO_PROCESSO: "0001234-56.2018.8.16.0001",
+    NUMERO_CNJ: "0001234-56.2018.8.16.0001",
+    POSSUI_ASSUNTO: "Sim",
+    ASSUNTO_PRINCIPAL: "Aposentadoria por Tempo de Contribuição",
+    POSSUI_MOV_ARQUIVADO: "Sim",
+    DATA_DISTRIBUICAO: "15/03/2018",
+    DATA_ARQUIVAMENTO_DEF: "22/08/2020",
+    PRAZO_5_ANOS_COMPLETO: "Sim",
+    STATUS_AVALIACAO: "PENDENTE"
+  },
+  {
+    CODIGO_PROCESSO: "0005678-90.2019.8.16.0002",
+    NUMERO_CNJ: "0005678-90.2019.8.16.0002",
+    POSSUI_ASSUNTO: "Não",
+    ASSUNTO_PRINCIPAL: "",
+    POSSUI_MOV_ARQUIVADO: "Sim",
+    DATA_DISTRIBUICAO: "10/06/2019",
+    DATA_ARQUIVAMENTO_DEF: "05/12/2021",
+    PRAZO_5_ANOS_COMPLETO: "Não",
+    STATUS_AVALIACAO: "PENDENTE"
+  },
+  {
+    CODIGO_PROCESSO: "0009999-11.2017.8.16.0003",
+    NUMERO_CNJ: "0009999-11.2017.8.16.0003",
+    POSSUI_ASSUNTO: "Sim",
+    ASSUNTO_PRINCIPAL: "Mandado de Segurança",
+    POSSUI_MOV_ARQUIVADO: "Não",
+    DATA_DISTRIBUICAO: "20/01/2017",
+    DATA_ARQUIVAMENTO_DEF: "",
+    PRAZO_5_ANOS_COMPLETO: "N/A",
+    STATUS_AVALIACAO: "PENDENTE"
+  }
+];
+
+export default function Index() {
+  const [sessao, setSessao] = useState<SessaoAvaliacao>({
+    responsavel: "",
+    processoAtual: undefined,
+    iniciada: false
+  });
+  const [processos, setProcessos] = useState<ProcessoFila[]>(PROCESSOS_EXEMPLO);
+  const [carregando, setCarregando] = useState(false);
+
+  const totalPendentes = processos.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
+  const totalEmAnalise = processos.filter(p => p.STATUS_AVALIACAO === "EM_ANALISE").length;
+  const totalConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length;
+
+  const handleIniciarSessao = (responsavel: string) => {
+    setSessao({
+      responsavel,
+      processoAtual: undefined,
+      iniciada: true
+    });
+    toast.success(`Sessão iniciada para ${responsavel}`);
+  };
+
+  const handleIniciarAvaliacao = () => {
+    setCarregando(true);
+    
+    // Simular busca do próximo processo pendente
+    setTimeout(() => {
+      const proximoProcesso = processos.find(p => p.STATUS_AVALIACAO === "PENDENTE");
+      
+      if (proximoProcesso) {
+        // Marcar como EM_ANALISE
+        setProcessos(prev => prev.map(p => 
+          p.CODIGO_PROCESSO === proximoProcesso.CODIGO_PROCESSO
+            ? { ...p, STATUS_AVALIACAO: "EM_ANALISE" as const, RESPONSAVEL: sessao.responsavel, DATA_INICIO_AVALIACAO: new Date().toISOString() }
+            : p
+        ));
+        
+        setSessao(prev => ({
+          ...prev,
+          processoAtual: {
+            ...proximoProcesso,
+            STATUS_AVALIACAO: "EM_ANALISE",
+            RESPONSAVEL: sessao.responsavel,
+            DATA_INICIO_AVALIACAO: new Date().toISOString()
+          }
+        }));
+        
+        toast.success(`Processo ${proximoProcesso.CODIGO_PROCESSO} capturado para avaliação`);
+      } else {
+        toast.info("Não há mais processos pendentes na fila");
+      }
+      
+      setCarregando(false);
+    }, 1000);
+  };
+
+  const handleSalvarEProximo = (avaliacao: AvaliacaoDocumental) => {
+    setCarregando(true);
+    
+    // Simular salvamento
+    setTimeout(() => {
+      // Marcar processo atual como CONCLUIDO
+      setProcessos(prev => prev.map(p => 
+        p.CODIGO_PROCESSO === avaliacao.codigoProcesso
+          ? { ...p, STATUS_AVALIACAO: "CONCLUIDO" as const }
+          : p
+      ));
+      
+      toast.success("Avaliação salva com sucesso!");
+      
+      // Buscar próximo processo
+      const proximoProcesso = processos.find(p => 
+        p.STATUS_AVALIACAO === "PENDENTE" && 
+        p.CODIGO_PROCESSO !== avaliacao.codigoProcesso
+      );
+      
+      if (proximoProcesso) {
+        setProcessos(prev => prev.map(p => 
+          p.CODIGO_PROCESSO === proximoProcesso.CODIGO_PROCESSO
+            ? { ...p, STATUS_AVALIACAO: "EM_ANALISE" as const, RESPONSAVEL: sessao.responsavel }
+            : p
+        ));
+        
+        setSessao(prev => ({
+          ...prev,
+          processoAtual: {
+            ...proximoProcesso,
+            STATUS_AVALIACAO: "EM_ANALISE",
+            RESPONSAVEL: sessao.responsavel,
+            DATA_INICIO_AVALIACAO: new Date().toISOString()
+          }
+        }));
+        
+        toast.info("Próximo processo carregado automaticamente");
+      } else {
+        setSessao(prev => ({ ...prev, processoAtual: undefined }));
+        toast.info("Todos os processos foram avaliados!");
+      }
+      
+      setCarregando(false);
+    }, 1500);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <main className="container mx-auto px-4 py-6">
+        <Tabs defaultValue="avaliacao" className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="avaliacao" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Avaliação Documental
+            </TabsTrigger>
+            <TabsTrigger value="merge" className="gap-2">
+              <GitMerge className="h-4 w-4" />
+              Merge de Planilhas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="avaliacao" className="space-y-6">
+            <SessaoCard
+              sessao={sessao}
+              onIniciarSessao={handleIniciarSessao}
+              onIniciarAvaliacao={handleIniciarAvaliacao}
+              carregando={carregando}
+              totalPendentes={totalPendentes}
+              totalEmAnalise={totalEmAnalise}
+              totalConcluidos={totalConcluidos}
+            />
+
+            {sessao.processoAtual && (
+              <FormularioAvaliacao
+                processo={sessao.processoAtual}
+                responsavel={sessao.responsavel}
+                onSalvarEProximo={handleSalvarEProximo}
+                carregando={carregando}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="merge">
+            <MergePlanilhas />
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
-};
-
-export default Index;
+}
