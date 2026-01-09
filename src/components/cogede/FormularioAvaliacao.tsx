@@ -72,6 +72,22 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
     setPecas(pecas.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)));
   };
 
+  // Formatar data para dd/mm/aaaa
+  const formatarData = (dataStr: string): string => {
+    if (!dataStr) return "";
+    // Tenta extrair apenas a parte da data (antes do espaço se houver hora)
+    const dataParte = dataStr.split(" ")[0];
+    // Se já está no formato dd/mm/yy ou dd/mm/yyyy
+    const partes = dataParte.split("/");
+    if (partes.length === 3) {
+      const [dia, mes, ano] = partes;
+      // Se ano tem 2 dígitos, adiciona 20 na frente (assumindo anos 2000)
+      const anoCompleto = ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
+      return `${dia.padStart(2, "0")}/${mes.padStart(2, "0")}/${anoCompleto}`;
+    }
+    return dataParte;
+  };
+
   const gerarCamposConcatenados = () => {
     const tipos = pecas
       .map((p) => p.tipo)
@@ -80,7 +96,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
     const ids = pecas
       .map((p) => p.idProjudi)
       .filter(Boolean)
-      .join("; ");
+      .join(" | ");
     const combinado = pecas
       .map((p) => `${p.tipo}: ${p.idProjudi}`)
       .filter((p) => p !== ": ")
@@ -296,14 +312,14 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
                 3.2 Data da distribuição
                 <Lock className="h-3 w-3 text-muted-foreground" />
               </Label>
-              <Input value={processo.DATA_DISTRIBUICAO} disabled className="bg-muted" />
+              <Input value={formatarData(processo.DATA_DISTRIBUICAO)} disabled className="bg-muted" />
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 3.3 Data do arquivamento definitivo
                 <Lock className="h-3 w-3 text-muted-foreground" />
               </Label>
-              <Input value={processo.DATA_ARQUIVAMENTO_DEF} disabled className="bg-muted" />
+              <Input value={formatarData(processo.DATA_ARQUIVAMENTO_DEF)} disabled className="bg-muted" />
             </div>
           </div>
 

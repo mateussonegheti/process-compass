@@ -14,26 +14,54 @@ interface PainelSupervisorProps {
   processosCount: number;
 }
 
+// Formatar data para dd/mm/aaaa
+const formatarData = (dataStr: string): string => {
+  if (!dataStr) return "";
+  const dataParte = dataStr.split(" ")[0];
+  const partes = dataParte.split("/");
+  if (partes.length === 3) {
+    const [dia, mes, ano] = partes;
+    const anoCompleto = ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
+    return `${dia.padStart(2, "0")}/${mes.padStart(2, "0")}/${anoCompleto}`;
+  }
+  return dataParte;
+};
+
+// Extrair ano de uma data no formato dd/mm/aaaa ou dd/mm/aa
+const extrairAno = (dataStr: string): string => {
+  if (!dataStr) return "";
+  const dataParte = dataStr.split(" ")[0];
+  const partes = dataParte.split("/");
+  if (partes.length === 3) {
+    const ano = partes[2];
+    return ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
+  }
+  return "";
+};
+
 // Mapeamento das colunas do formulário para exportação (aba AVALIAÇÃO_DOCUMENTAL)
 const COLUNAS_EXPORTACAO = [
-  { key: "codigoProcesso", label: "CODIGO_PROCESSO", grupo: "Identificação" },
-  { key: "numeroCnj", label: "NUMERO_CNJ", grupo: "Identificação" },
-  { key: "responsavel", label: "RESPONSAVEL", grupo: "Identificação" },
+  // Colunas para sistema de preservação digital
+  { key: "codigoProcesso", label: "CODIGO", grupo: "Preservação Digital" },
+  { key: "numeroCnj", label: "NUMERO_PROCESSO", grupo: "Preservação Digital" },
+  { key: "dataDistribuicao", label: "DATA_DISTRIBUICAO", grupo: "Preservação Digital" },
+  { key: "anoDistribuicao", label: "ANO", grupo: "Preservação Digital" },
+  { key: "dataArquivamentoDef", label: "DATA_ARQUIVAMENTO", grupo: "Preservação Digital" },
+  { key: "destinacaoPermanente", label: "GUARDA", grupo: "Preservação Digital" },
+  { key: "pecasIds", label: "ARQUIVOS", grupo: "Preservação Digital" },
+  // Colunas de controle
+  { key: "responsavel", label: "RESPONSAVEL", grupo: "Controle" },
   { key: "possuiAssunto", label: "ASSUNTO_CADASTRADO_PROJUDI", grupo: "Assunto/TPU" },
   { key: "descricaoAssuntoFaltante", label: "REPORTAR_AUSENCIA_ASSUNTO", grupo: "Assunto/TPU" },
   { key: "assuntoPrincipal", label: "ASSUNTO_PRINCIPAL_PROJUDI", grupo: "Assunto/TPU" },
   { key: "assuntoTpu", label: "INSTR_ASSUNTO_PROJUDI", grupo: "Assunto/TPU" },
   { key: "hierarquiaCorreta", label: "HIERARQUIA_CONFERE_TPU", grupo: "Assunto/TPU" },
   { key: "divergenciaHierarquia", label: "DIVERGENCIA_HIERARQUIA", grupo: "Assunto/TPU" },
-  { key: "destinacaoPermanente", label: "DESTINACAO_PERMANENTE_TPU", grupo: "Assunto/TPU" },
   { key: "possuiMovArquivado", label: "MOV_PROCESSO_ARQUIVADO", grupo: "Movimentações" },
   { key: "descricaoSituacaoArquivamento", label: "SITUACAO_ATUAL_PROCESSO", grupo: "Movimentações" },
-  { key: "dataDistribuicao", label: "DATA_DISTRIBUICAO", grupo: "Movimentações" },
-  { key: "dataArquivamentoDef", label: "DATA_ARQUIVAMENTO_DEFINITIVO", grupo: "Movimentações" },
   { key: "prazo5AnosCompleto", label: "PRAZO_5_ANOS_COMPLETO", grupo: "Movimentações" },
   { key: "inconsistenciaPrazo", label: "REPORTAR_INCONSISTENCIA_PRAZO", grupo: "Movimentações" },
   { key: "pecasTipos", label: "PECAS_TIPOS", grupo: "Peças" },
-  { key: "pecasIds", label: "PECAS_IDS", grupo: "Peças" },
   { key: "pecasCombinado", label: "PECAS_TIPO_ID", grupo: "Peças" },
   { key: "observacoesPecas", label: "OBSERVACOES_PECAS", grupo: "Peças" },
   { key: "ocorrenciasPecas", label: "OCORRENCIAS_PECAS", grupo: "Ocorrências" },
@@ -211,12 +239,17 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
     // Criar cabeçalho usando os labels das colunas (nomes da aba AVALIAÇÃO_DOCUMENTAL)
     const headers = colunasExportacao
       .map((key) => COLUNAS_EXPORTACAO.find((c) => c.key === key)?.label || key)
-      .join(";");
+      .join(",");
 
     // Criar linhas
     const rows = avaliacoesRealizadas.map((av) => {
       return colunasExportacao
         .map((key) => {
+          // Campo especial: anoDistribuicao (extrair ano da data de distribuição)
+          if (key === "anoDistribuicao") {
+            return extrairAno(av.dataDistribuicao);
+          }
+          
           // Campo especial: ocorrenciasPecas (concatenar checkboxes)
           if (key === "ocorrenciasPecas") {
             const ocorrencias: string[] = [];
@@ -225,13 +258,27 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
             if (av.erroTecnico) ocorrencias.push("Erro técnico");
             return ocorrencias.join("; ");
           }
+
+          // Campo especial: destinacaoPermanente -> GUARDA (P ou E)
+          if (key === "destinacaoPermanente") {
+            const val = av.destinacaoPermanente;
+            if (val === "Sim") return "P";
+            if (val === "Não") return "E";
+            return val || "";
+          }
+
+          // Campos de data: formatar para dd/mm/aaaa
+          if (key === "dataDistribuicao" || key === "dataArquivamentoDef") {
+            const value = (av as unknown as Record<string, unknown>)[key];
+            return formatarData(String(value || ""));
+          }
           
           const value = (av as unknown as Record<string, unknown>)[key];
           if (typeof value === "boolean") return value ? "Sim" : "Não";
           if (value === undefined || value === null) return "";
           return String(value).replace(/;/g, ",").replace(/\n/g, " ");
         })
-        .join(";");
+        .join(",");
     });
 
     const csvContent = [headers, ...rows].join("\n");
