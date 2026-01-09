@@ -5,9 +5,10 @@ export interface PecaParaClassificar {
   nomeArquivo: string;
   codigoProcesso?: string;
   conteudoTexto?: string;
-  pdfUrl?: string; // Para quando tivermos acesso direto
+  imagemPreview?: string; // Base64 da primeira página
+  pdfUrl?: string;
   arquivo?: File;
-  status: 'PENDENTE' | 'CLASSIFICANDO' | 'AGUARDANDO_CONFIRMACAO' | 'CONFIRMADO' | 'ERRO';
+  status: 'PENDENTE' | 'CLASSIFICANDO' | 'AGUARDANDO_CONFIRMACAO' | 'CONFIRMADO' | 'REJEITADO' | 'ERRO';
   classificacaoIA?: ClassificacaoIA;
   classificacaoFinal?: string;
   confirmadoPor?: string;
@@ -19,17 +20,23 @@ export interface ClassificacaoIA {
   confianca: number; // 0-100
   motivo: string;
   elementosEncontrados: string[];
+  chunksRelevantes: string[];
   destinacao: 'Guarda Permanente' | 'Eliminação' | 'Análise Manual';
+  auditoriaAprovada: boolean;
+  auditoriaMotivo: string;
+  alucinacoesDetectadas?: string[];
   processadoEm: string;
 }
 
 export interface SessaoClassificacao {
   responsavel: string;
+  codigoProcesso?: string;
   iniciada: boolean;
   pecaAtual?: PecaParaClassificar;
   totalPecas: number;
   classificadas: number;
   confirmadas: number;
+  rejeitadas: number;
 }
 
 // Mapa de tipos documentais extraído do CSV
@@ -104,6 +111,8 @@ export const DESTINACAO_POR_TIPO: Record<string, 'Guarda Permanente' | 'Elimina�
   "Guia de Custas": "Eliminação",
   "Intimação": "Eliminação",
   "Termo de Juntada": "Eliminação",
+  "Despacho": "Eliminação",
+  "Mandado": "Eliminação",
   // Análise Manual para os demais
   "Outros/Não Identificado": "Análise Manual"
 };

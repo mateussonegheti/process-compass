@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { 
   Upload, 
   FileText, 
@@ -14,18 +13,21 @@ import {
   XCircle, 
   AlertTriangle,
   Brain,
-  ChevronRight,
-  ChevronLeft,
   Loader2,
+  ThumbsUp,
+  ThumbsDown,
+  SkipForward,
   Eye,
-  RefreshCw
+  Shield,
+  Sparkles,
+  ArrowLeft
 } from "lucide-react";
 import { toast } from "sonner";
 import { PecaParaClassificar, TIPOS_DOCUMENTAIS, ClassificacaoIA } from "@/types/classificador";
 import { supabase } from "@/integrations/supabase/client";
 
-// Função para extrair texto de PDF usando pdf.js (simplificado - texto básico)
-async function extrairTextoPDF(file: File): Promise<string> {
+// Função para extrair texto de PDF
+async function extrairTextoPDF(file: File): Promise<{ texto: string; imagemBase64?: string }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -33,7 +35,7 @@ async function extrairTextoPDF(file: File): Promise<string> {
         const arrayBuffer = e.target?.result as ArrayBuffer;
         const bytes = new Uint8Array(arrayBuffer);
         
-        // Extração básica de texto do PDF (procura por streams de texto)
+        // Extração básica de texto do PDF
         let text = "";
         const decoder = new TextDecoder("latin1");
         const content = decoder.decode(bytes);
@@ -47,18 +49,26 @@ async function extrairTextoPDF(file: File): Promise<string> {
             .join(" ");
         }
         
-        // Se não encontrou texto, tentar outro método
+        // Se não encontrou texto suficiente, pode ser PDF escaneado
         if (text.length < 100) {
-          // Procurar por texto legível
           const legibleText = content.match(/[A-Za-záéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ\s]{10,}/g);
           if (legibleText) {
             text = legibleText.join(" ");
           }
         }
         
-        resolve(text.trim() || "Não foi possível extrair texto. O PDF pode ser uma imagem escaneada.");
+        // Converter para base64 para OCR se texto insuficiente
+        let imagemBase64: string | undefined;
+        if (text.length < 100) {
+          imagemBase64 = btoa(String.fromCharCode(...bytes));
+        }
+        
+        resolve({ 
+          texto: text.trim() || "", 
+          imagemBase64 
+        });
       } catch {
-        resolve("Erro ao processar o PDF. Verifique se o arquivo não está corrompido.");
+        resolve({ texto: "" });
       }
     };
     reader.readAsArrayBuffer(file);
@@ -67,16 +77,21 @@ async function extrairTextoPDF(file: File): Promise<string> {
 
 export function ClassificadorIA() {
   const [responsavel, setResponsavel] = useState("");
+  const [codigoProcesso, setCodigoProcesso] = useState("");
   const [sessaoIniciada, setSessaoIniciada] = useState(false);
+  const [modoRevisao, setModoRevisao] = useState(false);
   const [pecas, setPecas] = useState<PecaParaClassificar[]>([]);
   const [pecaAtualIndex, setPecaAtualIndex] = useState(0);
   const [carregando, setCarregando] = useState(false);
   const [processandoIA, setProcessandoIA] = useState(false);
+  const [tipoAlternativo, setTipoAlternativo] = useState("");
 
   const pecaAtual = pecas[pecaAtualIndex];
   const totalPendentes = pecas.filter(p => p.status === 'PENDENTE').length;
-  const totalClassificadas = pecas.filter(p => p.status === 'AGUARDANDO_CONFIRMACAO').length;
+  const totalAguardando = pecas.filter(p => p.status === 'AGUARDANDO_CONFIRMACAO').length;
   const totalConfirmadas = pecas.filter(p => p.status === 'CONFIRMADO').length;
+  const totalRejeitadas = pecas.filter(p => p.status === 'REJEITADO').length;
+  const pecasParaRevisar = pecas.filter(p => p.status === 'AGUARDANDO_CONFIRMACAO');
 
   const handleUploadPDFs = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -88,11 +103,13 @@ export function ClassificadorIA() {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.type === 'application/pdf') {
-        const texto = await extrairTextoPDF(file);
+        const { texto, imagemBase64 } = await extrairTextoPDF(file);
         novasPecas.push({
           id: `${Date.now()}-${i}`,
           nomeArquivo: file.name,
+          codigoProcesso: codigoProcesso,
           conteudoTexto: texto,
+          imagemPreview: imagemBase64,
           arquivo: file,
           status: 'PENDENTE'
         });
@@ -101,14 +118,14 @@ export function ClassificadorIA() {
 
     if (novasPecas.length > 0) {
       setPecas(prev => [...prev, ...novasPecas]);
-      toast.success(`${novasPecas.length} PDF(s) carregado(s) com sucesso!`);
+      toast.success(`${novasPecas.length} PDF(s) carregado(s)!`);
     } else {
-      toast.error("Nenhum arquivo PDF válido selecionado");
+      toast.error("Nenhum PDF válido");
     }
 
     setCarregando(false);
     e.target.value = '';
-  }, []);
+  }, [codigoProcesso]);
 
   const classificarPeca = async (peca: PecaParaClassificar) => {
     setProcessandoIA(true);
@@ -121,7 +138,7 @@ export function ClassificadorIA() {
       const { data, error } = await supabase.functions.invoke('classificar-peca', {
         body: { 
           textoDocumento: peca.conteudoTexto,
-          nomeArquivo: peca.nomeArquivo
+          imagemBase64: peca.imagemPreview
         }
       });
 
@@ -135,13 +152,13 @@ export function ClassificadorIA() {
           : p
       ));
 
-      toast.success(`Classificado como: ${classificacao.tipoDocumental} (${classificacao.confianca}%)`);
+      toast.success(`${classificacao.tipoDocumental} (${classificacao.confianca}%) - ${classificacao.auditoriaAprovada ? '✓ Auditoria OK' : '⚠ Revisar'}`);
     } catch (error) {
       console.error("Erro ao classificar:", error);
       setPecas(prev => prev.map(p => 
         p.id === peca.id ? { ...p, status: 'ERRO' } : p
       ));
-      toast.error("Erro ao classificar o documento");
+      toast.error("Erro ao classificar");
     } finally {
       setProcessandoIA(false);
     }
@@ -151,8 +168,10 @@ export function ClassificadorIA() {
     const pendentes = pecas.filter(p => p.status === 'PENDENTE');
     for (const peca of pendentes) {
       await classificarPeca(peca);
-      // Pequeno delay entre requisições
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    if (pendentes.length > 0) {
+      toast.success("Classificação automática concluída! Inicie a revisão.");
     }
   };
 
@@ -173,45 +192,65 @@ export function ClassificadorIA() {
         : p
     ));
 
-    toast.success(`Classificação confirmada: ${tipo}`);
+    toast.success(`✓ ${tipo}`);
+    irParaProximaPeca();
+  };
 
-    // Ir para próxima peça pendente de confirmação
-    const proximaIndex = pecas.findIndex((p, i) => 
-      i > pecaAtualIndex && p.status === 'AGUARDANDO_CONFIRMACAO'
+  const rejeitarClassificacao = () => {
+    if (!pecaAtual) return;
+
+    setPecas(prev => prev.map(p => 
+      p.id === pecaAtual.id 
+        ? { ...p, status: 'REJEITADO' }
+        : p
+    ));
+
+    toast.info("✗ Rejeitado - revisão manual necessária");
+    irParaProximaPeca();
+  };
+
+  const irParaProximaPeca = () => {
+    const pecasRestantes = pecas.filter(p => p.status === 'AGUARDANDO_CONFIRMACAO');
+    const proximaIndex = pecas.findIndex(p => 
+      p.status === 'AGUARDANDO_CONFIRMACAO' && p.id !== pecaAtual?.id
     );
+    
     if (proximaIndex !== -1) {
       setPecaAtualIndex(proximaIndex);
+    } else if (pecasRestantes.length === 0) {
+      setModoRevisao(false);
+      toast.success("Todas as peças foram revisadas!");
+    }
+  };
+
+  const iniciarRevisao = () => {
+    const primeiraAguardando = pecas.findIndex(p => p.status === 'AGUARDANDO_CONFIRMACAO');
+    if (primeiraAguardando !== -1) {
+      setPecaAtualIndex(primeiraAguardando);
+      setModoRevisao(true);
     } else {
-      // Procurar desde o início
-      const primeiraIndex = pecas.findIndex(p => p.status === 'AGUARDANDO_CONFIRMACAO');
-      if (primeiraIndex !== -1 && primeiraIndex !== pecaAtualIndex) {
-        setPecaAtualIndex(primeiraIndex);
-      }
+      toast.info("Nenhuma peça aguardando revisão");
     }
   };
 
   const getConfiancaColor = (confianca: number) => {
-    if (confianca >= 80) return "text-green-600 bg-green-50";
-    if (confianca >= 60) return "text-yellow-600 bg-yellow-50";
-    return "text-red-600 bg-red-50";
+    if (confianca >= 80) return "bg-green-500";
+    if (confianca >= 60) return "bg-yellow-500";
+    return "bg-red-500";
   };
 
-  const getStatusBadge = (status: PecaParaClassificar['status']) => {
-    switch (status) {
-      case 'PENDENTE':
-        return <Badge variant="secondary">Pendente</Badge>;
-      case 'CLASSIFICANDO':
-        return <Badge className="bg-blue-500">Classificando...</Badge>;
-      case 'AGUARDANDO_CONFIRMACAO':
-        return <Badge className="bg-yellow-500">Aguardando</Badge>;
-      case 'CONFIRMADO':
-        return <Badge className="bg-green-500">Confirmado</Badge>;
-      case 'ERRO':
-        return <Badge variant="destructive">Erro</Badge>;
+  const getDestinacaoIcon = (destinacao: string) => {
+    switch (destinacao) {
+      case 'Guarda Permanente':
+        return <Shield className="h-5 w-5 text-green-500" />;
+      case 'Eliminação':
+        return <XCircle className="h-5 w-5 text-red-500" />;
+      default:
+        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
     }
   };
 
-  // Tela inicial - identificação
+  // Tela inicial
   if (!sessaoIniciada) {
     return (
       <Card className="max-w-xl mx-auto">
@@ -221,7 +260,7 @@ export function ClassificadorIA() {
           </div>
           <CardTitle>Classificador IA de Peças</CardTitle>
           <CardDescription>
-            Sistema de classificação automática de documentos processuais com confirmação humana
+            Pipeline de 3 IAs: Extração → Classificação → Auditoria
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -234,53 +273,223 @@ export function ClassificadorIA() {
               placeholder="Digite seu nome completo"
             />
           </div>
+          <div>
+            <Label htmlFor="processo">Código do Processo (opcional)</Label>
+            <Input
+              id="processo"
+              value={codigoProcesso}
+              onChange={(e) => setCodigoProcesso(e.target.value)}
+              placeholder="Ex: 0024517-43.2024.8.13.0024"
+            />
+          </div>
           <Button 
             className="w-full" 
             onClick={() => setSessaoIniciada(true)}
             disabled={!responsavel.trim()}
           >
-            Iniciar Sessão de Classificação
+            Iniciar Sessão
           </Button>
         </CardContent>
       </Card>
     );
   }
 
+  // Modo Revisão Estilo Tinder
+  if (modoRevisao && pecaAtual && pecaAtual.status === 'AGUARDANDO_CONFIRMACAO' && pecaAtual.classificacaoIA) {
+    const classificacao = pecaAtual.classificacaoIA;
+    
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        {/* Header de progresso */}
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setModoRevisao(false)}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            {pecasParaRevisar.findIndex(p => p.id === pecaAtual.id) + 1} / {pecasParaRevisar.length + totalConfirmadas + totalRejeitadas}
+          </div>
+        </div>
+
+        {/* Card Principal - Estilo Tinder */}
+        <Card className="overflow-hidden">
+          {/* Preview do documento */}
+          <div className="bg-muted/50 p-6 border-b">
+            <div className="flex items-start gap-4">
+              <div className="w-20 h-28 bg-white rounded shadow flex items-center justify-center shrink-0">
+                <FileText className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{pecaAtual.nomeArquivo}</p>
+                {codigoProcesso && (
+                  <p className="text-sm text-muted-foreground mt-1">Processo: {codigoProcesso}</p>
+                )}
+                <div className="mt-3 text-sm text-muted-foreground line-clamp-4 bg-white/50 p-2 rounded">
+                  {pecaAtual.conteudoTexto?.substring(0, 300) || "Documento processado via OCR"}...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Classificação da IA */}
+          <CardContent className="pt-6 space-y-4">
+            {/* Tipo e Confiança */}
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 text-2xl font-bold">
+                <Sparkles className="h-6 w-6 text-primary" />
+                {classificacao.tipoDocumental}
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <div className={`h-2 w-24 rounded-full bg-muted overflow-hidden`}>
+                  <div 
+                    className={`h-full ${getConfiancaColor(classificacao.confianca)}`}
+                    style={{ width: `${classificacao.confianca}%` }}
+                  />
+                </div>
+                <span className="text-sm font-medium">{classificacao.confianca}%</span>
+              </div>
+            </div>
+
+            {/* Destinação */}
+            <div className="flex items-center justify-center gap-2 py-2">
+              {getDestinacaoIcon(classificacao.destinacao)}
+              <span className="font-medium">{classificacao.destinacao}</span>
+            </div>
+
+            {/* Auditoria */}
+            <div className={`rounded-lg p-3 text-sm ${
+              classificacao.auditoriaAprovada 
+                ? 'bg-green-50 text-green-800 border border-green-200' 
+                : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+            }`}>
+              <div className="flex items-center gap-2 font-medium mb-1">
+                {classificacao.auditoriaAprovada ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4" />
+                )}
+                {classificacao.auditoriaAprovada ? 'Auditoria Aprovada' : 'Necessita Revisão'}
+              </div>
+              <p className="text-xs">{classificacao.auditoriaMotivo}</p>
+            </div>
+
+            {/* Elementos encontrados */}
+            {classificacao.elementosEncontrados.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Elementos identificados:</p>
+                <div className="flex flex-wrap gap-1">
+                  {classificacao.elementosEncontrados.slice(0, 5).map((elem, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">{elem}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Motivo */}
+            <div className="text-sm text-muted-foreground bg-muted/30 rounded p-3">
+              <Eye className="h-4 w-4 inline mr-1" />
+              {classificacao.motivo}
+            </div>
+
+            {/* Ajuste de tipo */}
+            <div className="pt-2">
+              <Label className="text-xs text-muted-foreground">Ou selecione outro tipo:</Label>
+              <Select value={tipoAlternativo} onValueChange={setTipoAlternativo}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Alterar classificação..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPOS_DOCUMENTAIS.map(tipo => (
+                    <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+
+          {/* Ações - Estilo Tinder */}
+          <div className="border-t p-6">
+            <div className="flex items-center justify-center gap-6">
+              {/* Rejeitar */}
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-16 w-16 rounded-full border-2 border-red-300 hover:border-red-500 hover:bg-red-50"
+                onClick={rejeitarClassificacao}
+              >
+                <ThumbsDown className="h-6 w-6 text-red-500" />
+              </Button>
+
+              {/* Pular */}
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-12 w-12 rounded-full"
+                onClick={irParaProximaPeca}
+              >
+                <SkipForward className="h-5 w-5" />
+              </Button>
+
+              {/* Confirmar */}
+              <Button
+                size="lg"
+                className="h-16 w-16 rounded-full bg-green-500 hover:bg-green-600"
+                onClick={() => confirmarClassificacao(tipoAlternativo || undefined)}
+              >
+                <ThumbsUp className="h-6 w-6" />
+              </Button>
+            </div>
+            <p className="text-center text-xs text-muted-foreground mt-4">
+              👎 Rejeitar | ⏭ Pular | 👍 Confirmar
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Tela Principal
   return (
     <div className="space-y-6">
-      {/* Header com estatísticas */}
+      {/* Header */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-primary" />
-              <span className="font-medium">Avaliador: {responsavel}</span>
+              <span className="font-medium">{responsavel}</span>
+              {codigoProcesso && (
+                <Badge variant="outline">{codigoProcesso}</Badge>
+              )}
             </div>
-            <div className="flex gap-4 text-sm">
+            <div className="flex gap-3 text-sm">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-gray-400" />
                 <span>Pendentes: {totalPendentes}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                <span>Aguardando: {totalClassificadas}</span>
+                <span>Aguardando: {totalAguardando}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-green-400" />
                 <span>Confirmadas: {totalConfirmadas}</span>
               </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <span>Rejeitadas: {totalRejeitadas}</span>
+              </div>
             </div>
           </div>
           {pecas.length > 0 && (
             <Progress 
-              value={(totalConfirmadas / pecas.length) * 100} 
+              value={((totalConfirmadas + totalRejeitadas) / pecas.length) * 100} 
               className="mt-4"
             />
           )}
         </CardContent>
       </Card>
 
-      {/* Upload de PDFs */}
+      {/* Upload */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -288,7 +497,7 @@ export function ClassificadorIA() {
             Upload de Peças (PDF)
           </CardTitle>
           <CardDescription>
-            Carregue os PDFs das peças processuais para classificação automática
+            A IA irá: 1) Extrair chunks relevantes → 2) Classificar pelo mapa de elementos → 3) Auditar contra alucinações
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -296,9 +505,8 @@ export function ClassificadorIA() {
             <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
             <Label htmlFor="pdf-upload" className="cursor-pointer">
               <span className="text-primary font-medium hover:underline">
-                Clique para selecionar PDFs
+                Selecionar PDFs
               </span>
-              <span className="text-muted-foreground"> ou arraste os arquivos</span>
             </Label>
             <Input
               id="pdf-upload"
@@ -310,7 +518,7 @@ export function ClassificadorIA() {
               disabled={carregando}
             />
             <p className="text-xs text-muted-foreground mt-2">
-              Múltiplos arquivos PDF permitidos
+              OCR automático para PDFs escaneados
             </p>
           </div>
 
@@ -333,36 +541,57 @@ export function ClassificadorIA() {
                   </>
                 )}
               </Button>
+              <Button
+                onClick={iniciarRevisao}
+                disabled={totalAguardando === 0}
+                variant="secondary"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Revisar ({totalAguardando})
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Lista de peças */}
+      {/* Lista de Peças */}
       {pecas.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Peças Carregadas ({pecas.length})</CardTitle>
+            <CardTitle>Peças ({pecas.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="divide-y max-h-60 overflow-y-auto">
-              {pecas.map((peca, index) => (
+            <div className="divide-y max-h-80 overflow-y-auto">
+              {pecas.map((peca) => (
                 <div 
                   key={peca.id} 
-                  className={`flex items-center justify-between py-2 px-2 cursor-pointer hover:bg-muted/50 rounded ${index === pecaAtualIndex ? 'bg-primary/10' : ''}`}
-                  onClick={() => setPecaAtualIndex(index)}
+                  className="flex items-center justify-between py-3"
                 >
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm truncate max-w-[200px]">{peca.nomeArquivo}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm truncate">{peca.nomeArquivo}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {peca.classificacaoIA && (
                       <span className="text-xs text-muted-foreground">
-                        {peca.classificacaoIA.tipoDocumental}
+                        {peca.classificacaoFinal || peca.classificacaoIA.tipoDocumental}
                       </span>
                     )}
-                    {getStatusBadge(peca.status)}
+                    <Badge 
+                      variant={
+                        peca.status === 'CONFIRMADO' ? 'default' :
+                        peca.status === 'REJEITADO' ? 'destructive' :
+                        peca.status === 'AGUARDANDO_CONFIRMACAO' ? 'secondary' :
+                        peca.status === 'ERRO' ? 'destructive' :
+                        'outline'
+                      }
+                      className="text-xs"
+                    >
+                      {peca.status === 'CONFIRMADO' && <CheckCircle className="h-3 w-3 mr-1" />}
+                      {peca.status === 'REJEITADO' && <XCircle className="h-3 w-3 mr-1" />}
+                      {peca.status === 'CLASSIFICANDO' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                      {peca.status.replace('_', ' ')}
+                    </Badge>
                   </div>
                 </div>
               ))}
@@ -371,162 +600,33 @@ export function ClassificadorIA() {
         </Card>
       )}
 
-      {/* Painel de confirmação */}
-      {pecaAtual && pecaAtual.status === 'AGUARDANDO_CONFIRMACAO' && pecaAtual.classificacaoIA && (
-        <Card className="border-2 border-primary">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
-                Confirmar Classificação
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setPecaAtualIndex(Math.max(0, pecaAtualIndex - 1))}
-                  disabled={pecaAtualIndex === 0}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground py-1">
-                  {pecaAtualIndex + 1} / {pecas.length}
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setPecaAtualIndex(Math.min(pecas.length - 1, pecaAtualIndex + 1))}
-                  disabled={pecaAtualIndex === pecas.length - 1}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Info do arquivo */}
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-5 w-5" />
-                <span className="font-medium">{pecaAtual.nomeArquivo}</span>
-              </div>
-              <p className="text-sm text-muted-foreground line-clamp-3">
-                {pecaAtual.conteudoTexto?.substring(0, 300)}...
-              </p>
-            </div>
-
-            {/* Classificação da IA */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground">Tipo Identificado pela IA</Label>
-                <div className="mt-1 text-xl font-semibold">
-                  {pecaAtual.classificacaoIA.tipoDocumental}
-                </div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Confiança</Label>
-                <div className={`mt-1 text-xl font-semibold inline-block px-3 py-1 rounded ${getConfiancaColor(pecaAtual.classificacaoIA.confianca)}`}>
-                  {pecaAtual.classificacaoIA.confianca}%
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-muted-foreground">Motivo da Classificação</Label>
-              <p className="mt-1 text-sm">{pecaAtual.classificacaoIA.motivo}</p>
-            </div>
-
-            {pecaAtual.classificacaoIA.elementosEncontrados.length > 0 && (
-              <div>
-                <Label className="text-muted-foreground">Elementos Encontrados</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {pecaAtual.classificacaoIA.elementosEncontrados.map((elem, i) => (
-                    <Badge key={i} variant="outline">{elem}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-muted/30 rounded-lg p-4">
-              <Label className="text-muted-foreground">Destinação Sugerida</Label>
-              <div className="mt-1 flex items-center gap-2">
-                {pecaAtual.classificacaoIA.destinacao === 'Guarda Permanente' && (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                )}
-                {pecaAtual.classificacaoIA.destinacao === 'Eliminação' && (
-                  <XCircle className="h-5 w-5 text-red-500" />
-                )}
-                {pecaAtual.classificacaoIA.destinacao === 'Análise Manual' && (
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                )}
-                <span className="font-medium">{pecaAtual.classificacaoIA.destinacao}</span>
-              </div>
-            </div>
-
-            {/* Ações */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex gap-3">
-                <Button 
-                  className="flex-1"
-                  onClick={() => confirmarClassificacao()}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Confirmar Classificação
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => classificarPeca(pecaAtual)}
-                  disabled={processandoIA}
-                >
-                  <RefreshCw className={`h-4 w-4 ${processandoIA ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-
-              <div>
-                <Label>Ou ajustar para outro tipo:</Label>
-                <div className="flex gap-2 mt-2">
-                  <Select onValueChange={(value) => confirmarClassificacao(value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar outro tipo..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIPOS_DOCUMENTAIS.map(tipo => (
-                        <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Resumo final */}
-      {totalConfirmadas > 0 && totalConfirmadas === pecas.length && (
+      {/* Resumo Final */}
+      {pecas.length > 0 && (totalConfirmadas + totalRejeitadas) === pecas.length && (
         <Card className="bg-green-50 border-green-200">
           <CardContent className="pt-6 text-center">
             <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
             <h3 className="text-lg font-semibold text-green-800">
-              Todas as peças foram classificadas!
+              Revisão Concluída!
             </h3>
             <p className="text-green-700 mt-2">
-              {totalConfirmadas} peças processadas e confirmadas.
+              {totalConfirmadas} confirmadas | {totalRejeitadas} rejeitadas
             </p>
             <Button 
               className="mt-4"
-              variant="outline"
               onClick={() => {
-                // Aqui poderia exportar ou salvar os resultados
                 const resultados = pecas.map(p => ({
                   arquivo: p.nomeArquivo,
-                  tipo: p.classificacaoFinal,
+                  tipoClassificado: p.classificacaoIA?.tipoDocumental,
+                  tipoFinal: p.classificacaoFinal || 'Rejeitado',
                   confianca: p.classificacaoIA?.confianca,
+                  destinacao: p.classificacaoIA?.destinacao,
+                  status: p.status,
                   confirmadoPor: p.confirmadoPor,
                   data: p.dataConfirmacao
                 }));
                 console.log("Resultados:", resultados);
-                toast.success("Resultados prontos para exportação!");
+                navigator.clipboard.writeText(JSON.stringify(resultados, null, 2));
+                toast.success("Resultados copiados para a área de transferência!");
               }}
             >
               Exportar Resultados
