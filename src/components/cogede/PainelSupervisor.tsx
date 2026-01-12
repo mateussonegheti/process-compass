@@ -10,6 +10,7 @@ import { ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/hooks/useAuth";
+import { validateCSVFile, validateRowCount, sanitizeCellValue, hasSuspiciousContent, MAX_ROW_COUNT } from "@/lib/csvValidation";
 
 interface PainelSupervisorProps {
   onProcessosCarregados: (processos: ProcessoFila[]) => void;
@@ -162,6 +163,16 @@ export function PainelSupervisor({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validar arquivo antes de processar
+    const fileValidation = validateCSVFile(file);
+    if (!fileValidation.valid) {
+      toast.error(fileValidation.error);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -170,6 +181,13 @@ export function PainelSupervisor({
         
         if (lines.length < 2) {
           toast.error("Arquivo CSV vazio ou inválido");
+          return;
+        }
+
+        // Validar número de linhas
+        const rowValidation = validateRowCount(lines);
+        if (!rowValidation.valid) {
+          toast.error(rowValidation.error);
           return;
         }
 
@@ -218,8 +236,16 @@ export function PainelSupervisor({
           logger.log("Colunas opcionais ausentes:", opcionaisAusentes);
         }
 
+        let suspiciousCount = 0;
         const processos: ProcessoFila[] = lines.slice(1).map((line) => {
-          const values = parseCSVLine(line, separator).map((v) => v.replace(/"/g, "").trim());
+          const rawValues = parseCSVLine(line, separator).map((v) => v.replace(/"/g, "").trim());
+          // Sanitizar valores para prevenir injeção de fórmulas
+          const values = rawValues.map(v => {
+            if (hasSuspiciousContent(v)) {
+              suspiciousCount++;
+            }
+            return sanitizeCellValue(v);
+          });
           
           // Preservar status original ou definir como PENDENTE
           const statusOriginal = colMap.STATUS_AVALIACAO !== undefined 
@@ -244,6 +270,12 @@ export function PainelSupervisor({
             DATA_FIM: colMap.DATA_FIM !== undefined ? values[colMap.DATA_FIM] || undefined : undefined,
           };
         }).filter((p) => p.CODIGO_PROCESSO && p.NUMERO_CNJ);
+
+        // Alertar sobre conteúdo suspeito
+        if (suspiciousCount > 0) {
+          logger.warn(`${suspiciousCount} células com conteúdo suspeito foram sanitizadas`);
+          toast.warning(`${suspiciousCount} células com padrões suspeitos foram sanitizadas por segurança`, { duration: 5000 });
+        }
 
         if (processos.length === 0) {
           toast.error("Nenhum processo válido encontrado. Verifique se CODIGO_PROCESSO e NUMERO_CNJ estão preenchidos.");
