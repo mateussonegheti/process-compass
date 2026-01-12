@@ -1,7 +1,8 @@
+import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, User, FileSearch, Loader2, CheckCircle } from "lucide-react";
+import { User, FileSearch, Loader2 } from "lucide-react";
 import { SessaoAvaliacao } from "@/types/cogede";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -26,11 +27,12 @@ export function SessaoCard({
 }: SessaoCardProps) {
   const { profile, loading } = useAuth();
 
-  const handleIniciarSessao = () => {
-    if (profile?.nome) {
+  // Auto-iniciar sessão quando o perfil estiver disponível
+  useEffect(() => {
+    if (!sessao.iniciada && profile?.nome && !loading) {
       onIniciarSessao(profile.nome);
     }
-  };
+  }, [sessao.iniciada, profile?.nome, loading, onIniciarSessao]);
 
   if (!sessao.iniciada) {
     return (
@@ -38,30 +40,14 @@ export function SessaoCard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Identificação do Responsável
+            Carregando...
           </CardTitle>
           <CardDescription>
-            {loading ? "Carregando dados do usuário..." : "Clique para iniciar a sessão de avaliação"}
+            Preparando sessão de avaliação...
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {profile?.nome && (
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Logado como:</p>
-                <p className="font-medium">{profile.nome}</p>
-              </div>
-            </div>
-          )}
-          <Button 
-            onClick={handleIniciarSessao} 
-            disabled={!profile?.nome || loading}
-            className="w-full"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Iniciar Sessão
-          </Button>
+        <CardContent className="flex items-center justify-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
     );
