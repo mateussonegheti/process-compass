@@ -401,7 +401,7 @@ export function PainelSupervisor({
           )}
           
           {temPermissao && (
-            <div className="text-xs text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
+            <div className="text-xs text-muted-foreground space-y-2 p-3 bg-primary/10 border border-primary/20 rounded-lg">
               <p className="font-medium text-foreground">Formato do arquivo CSV:</p>
               
               <div>
