@@ -244,6 +244,7 @@ export default function Index() {
   const handleProcessosCarregados = async (novosProcessos: ProcessoFila[]) => {
     await carregarPlanilha(novosProcessos);
     setSessao((prev) => ({ ...prev, processoAtual: undefined }));
+    setAvaliacoes([]); // Resetar avaliações ao carregar nova planilha
   };
 
   return (
