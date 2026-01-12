@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResizableDataGrid, ColumnDef } from "./ResizableDataGrid";
 import { Button } from "@/components/ui/button";
 import { 
   Activity, 
@@ -16,10 +15,7 @@ import {
   TrendingUp,
   Database,
   List,
-  RefreshCw,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,8 +45,14 @@ interface DashboardSupervisorProps {
   processos: ProcessoFila[];
 }
 
+interface ProcessoComDados extends ProcessoFila {
+  guarda: string;
+  arquivos: string;
+  responsavelNome: string;
+  ano: string;
+}
+
 type SortColumn = "CODIGO" | "NUMERO_CNJ" | "DATA_DISTRIBUICAO" | "ANO" | "DATA_ARQUIVAMENTO" | "GUARDA" | "ARQUIVOS" | "RESPONSAVEL" | "DATA_FIM";
-type SortDirection = "asc" | "desc";
 
 export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
@@ -60,7 +62,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   const [loading, setLoading] = useState(true);
   const [linhasExibidas, setLinhasExibidas] = useState<string>("10");
   const [sortColumn, setSortColumn] = useState<SortColumn>("DATA_FIM");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const totalPendentes = processos.filter((p) => p.STATUS_AVALIACAO === "PENDENTE").length;
   const totalEmAnalise = processos.filter((p) => p.STATUS_AVALIACAO === "EM_ANALISE").length;
@@ -223,24 +225,6 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
     return `${diffHoras}h ${diffMin % 60}min`;
   };
 
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection("desc");
-    }
-  };
-
-  const SortIcon = ({ column }: { column: SortColumn }) => {
-    if (sortColumn !== column) {
-      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
-    }
-    return sortDirection === "asc" 
-      ? <ArrowUp className="h-3 w-3 ml-1" /> 
-      : <ArrowDown className="h-3 w-3 ml-1" />;
-  };
-
   const extrairAno = (dataStr: string) => {
     if (!dataStr) return "";
     const partes = dataStr.split("/");
@@ -250,6 +234,163 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
     }
     return "";
   };
+
+  const handleSort = (columnId: string) => {
+    const column = columnId as SortColumn;
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  // Preparar dados para o grid
+  const processosComDados = useMemo((): ProcessoComDados[] => {
+    const processosConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
+    
+    return processosConcluidos.map(processo => {
+      const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
+      
+      let guarda = "—";
+      if (avaliacao?.destinacao_permanente) {
+        if (avaliacao.destinacao_permanente === "Sim") guarda = "I";
+        else if (avaliacao.destinacao_permanente === "Não") guarda = "P";
+        else guarda = avaliacao.destinacao_permanente;
+      }
+
+      return {
+        ...processo,
+        guarda,
+        arquivos: avaliacao?.pecas_ids || "—",
+        responsavelNome: processo.RESPONSAVEL 
+          ? (profilesMap.get(processo.RESPONSAVEL) || processo.RESPONSAVEL) 
+          : "—",
+        ano: extrairAno(processo.DATA_DISTRIBUICAO),
+      };
+    });
+  }, [processos, avaliacoesMap, profilesMap]);
+
+  // Ordenar dados
+  const processosOrdenados = useMemo(() => {
+    const sorted = [...processosComDados].sort((a, b) => {
+      let valorA: string | number = "";
+      let valorB: string | number = "";
+
+      switch (sortColumn) {
+        case "CODIGO":
+          valorA = a.CODIGO_PROCESSO || "";
+          valorB = b.CODIGO_PROCESSO || "";
+          break;
+        case "NUMERO_CNJ":
+          valorA = a.NUMERO_CNJ || "";
+          valorB = b.NUMERO_CNJ || "";
+          break;
+        case "DATA_DISTRIBUICAO":
+          valorA = a.DATA_DISTRIBUICAO || "";
+          valorB = b.DATA_DISTRIBUICAO || "";
+          break;
+        case "ANO":
+          valorA = a.ano || "";
+          valorB = b.ano || "";
+          break;
+        case "DATA_ARQUIVAMENTO":
+          valorA = a.DATA_ARQUIVAMENTO_DEF || "";
+          valorB = b.DATA_ARQUIVAMENTO_DEF || "";
+          break;
+        case "GUARDA":
+          valorA = a.guarda || "";
+          valorB = b.guarda || "";
+          break;
+        case "ARQUIVOS":
+          valorA = a.arquivos || "";
+          valorB = b.arquivos || "";
+          break;
+        case "RESPONSAVEL":
+          valorA = a.responsavelNome || "";
+          valorB = b.responsavelNome || "";
+          break;
+        case "DATA_FIM":
+          valorA = a.DATA_FIM || "";
+          valorB = b.DATA_FIM || "";
+          break;
+      }
+
+      let comparacao = 0;
+      if (valorA < valorB) comparacao = -1;
+      else if (valorA > valorB) comparacao = 1;
+
+      return sortDirection === "asc" ? comparacao : -comparacao;
+    });
+
+    const limite = linhasExibidas === "all" 
+      ? sorted.length 
+      : parseInt(linhasExibidas);
+    
+    return sorted.slice(0, limite);
+  }, [processosComDados, sortColumn, sortDirection, linhasExibidas]);
+
+  // Definição das colunas do grid
+  const columns: ColumnDef<ProcessoComDados>[] = useMemo(() => [
+    {
+      id: "CODIGO",
+      header: "CODIGO",
+      accessor: (row) => row.CODIGO_PROCESSO || "",
+      defaultWidth: 120,
+      minWidth: 80,
+      render: (value) => <span className="font-mono">{String(value)}</span>,
+    },
+    {
+      id: "NUMERO_CNJ",
+      header: "NUMERO_PROCESSO",
+      accessor: (row) => row.NUMERO_CNJ || "",
+      defaultWidth: 200,
+      minWidth: 120,
+      render: (value) => <span className="font-mono">{String(value)}</span>,
+    },
+    {
+      id: "DATA_DISTRIBUICAO",
+      header: "DATA_DISTRIBUICAO",
+      accessor: (row) => row.DATA_DISTRIBUICAO || "",
+      defaultWidth: 150,
+      minWidth: 100,
+    },
+    {
+      id: "ANO",
+      header: "ANO",
+      accessor: (row) => row.ano || "",
+      defaultWidth: 70,
+      minWidth: 50,
+    },
+    {
+      id: "DATA_ARQUIVAMENTO",
+      header: "DATA_ARQUIVAMENTO",
+      accessor: (row) => row.DATA_ARQUIVAMENTO_DEF || "",
+      defaultWidth: 150,
+      minWidth: 100,
+    },
+    {
+      id: "GUARDA",
+      header: "GUARDA",
+      accessor: (row) => row.guarda || "",
+      defaultWidth: 80,
+      minWidth: 60,
+    },
+    {
+      id: "ARQUIVOS",
+      header: "ARQUIVOS",
+      accessor: (row) => row.arquivos || "",
+      defaultWidth: 150,
+      minWidth: 80,
+    },
+    {
+      id: "RESPONSAVEL",
+      header: "RESPONSAVEL",
+      accessor: (row) => row.responsavelNome || "",
+      defaultWidth: 200,
+      minWidth: 100,
+    },
+  ], []);
 
   return (
     <div className="space-y-6">
@@ -431,7 +572,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
                 Dados dos Processos Avaliados
               </CardTitle>
               <CardDescription>
-                Processos com avaliação concluída ({processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length} de {processos.length})
+                Processos com avaliação concluída ({processosComDados.length} de {processos.length})
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -462,205 +603,25 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {(() => {
-            const processosConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
-            
-            if (processosConcluidos.length === 0) {
-              return (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  Nenhuma avaliação concluída ainda
-                </div>
-              );
-            }
-            
-            return (
-            <ScrollArea className="h-[400px] rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("CODIGO")}
-                    >
-                      <div className="flex items-center">
-                        CODIGO
-                        <SortIcon column="CODIGO" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("NUMERO_CNJ")}
-                    >
-                      <div className="flex items-center">
-                        NUMERO_PROCESSO
-                        <SortIcon column="NUMERO_CNJ" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("DATA_DISTRIBUICAO")}
-                    >
-                      <div className="flex items-center">
-                        DATA_DISTRIBUICAO
-                        <SortIcon column="DATA_DISTRIBUICAO" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("ANO")}
-                    >
-                      <div className="flex items-center">
-                        ANO
-                        <SortIcon column="ANO" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("DATA_ARQUIVAMENTO")}
-                    >
-                      <div className="flex items-center">
-                        DATA_ARQUIVAMENTO
-                        <SortIcon column="DATA_ARQUIVAMENTO" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("GUARDA")}
-                    >
-                      <div className="flex items-center">
-                        GUARDA
-                        <SortIcon column="GUARDA" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("ARQUIVOS")}
-                    >
-                      <div className="flex items-center">
-                        ARQUIVOS
-                        <SortIcon column="ARQUIVOS" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
-                      onClick={() => handleSort("RESPONSAVEL")}
-                    >
-                      <div className="flex items-center">
-                        RESPONSAVEL
-                        <SortIcon column="RESPONSAVEL" />
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(() => {
-                    const processosConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
-                    
-                    // Função para obter valor de ordenação
-                    const getValorOrdenacao = (processo: ProcessoFila, column: SortColumn): string | number => {
-                      const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
-                      const getGuarda = () => {
-                        if (!avaliacao?.destinacao_permanente) return "";
-                        if (avaliacao.destinacao_permanente === "Sim") return "I";
-                        if (avaliacao.destinacao_permanente === "Não") return "P";
-                        return avaliacao.destinacao_permanente;
-                      };
-                      
-                      switch (column) {
-                        case "CODIGO":
-                          return processo.CODIGO_PROCESSO || "";
-                        case "NUMERO_CNJ":
-                          return processo.NUMERO_CNJ || "";
-                        case "DATA_DISTRIBUICAO":
-                          return processo.DATA_DISTRIBUICAO || "";
-                        case "ANO":
-                          return extrairAno(processo.DATA_DISTRIBUICAO);
-                        case "DATA_ARQUIVAMENTO":
-                          return processo.DATA_ARQUIVAMENTO_DEF || "";
-                        case "GUARDA":
-                          return getGuarda();
-                        case "ARQUIVOS":
-                          return avaliacao?.pecas_ids || "";
-                        case "RESPONSAVEL":
-                          return processo.RESPONSAVEL ? (profilesMap.get(processo.RESPONSAVEL) || "") : "";
-                        case "DATA_FIM":
-                          return processo.DATA_FIM || "";
-                        default:
-                          return "";
-                      }
-                    };
-                    
-                    // Ordenar processos
-                    const processosOrdenados = [...processosConcluidos].sort((a, b) => {
-                      const valorA = getValorOrdenacao(a, sortColumn);
-                      const valorB = getValorOrdenacao(b, sortColumn);
-                      
-                      let comparacao = 0;
-                      if (valorA < valorB) comparacao = -1;
-                      else if (valorA > valorB) comparacao = 1;
-                      
-                      return sortDirection === "asc" ? comparacao : -comparacao;
-                    });
-                    
-                    const processosExibir = linhasExibidas === "all" 
-                      ? processosOrdenados 
-                      : processosOrdenados.slice(0, parseInt(linhasExibidas));
-                    
-                    return processosExibir.map((processo, idx) => {
-                      // Buscar dados da avaliação
-                      const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
-                      
-                      // Converter destinacao_permanente para GUARDA (I = Integral/Permanente, P = Parcial)
-                      const getGuarda = () => {
-                        if (!avaliacao?.destinacao_permanente) return "—";
-                        if (avaliacao.destinacao_permanente === "Sim") return "I";
-                        if (avaliacao.destinacao_permanente === "Não") return "P";
-                        return avaliacao.destinacao_permanente;
-                      };
-
-                      return (
-                        <TableRow key={idx} className="text-sm">
-                          <TableCell className="font-mono text-xs">
-                            {processo.CODIGO_PROCESSO}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {processo.NUMERO_CNJ}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {processo.DATA_DISTRIBUICAO || "—"}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {extrairAno(processo.DATA_DISTRIBUICAO)}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {processo.DATA_ARQUIVAMENTO_DEF || "—"}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {getGuarda()}
-                          </TableCell>
-                          <TableCell className="text-xs max-w-[150px] truncate" title={avaliacao?.pecas_ids || ""}>
-                            {avaliacao?.pecas_ids || "—"}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {processo.RESPONSAVEL ? (profilesMap.get(processo.RESPONSAVEL) || processo.RESPONSAVEL) : "—"}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    });
-                  })()}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-            );
-          })()}
-          {processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Exibindo {linhasExibidas === "all" 
-                ? processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length 
-                : Math.min(parseInt(linhasExibidas), processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length)
-              } de {processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length} processos concluídos
-            </p>
+          {processosComDados.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              Nenhuma avaliação concluída ainda
+            </div>
+          ) : (
+            <>
+              <ResizableDataGrid
+                data={processosOrdenados}
+                columns={columns}
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                keyExtractor={(row, idx) => row.ID || String(idx)}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Exibindo {processosOrdenados.length} de {processosComDados.length} processos concluídos
+              </p>
+            </>
           )}
         </CardContent>
       </Card>
