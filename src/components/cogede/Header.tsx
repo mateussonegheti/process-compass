@@ -54,7 +54,7 @@ export function Header() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">COGEDE</h1>
               <p className="text-sm text-primary-foreground/80">
-                Comissão de Gestão Documental - Avaliação e Merge
+                Coordenação de Gestão de Documentos Eletrônicos - Avaliação e Merge
               </p>
             </div>
           </div>
@@ -86,17 +86,10 @@ export function Header() {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {profile.nome}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {profile.email}
-                      </p>
+                      <p className="text-sm font-medium leading-none">{profile.nome}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{profile.email}</p>
                       {role && (
-                        <Badge
-                          variant={roleBadgeVariants[role]}
-                          className="w-fit mt-2"
-                        >
+                        <Badge variant={roleBadgeVariants[role]} className="w-fit mt-2">
                           {roleLabels[role]}
                         </Badge>
                       )}
