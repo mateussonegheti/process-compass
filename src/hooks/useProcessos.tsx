@@ -180,6 +180,13 @@ export function useProcessos() {
     responsavelId?: string
   ) => {
     try {
+      logger.log(`[useProcessos] Atualizando processo ${codigoProcesso} para status ${status}`);
+      
+      if (!loteAtivo?.id) {
+        logger.error("[useProcessos] Lote ativo não encontrado");
+        return false;
+      }
+      
       const { error } = await supabase
         .from("processos_fila")
         .update({
@@ -189,16 +196,18 @@ export function useProcessos() {
           data_fim_avaliacao: status === "CONCLUIDO" ? new Date().toISOString() : undefined,
         })
         .eq("codigo_processo", codigoProcesso)
-        .eq("lote_id", loteAtivo?.id);
+        .eq("lote_id", loteAtivo.id);
 
       if (error) {
-        logger.error("Erro ao atualizar processo:", error);
+        logger.error("[useProcessos] Erro ao atualizar processo:", error);
         return false;
       }
 
-      // Atualizar estado local
-      setProcessos((prev) =>
-        prev.map((p) =>
+      logger.log(`[useProcessos] Processo ${codigoProcesso} atualizado no banco com sucesso`);
+
+      // Atualizar estado local imediatamente
+      setProcessos((prev) => {
+        const updated = prev.map((p) =>
           p.CODIGO_PROCESSO === codigoProcesso
             ? {
                 ...p,
@@ -209,12 +218,19 @@ export function useProcessos() {
                 DATA_FIM: status === "CONCLUIDO" ? new Date().toISOString() : p.DATA_FIM,
               }
             : p
-        )
-      );
+        );
+        
+        const pendentes = updated.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
+        const emAnalise = updated.filter(p => p.STATUS_AVALIACAO === "EM_ANALISE").length;
+        const concluidos = updated.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length;
+        logger.log(`[useProcessos] Estado local atualizado - Pendentes: ${pendentes}, Em Análise: ${emAnalise}, Concluídos: ${concluidos}`);
+        
+        return updated;
+      });
 
       return true;
     } catch (error) {
-      logger.error("Erro ao atualizar processo:", error);
+      logger.error("[useProcessos] Erro ao atualizar processo:", error);
       return false;
     }
   };
