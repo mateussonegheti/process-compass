@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { validateCSVFile, validateRowCount, sanitizeCellValue, MAX_ROW_COUNT } from "@/lib/csvValidation";
 
 interface ProcessoCSV {
   NOME_PROCESSO_HASH: string;
@@ -48,13 +49,22 @@ export function MergePlanilhas() {
 
   const parseCSV = (text: string): Record<string, string>[] => {
     const lines = text.trim().split('\n');
+    
+    // Validar número de linhas
+    const rowValidation = validateRowCount(lines);
+    if (!rowValidation.valid) {
+      throw new Error(rowValidation.error);
+    }
+    
     const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     
     return lines.slice(1).map(line => {
       const values = line.match(/(".*?"|[^,]+)/g) || [];
       const obj: Record<string, string> = {};
       headers.forEach((header, index) => {
-        obj[header] = (values[index] || '').replace(/^"|"$/g, '').trim();
+        // Sanitizar cada valor
+        const rawValue = (values[index] || '').replace(/^"|"$/g, '').trim();
+        obj[header] = sanitizeCellValue(rawValue);
       });
       return obj;
     });
@@ -63,6 +73,19 @@ export function MergePlanilhas() {
   const executarMerge = async () => {
     if (!arquivoProcessos || !arquivoArchival) {
       toast.error("Selecione os dois arquivos");
+      return;
+    }
+
+    // Validar arquivos antes de processar
+    const processosValidation = validateCSVFile(arquivoProcessos);
+    if (!processosValidation.valid) {
+      toast.error(`Processos: ${processosValidation.error}`);
+      return;
+    }
+
+    const archivalValidation = validateCSVFile(arquivoArchival);
+    if (!archivalValidation.valid) {
+      toast.error(`Archival: ${archivalValidation.error}`);
       return;
     }
 
