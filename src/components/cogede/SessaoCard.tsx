@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Play, User, FileSearch, Loader2 } from "lucide-react";
+import { Play, User, FileSearch, Loader2, CheckCircle } from "lucide-react";
 import { SessaoAvaliacao } from "@/types/cogede";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SessaoCardProps {
   sessao: SessaoAvaliacao;
@@ -26,15 +24,15 @@ export function SessaoCard({
   totalEmAnalise,
   totalConcluidos
 }: SessaoCardProps) {
-  const [nomeResponsavel, setNomeResponsavel] = useState("");
+  const { profile, loading } = useAuth();
 
   const handleIniciarSessao = () => {
-    if (nomeResponsavel.trim()) {
-      onIniciarSessao(nomeResponsavel.trim());
+    if (profile?.nome) {
+      onIniciarSessao(profile.nome);
     }
   };
 
-  if (!sessao.responsavel) {
+  if (!sessao.iniciada) {
     return (
       <Card className="border-2 border-dashed">
         <CardHeader>
@@ -43,23 +41,22 @@ export function SessaoCard({
             Identificação do Responsável
           </CardTitle>
           <CardDescription>
-            Informe seu nome para iniciar a sessão de avaliação
+            {loading ? "Carregando dados do usuário..." : "Clique para iniciar a sessão de avaliação"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="responsavel">Nome do Responsável</Label>
-            <Input
-              id="responsavel"
-              placeholder="Digite seu nome completo"
-              value={nomeResponsavel}
-              onChange={(e) => setNomeResponsavel(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleIniciarSessao()}
-            />
-          </div>
+          {profile?.nome && (
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Logado como:</p>
+                <p className="font-medium">{profile.nome}</p>
+              </div>
+            </div>
+          )}
           <Button 
             onClick={handleIniciarSessao} 
-            disabled={!nomeResponsavel.trim()}
+            disabled={!profile?.nome || loading}
             className="w-full"
           >
             <Play className="h-4 w-4 mr-2" />
