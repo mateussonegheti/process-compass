@@ -259,11 +259,12 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
             return ocorrencias.join("; ");
           }
 
-          // Campo especial: destinacaoPermanente -> GUARDA (P ou E)
+          // Campo especial: destinacaoPermanente -> GUARDA (I = Integral/Permanente, P = Parcial)
           if (key === "destinacaoPermanente") {
             const val = av.destinacaoPermanente;
-            if (val === "Sim") return "P";
-            if (val === "Não") return "E";
+            if (val === "Sim") return "I"; // Guarda Permanente (Integral)
+            if (val === "Parcial") return "P"; // Guarda Parcial
+            if (val === "Não") return "E"; // Eliminação
             return val || "";
           }
 
