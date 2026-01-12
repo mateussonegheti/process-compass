@@ -263,8 +263,7 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
           if (key === "destinacaoPermanente") {
             const val = av.destinacaoPermanente;
             if (val === "Sim") return "I"; // Guarda Permanente (Integral)
-            if (val === "Parcial") return "P"; // Guarda Parcial
-            if (val === "Não") return "E"; // Eliminação
+            if (val === "Não") return "P"; // Guarda Parcial
             return val || "";
           }
 
