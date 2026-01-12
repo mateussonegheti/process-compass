@@ -61,6 +61,10 @@ export default function Index() {
 
   const handleIniciarAvaliacao = async () => {
     if (!profile?.id) return;
+    if (!loteAtivo?.id) {
+      toast.error("Nenhum lote ativo encontrado");
+      return;
+    }
     
     setCarregando(true);
     
@@ -69,6 +73,7 @@ export default function Index() {
       .from("processos_fila")
       .select("*")
       .eq("status_avaliacao", "PENDENTE")
+      .eq("lote_id", loteAtivo.id)
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -192,6 +197,7 @@ export default function Index() {
         .from("processos_fila")
         .select("*")
         .eq("status_avaliacao", "PENDENTE")
+        .eq("lote_id", loteAtivo?.id || "")
         .neq("codigo_processo", avaliacao.codigoProcesso)
         .order("created_at", { ascending: true })
         .limit(1)
