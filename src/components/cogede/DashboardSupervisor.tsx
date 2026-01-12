@@ -386,6 +386,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
                     <TableHead className="font-semibold">DATA_ARQUIVAMENTO</TableHead>
                     <TableHead className="font-semibold">GUARDA</TableHead>
                     <TableHead className="font-semibold">ARQUIVOS</TableHead>
+                    <TableHead className="font-semibold">RESPONSAVEL</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -426,6 +427,9 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
                         </TableCell>
                         <TableCell className="text-xs">
                           —
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {processo.RESPONSAVEL || "—"}
                         </TableCell>
                       </TableRow>
                     );
