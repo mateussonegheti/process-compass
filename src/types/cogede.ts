@@ -13,19 +13,6 @@ export interface ProcessoFila {
   RESPONSAVEL?: string;
   DATA_INICIO_AVALIACAO?: string;
   DATA_FIM?: string;
-  // Peças processuais do CSV (separadas por " | ")
-  ID_PECA?: string;
-  TIPOS_PECAS?: string;
-}
-
-// Constante com a URL base do PROJUDI para download de peças
-export const PROJUDI_BASE_URL = "https://projudi.tjmg.jus.br/projudi/listagens/DownloadArquivo?arquivo=";
-
-// Interface para peça processual parseada do CSV
-export interface PecaProcessualCSV {
-  id: string;
-  tipo: string;
-  url: string;
 }
 
 export interface PecaProcessual {

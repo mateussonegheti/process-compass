@@ -7,10 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, ArrowRight, Lock, Plus, Trash2, AlertTriangle, CheckCircle2, ExternalLink, FileText } from "lucide-react";
-import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, PecaProcessualCSV, ASSUNTOS_TPU, TIPOS_PECA, PROJUDI_BASE_URL } from "@/types/cogede";
+import { Save, ArrowRight, Lock, Plus, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU, TIPOS_PECA } from "@/types/cogede";
 import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface FormularioAvaliacaoProps {
   processo: ProcessoFila;
@@ -60,21 +59,6 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
   const naoTemMovArquivado = processo.POSSUI_MOV_ARQUIVADO?.toLowerCase() === "não";
   const prazoIncompleto = processo.PRAZO_5_ANOS_COMPLETO?.toLowerCase() === "não";
   const temDivergenciaClassificacao = formData.divergenciaClassificacao === "Sim";
-
-  // Parsear peças do CSV (ID_PECA e TIPOS_PECAS separados por " | ")
-  const pecasDoCSV: PecaProcessualCSV[] = (() => {
-    if (!processo.ID_PECA || !processo.TIPOS_PECAS) return [];
-    
-    const ids = processo.ID_PECA.split(" | ").map(id => id.trim()).filter(Boolean);
-    const tipos = processo.TIPOS_PECAS.split(" | ").map(tipo => tipo.trim()).filter(Boolean);
-    
-    // Combinar IDs e tipos (assumindo que estão na mesma ordem)
-    return ids.map((id, index) => ({
-      id,
-      tipo: tipos[index] || "Não especificado",
-      url: `${PROJUDI_BASE_URL}${id}`
-    }));
-  })();
 
   const adicionarPeca = () => {
     setPecas([...pecas, { id: crypto.randomUUID(), tipo: "", idProjudi: "" }]);
@@ -380,68 +364,9 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
               4
             </span>
             Peças Processuais
-            {pecasDoCSV.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {pecasDoCSV.length} peças do CSV
-              </Badge>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Peças do CSV com links clicáveis */}
-          {pecasDoCSV.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Label className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  4.0 Peças do PROJUDI (clique para abrir)
-                  <Badge variant="outline" className="ml-1">
-                    <Lock className="h-3 w-3 mr-1" />
-                    Auto-carregado do CSV
-                  </Badge>
-                </Label>
-              </div>
-              <ScrollArea className="h-[200px] rounded-lg border bg-muted/30 p-3">
-                <div className="space-y-2">
-                  {pecasDoCSV.map((peca, index) => (
-                    <a
-                      key={peca.id}
-                      href={peca.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors group"
-                    >
-                      <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
-                      <Badge variant="secondary" className="min-w-[140px] justify-center">
-                        {peca.tipo}
-                      </Badge>
-                      <span className="font-mono text-sm text-primary group-hover:underline flex items-center gap-1">
-                        ID: {peca.id}
-                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              </ScrollArea>
-              <p className="text-xs text-muted-foreground">
-                💡 Clique em qualquer peça para abrir no PROJUDI (certifique-se de estar logado)
-              </p>
-            </div>
-          )}
-
-          {/* Divisor se houver peças do CSV */}
-          {pecasDoCSV.length > 0 && (
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Adicionar peças manualmente</span>
-              </div>
-            </div>
-          )}
-
-          {/* Peças adicionadas manualmente */}
           <div className="space-y-3">
             {pecas.map((peca, index) => (
               <div key={peca.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
@@ -479,7 +404,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
 
           <Button variant="outline" onClick={adicionarPeca} className="w-full">
             <Plus className="h-4 w-4 mr-2" />
-            Adicionar Peça Processual {pecasDoCSV.length > 0 ? "(adicional)" : ""}
+            Adicionar Peça Processual
           </Button>
 
           {pecas.length > 0 && (
