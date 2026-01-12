@@ -178,7 +178,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
           </div>
           <div className="space-y-2">
             <Label>1.2 Número CNJ</Label>
-            <Input value={processo.NUMERO_CNJ} disabled className="bg-muted" />
+            <Input value={processo.NUMERO_CNJ?.replace(/[-.]/g, "")} disabled className="bg-muted" />
           </div>
         </CardContent>
       </Card>
