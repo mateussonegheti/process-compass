@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { 
   Activity, 
   Users, 
@@ -14,8 +15,10 @@ import {
   AlertCircle,
   TrendingUp,
   Database,
-  List
+  List,
+  RefreshCw
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ProcessoFila } from "@/types/cogede";
 import { logger } from "@/lib/logger";
@@ -59,7 +62,19 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   // Buscar dados em tempo real
   const fetchDadosRealtime = async () => {
     try {
-      // Buscar processos em análise com dados do avaliador
+      // Primeiro buscar todos os profiles para fazer o mapeamento
+      const { data: allProfiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, nome");
+
+      const profilesMap = new Map<string, string>();
+      if (!profilesError && allProfiles) {
+        allProfiles.forEach((p) => {
+          profilesMap.set(p.id, p.nome);
+        });
+      }
+
+      // Buscar processos em análise (apenas os que estão realmente sendo avaliados agora)
       const { data: processosEmAnalise, error: processosError } = await supabase
         .from("processos_fila")
         .select(`
@@ -67,34 +82,33 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
           codigo_processo,
           numero_cnj,
           data_inicio_avaliacao,
-          responsavel_avaliacao,
-          profiles!processos_fila_responsavel_avaliacao_fkey(nome)
+          responsavel_avaliacao
         `)
-        .eq("status_avaliacao", "EM_ANALISE");
+        .eq("status_avaliacao", "EM_ANALISE")
+        .not("responsavel_avaliacao", "is", null)
+        .not("data_inicio_avaliacao", "is", null);
 
       if (processosError) {
         logger.error("Erro ao buscar processos em análise:", processosError);
       } else if (processosEmAnalise) {
-        const emAndamento: AvaliacaoEmAndamento[] = processosEmAnalise
-          .filter((p): p is typeof p & { profiles: { nome: string } | null } => true)
-          .map((p) => ({
-            avaliador_nome: (p.profiles as { nome: string } | null)?.nome || "Desconhecido",
-            processo_codigo: p.codigo_processo,
-            processo_cnj: p.numero_cnj,
-            inicio: p.data_inicio_avaliacao || "",
-          }));
+        const emAndamento: AvaliacaoEmAndamento[] = processosEmAnalise.map((p) => ({
+          avaliador_nome: p.responsavel_avaliacao ? profilesMap.get(p.responsavel_avaliacao) || "Desconhecido" : "Desconhecido",
+          processo_codigo: p.codigo_processo,
+          processo_cnj: p.numero_cnj,
+          inicio: p.data_inicio_avaliacao || "",
+        }));
         setAvaliacoesEmAndamento(emAndamento);
       }
 
-      // Buscar estatísticas por avaliador
+      // Buscar estatísticas por avaliador (apenas processos concluídos)
       const { data: stats, error: statsError } = await supabase
         .from("processos_fila")
         .select(`
           status_avaliacao,
-          responsavel_avaliacao,
-          profiles!processos_fila_responsavel_avaliacao_fkey(nome)
+          responsavel_avaliacao
         `)
-        .not("responsavel_avaliacao", "is", null);
+        .not("responsavel_avaliacao", "is", null)
+        .in("status_avaliacao", ["CONCLUIDO", "EM_ANALISE"]);
 
       if (statsError) {
         logger.error("Erro ao buscar estatísticas:", statsError);
@@ -102,7 +116,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         const porAvaliador = new Map<string, EstatisticasAvaliador>();
         
         stats.forEach((s) => {
-          const nome = (s.profiles as { nome: string } | null)?.nome || "Desconhecido";
+          const nome = s.responsavel_avaliacao ? profilesMap.get(s.responsavel_avaliacao) || "Desconhecido" : "Desconhecido";
           const existente = porAvaliador.get(nome) || { nome, concluidos: 0, em_analise: 0 };
           
           if (s.status_avaliacao === "CONCLUIDO") {
@@ -369,20 +383,29 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         </Card>
       </div>
 
-      {/* Grid de Dados */}
+      {/* Grid de Dados - Apenas processos concluídos */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5" />
-                Dados dos Processos
+                Dados dos Processos Avaliados
               </CardTitle>
               <CardDescription>
-                Visualização dos dados brutos da planilha
+                Processos com avaliação concluída ({processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length} de {processos.length})
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchDadosRealtime}
+                disabled={loading}
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
+                Atualizar
+              </Button>
               <List className="h-4 w-4 text-muted-foreground" />
               <Select value={linhasExibidas} onValueChange={setLinhasExibidas}>
                 <SelectTrigger className="w-[120px]">
@@ -401,12 +424,19 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {processos.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              Nenhum processo carregado
-            </div>
-          ) : (
+          {(() => {
+            const processosConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
+            
+            if (processosConcluidos.length === 0) {
+              return (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  Nenhuma avaliação concluída ainda
+                </div>
+              );
+            }
+            
+            return (
             <ScrollArea className="h-[400px] rounded-md border">
               <Table>
                 <TableHeader>
@@ -422,68 +452,76 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(linhasExibidas === "all" 
-                    ? processos 
-                    : processos.slice(0, parseInt(linhasExibidas))
-                  ).map((processo, idx) => {
-                    // Extrair ano da data de distribuição
-                    const extrairAno = (dataStr: string) => {
-                      if (!dataStr) return "";
-                      const partes = dataStr.split("/");
-                      if (partes.length === 3) {
-                        const ano = partes[2].split(" ")[0];
-                        return ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
-                      }
-                      return "";
-                    };
-
-                    // Buscar dados da avaliação
-                    const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
+                  {(() => {
+                    const processosConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
+                    const processosExibir = linhasExibidas === "all" 
+                      ? processosConcluidos 
+                      : processosConcluidos.slice(0, parseInt(linhasExibidas));
                     
-                    // Converter destinacao_permanente para GUARDA (I = Integral/Permanente, P = Parcial)
-                    const getGuarda = () => {
-                      if (!avaliacao?.destinacao_permanente) return "—";
-                      if (avaliacao.destinacao_permanente === "Sim") return "I";
-                      if (avaliacao.destinacao_permanente === "Não") return "P";
-                      return avaliacao.destinacao_permanente;
-                    };
+                    return processosExibir.map((processo, idx) => {
+                      // Extrair ano da data de distribuição
+                      const extrairAno = (dataStr: string) => {
+                        if (!dataStr) return "";
+                        const partes = dataStr.split("/");
+                        if (partes.length === 3) {
+                          const ano = partes[2].split(" ")[0];
+                          return ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
+                        }
+                        return "";
+                      };
 
-                    return (
-                      <TableRow key={idx} className="text-sm">
-                        <TableCell className="font-mono text-xs">
-                          {processo.CODIGO_PROCESSO}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {processo.NUMERO_CNJ}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {processo.DATA_DISTRIBUICAO || "—"}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {extrairAno(processo.DATA_DISTRIBUICAO)}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {processo.DATA_ARQUIVAMENTO_DEF || "—"}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {getGuarda()}
-                        </TableCell>
-                        <TableCell className="text-xs max-w-[150px] truncate" title={avaliacao?.pecas_ids || ""}>
-                          {avaliacao?.pecas_ids || "—"}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {processo.RESPONSAVEL || "—"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                      // Buscar dados da avaliação
+                      const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
+                      
+                      // Converter destinacao_permanente para GUARDA (I = Integral/Permanente, P = Parcial)
+                      const getGuarda = () => {
+                        if (!avaliacao?.destinacao_permanente) return "—";
+                        if (avaliacao.destinacao_permanente === "Sim") return "I";
+                        if (avaliacao.destinacao_permanente === "Não") return "P";
+                        return avaliacao.destinacao_permanente;
+                      };
+
+                      return (
+                        <TableRow key={idx} className="text-sm">
+                          <TableCell className="font-mono text-xs">
+                            {processo.CODIGO_PROCESSO}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {processo.NUMERO_CNJ}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {processo.DATA_DISTRIBUICAO || "—"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {extrairAno(processo.DATA_DISTRIBUICAO)}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {processo.DATA_ARQUIVAMENTO_DEF || "—"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {getGuarda()}
+                          </TableCell>
+                          <TableCell className="text-xs max-w-[150px] truncate" title={avaliacao?.pecas_ids || ""}>
+                            {avaliacao?.pecas_ids || "—"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {processo.RESPONSAVEL || "—"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
+                  })()}
                 </TableBody>
               </Table>
             </ScrollArea>
-          )}
-          {processos.length > 0 && (
+            );
+          })()}
+          {processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length > 0 && (
             <p className="text-xs text-muted-foreground mt-2">
-              Exibindo {linhasExibidas === "all" ? processos.length : Math.min(parseInt(linhasExibidas), processos.length)} de {processos.length} processos
+              Exibindo {linhasExibidas === "all" 
+                ? processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length 
+                : Math.min(parseInt(linhasExibidas), processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length)
+              } de {processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length} processos concluídos
             </p>
           )}
         </CardContent>
