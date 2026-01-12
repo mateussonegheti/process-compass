@@ -63,29 +63,52 @@ export default function Index() {
     
     setCarregando(true);
     
-    // Buscar próximo processo pendente
-    const proximoProcesso = processos.find(p => p.STATUS_AVALIACAO === "PENDENTE");
+    // Buscar próximo processo pendente diretamente do banco para ter dados completos
+    const { data: proximoProcessoDb, error } = await supabase
+      .from("processos_fila")
+      .select("*")
+      .eq("status_avaliacao", "PENDENTE")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
     
-    if (proximoProcesso) {
+    if (error) {
+      logger.error("Erro ao buscar processo:", error);
+      toast.error("Erro ao buscar processo");
+      setCarregando(false);
+      return;
+    }
+    
+    if (proximoProcessoDb) {
       // Atualizar no banco
       const sucesso = await atualizarStatusProcesso(
-        proximoProcesso.CODIGO_PROCESSO,
+        proximoProcessoDb.codigo_processo,
         "EM_ANALISE",
         profile.id
       );
       
       if (sucesso) {
+        const processoFormatado: ProcessoFila = {
+          ID: proximoProcessoDb.id,
+          CODIGO_PROCESSO: proximoProcessoDb.codigo_processo,
+          NUMERO_CNJ: proximoProcessoDb.numero_cnj,
+          POSSUI_ASSUNTO: proximoProcessoDb.possui_assunto || "",
+          ASSUNTO_PRINCIPAL: proximoProcessoDb.assunto_principal || "",
+          POSSUI_MOV_ARQUIVADO: proximoProcessoDb.possui_mov_arquivado || "",
+          DATA_DISTRIBUICAO: proximoProcessoDb.data_distribuicao || "",
+          DATA_ARQUIVAMENTO_DEF: proximoProcessoDb.data_arquivamento_def || "",
+          PRAZO_5_ANOS_COMPLETO: proximoProcessoDb.prazo_5_anos_completo || "",
+          STATUS_AVALIACAO: "EM_ANALISE",
+          RESPONSAVEL: sessao.responsavel,
+          DATA_INICIO_AVALIACAO: new Date().toISOString()
+        };
+        
         setSessao(prev => ({
           ...prev,
-          processoAtual: {
-            ...proximoProcesso,
-            STATUS_AVALIACAO: "EM_ANALISE",
-            RESPONSAVEL: sessao.responsavel,
-            DATA_INICIO_AVALIACAO: new Date().toISOString()
-          }
+          processoAtual: processoFormatado
         }));
         
-        toast.success(`Processo ${proximoProcesso.CODIGO_PROCESSO} capturado para avaliação`);
+        toast.success(`Processo ${proximoProcessoDb.codigo_processo} capturado para avaliação`);
       } else {
         toast.error("Erro ao capturar processo");
       }
@@ -163,28 +186,46 @@ export default function Index() {
     if (sucesso) {
       toast.success("Avaliação salva com sucesso!");
       
-      // Buscar próximo processo
-      const proximoProcesso = processos.find(p => 
-        p.STATUS_AVALIACAO === "PENDENTE" && 
-        p.CODIGO_PROCESSO !== avaliacao.codigoProcesso
-      );
+      // Buscar próximo processo diretamente do banco para ter dados completos
+      const { data: proximoProcessoDb, error: proximoError } = await supabase
+        .from("processos_fila")
+        .select("*")
+        .eq("status_avaliacao", "PENDENTE")
+        .neq("codigo_processo", avaliacao.codigoProcesso)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
       
-      if (proximoProcesso) {
+      if (proximoError) {
+        logger.error("Erro ao buscar próximo processo:", proximoError);
+      }
+      
+      if (proximoProcessoDb) {
         const sucessoProximo = await atualizarStatusProcesso(
-          proximoProcesso.CODIGO_PROCESSO,
+          proximoProcessoDb.codigo_processo,
           "EM_ANALISE",
           profile.id
         );
         
         if (sucessoProximo) {
+          const processoFormatado: ProcessoFila = {
+            ID: proximoProcessoDb.id,
+            CODIGO_PROCESSO: proximoProcessoDb.codigo_processo,
+            NUMERO_CNJ: proximoProcessoDb.numero_cnj,
+            POSSUI_ASSUNTO: proximoProcessoDb.possui_assunto || "",
+            ASSUNTO_PRINCIPAL: proximoProcessoDb.assunto_principal || "",
+            POSSUI_MOV_ARQUIVADO: proximoProcessoDb.possui_mov_arquivado || "",
+            DATA_DISTRIBUICAO: proximoProcessoDb.data_distribuicao || "",
+            DATA_ARQUIVAMENTO_DEF: proximoProcessoDb.data_arquivamento_def || "",
+            PRAZO_5_ANOS_COMPLETO: proximoProcessoDb.prazo_5_anos_completo || "",
+            STATUS_AVALIACAO: "EM_ANALISE",
+            RESPONSAVEL: sessao.responsavel,
+            DATA_INICIO_AVALIACAO: new Date().toISOString()
+          };
+          
           setSessao(prev => ({
             ...prev,
-            processoAtual: {
-              ...proximoProcesso,
-              STATUS_AVALIACAO: "EM_ANALISE",
-              RESPONSAVEL: sessao.responsavel,
-              DATA_INICIO_AVALIACAO: new Date().toISOString()
-            }
+            processoAtual: processoFormatado
           }));
           
           toast.info("Próximo processo carregado automaticamente");
