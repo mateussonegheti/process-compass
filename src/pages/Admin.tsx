@@ -4,7 +4,6 @@ import { useAuth, AppRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/cogede/Header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -28,12 +27,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, UserPlus, Users, Shield, Edit, ArrowLeft } from "lucide-react";
+import { Loader2, Users, Shield, Edit, ArrowLeft } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface UserWithRole {
   id: string;
@@ -65,14 +64,8 @@ export default function Admin() {
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [newRole, setNewRole] = useState<AppRole>("avaliador");
 
-  useEffect(() => {
-    if (!authLoading && !isAdmin) {
-      toast.error("Acesso negado", {
-        description: "Apenas administradores podem acessar esta página.",
-      });
-      navigate("/");
-    }
-  }, [isAdmin, authLoading, navigate]);
+  // Note: Access control is now enforced in ProtectedRoute component
+  // This component assumes the user is already authorized as admin
 
   useEffect(() => {
     if (isAdmin) {
@@ -111,11 +104,9 @@ export default function Admin() {
       });
 
       setUsers(usersWithRoles);
-    } catch (error: any) {
-      console.error("Error fetching users:", error);
-      toast.error("Erro ao carregar usuários", {
-        description: error.message,
-      });
+    } catch (error: unknown) {
+      logger.error("Error fetching users:", error);
+      toast.error("Erro ao carregar usuários");
     } finally {
       setLoading(false);
     }
@@ -142,11 +133,9 @@ export default function Admin() {
       setDialogOpen(false);
       setEditingUser(null);
       fetchUsers();
-    } catch (error: any) {
-      console.error("Error updating role:", error);
-      toast.error("Erro ao atualizar perfil", {
-        description: error.message,
-      });
+    } catch (error: unknown) {
+      logger.error("Error updating role:", error);
+      toast.error("Erro ao atualizar perfil");
     }
   };
 
