@@ -43,6 +43,7 @@ interface AvaliacaoProcesso {
 
 interface DashboardSupervisorProps {
   processos: ProcessoFila[];
+  loteId?: string;
 }
 
 interface ProcessoComDados extends ProcessoFila {
@@ -54,7 +55,7 @@ interface ProcessoComDados extends ProcessoFila {
 
 type SortColumn = "CODIGO" | "NUMERO_CNJ" | "DATA_DISTRIBUICAO" | "ANO" | "DATA_ARQUIVAMENTO" | "GUARDA" | "ARQUIVOS" | "RESPONSAVEL" | "DATA_FIM";
 
-export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
+export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
   const [estatisticasPorAvaliador, setEstatisticasPorAvaliador] = useState<EstatisticasAvaliador[]>([]);
   const [avaliacoesMap, setAvaliacoesMap] = useState<Map<string, AvaliacaoProcesso>>(new Map());
@@ -87,7 +88,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
       }
 
       // Buscar processos em análise (apenas os que estão realmente sendo avaliados agora)
-      const { data: processosEmAnalise, error: processosError } = await supabase
+      let queryEmAnalise = supabase
         .from("processos_fila")
         .select(`
           id,
@@ -99,6 +100,13 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         .eq("status_avaliacao", "EM_ANALISE")
         .not("responsavel_avaliacao", "is", null)
         .not("data_inicio_avaliacao", "is", null);
+      
+      // Filtrar por lote se informado
+      if (loteId) {
+        queryEmAnalise = queryEmAnalise.eq("lote_id", loteId);
+      }
+      
+      const { data: processosEmAnalise, error: processosError } = await queryEmAnalise;
 
       if (processosError) {
         logger.error("Erro ao buscar processos em análise:", processosError);
@@ -113,7 +121,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
       }
 
       // Buscar estatísticas por avaliador (apenas processos concluídos)
-      const { data: stats, error: statsError } = await supabase
+      let queryStats = supabase
         .from("processos_fila")
         .select(`
           status_avaliacao,
@@ -121,6 +129,13 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         `)
         .not("responsavel_avaliacao", "is", null)
         .in("status_avaliacao", ["CONCLUIDO", "EM_ANALISE"]);
+      
+      // Filtrar por lote se informado
+      if (loteId) {
+        queryStats = queryStats.eq("lote_id", loteId);
+      }
+      
+      const { data: stats, error: statsError } = await queryStats;
 
       if (statsError) {
         logger.error("Erro ao buscar estatísticas:", statsError);
@@ -211,7 +226,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, []);
+  }, [loteId]);
 
   const formatarTempo = (dataIso: string) => {
     if (!dataIso) return "—";

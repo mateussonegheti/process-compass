@@ -18,6 +18,7 @@ export default function Index() {
   const { profile, isAdmin, isSupervisor } = useAuth();
   const { 
     processos, 
+    loteAtivo,
     loading: processosLoading, 
     uploading,
     podeCarregarPlanilha,
@@ -303,7 +304,7 @@ export default function Index() {
 
           {podeVerDashboard && (
             <TabsContent value="dashboard" className="space-y-6">
-              <DashboardSupervisor processos={processos} />
+              <DashboardSupervisor processos={processos} loteId={loteAtivo?.id} />
             </TabsContent>
           )}
 
