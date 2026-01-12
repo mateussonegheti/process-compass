@@ -59,15 +59,14 @@ export function ResizableDataGrid<T>({
       const handleMouseMove = (e: MouseEvent) => {
         if (!resizingRef.current) return;
         
+        const currentColumnId = resizingRef.current.columnId;
         const diff = e.clientX - resizingRef.current.startX;
-        const newWidth = Math.max(
-          columns.find((c) => c.id === resizingRef.current!.columnId)?.minWidth || 60,
-          resizingRef.current.startWidth + diff
-        );
+        const minWidth = columns.find((c) => c.id === currentColumnId)?.minWidth || 60;
+        const newWidth = Math.max(minWidth, resizingRef.current.startWidth + diff);
         
         setColumnWidths((prev) => ({
           ...prev,
-          [resizingRef.current!.columnId]: newWidth,
+          [currentColumnId]: newWidth,
         }));
       };
 
