@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Activity, 
   Users, 
@@ -9,7 +12,9 @@ import {
   Clock, 
   CheckCircle2, 
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Database,
+  List
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ProcessoFila } from "@/types/cogede";
@@ -36,6 +41,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
   const [estatisticasPorAvaliador, setEstatisticasPorAvaliador] = useState<EstatisticasAvaliador[]>([]);
   const [loading, setLoading] = useState(true);
+  const [linhasExibidas, setLinhasExibidas] = useState<string>("10");
 
   const totalPendentes = processos.filter((p) => p.STATUS_AVALIACAO === "PENDENTE").length;
   const totalEmAnalise = processos.filter((p) => p.STATUS_AVALIACAO === "EM_ANALISE").length;
@@ -330,6 +336,119 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Grid de Dados */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Dados dos Processos
+              </CardTitle>
+              <CardDescription>
+                Visualização dos dados brutos da planilha
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <List className="h-4 w-4 text-muted-foreground" />
+              <Select value={linhasExibidas} onValueChange={setLinhasExibidas}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Linhas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 linhas</SelectItem>
+                  <SelectItem value="10">10 linhas</SelectItem>
+                  <SelectItem value="25">25 linhas</SelectItem>
+                  <SelectItem value="50">50 linhas</SelectItem>
+                  <SelectItem value="100">100 linhas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {processos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              Nenhum processo carregado
+            </div>
+          ) : (
+            <ScrollArea className="h-[400px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold">Código</TableHead>
+                    <TableHead className="font-semibold">Número CNJ</TableHead>
+                    <TableHead className="font-semibold">Distribuição</TableHead>
+                    <TableHead className="font-semibold">Arquivamento</TableHead>
+                    <TableHead className="font-semibold">Assunto</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">Responsável</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(linhasExibidas === "all" 
+                    ? processos 
+                    : processos.slice(0, parseInt(linhasExibidas))
+                  ).map((processo, idx) => (
+                    <TableRow key={idx} className="text-sm">
+                      <TableCell className="font-mono text-xs">
+                        {processo.CODIGO_PROCESSO}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {processo.NUMERO_CNJ}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {processo.DATA_DISTRIBUICAO || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {processo.DATA_ARQUIVAMENTO_DEF || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate" title={processo.ASSUNTO_PRINCIPAL}>
+                        {processo.ASSUNTO_PRINCIPAL || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            processo.STATUS_AVALIACAO === "CONCLUIDO" 
+                              ? "default" 
+                              : processo.STATUS_AVALIACAO === "EM_ANALISE" 
+                                ? "secondary" 
+                                : "outline"
+                          }
+                          className={
+                            processo.STATUS_AVALIACAO === "CONCLUIDO" 
+                              ? "bg-green-100 text-green-700 hover:bg-green-100" 
+                              : processo.STATUS_AVALIACAO === "EM_ANALISE" 
+                                ? "bg-blue-100 text-blue-700" 
+                                : "bg-amber-50 text-amber-700"
+                          }
+                        >
+                          {processo.STATUS_AVALIACAO === "CONCLUIDO" 
+                            ? "Concluído" 
+                            : processo.STATUS_AVALIACAO === "EM_ANALISE" 
+                              ? "Em Análise" 
+                              : "Pendente"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {processo.RESPONSAVEL || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
+          {processos.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Exibindo {linhasExibidas === "all" ? processos.length : Math.min(parseInt(linhasExibidas), processos.length)} de {processos.length} processos
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
