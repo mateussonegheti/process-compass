@@ -182,13 +182,15 @@ export default function Index() {
           </TabsList>
 
           <TabsContent value="avaliacao" className="space-y-6">
-            <PainelSupervisor
-              onProcessosCarregados={handleProcessosCarregados}
-              avaliacoesRealizadas={avaliacoes}
-              processosCount={processos.length}
-              uploading={uploading}
-              podeCarregarPlanilha={podeCarregarPlanilha}
-            />
+            {podeVerDashboard && (
+              <PainelSupervisor
+                onProcessosCarregados={handleProcessosCarregados}
+                avaliacoesRealizadas={avaliacoes}
+                processosCount={processos.length}
+                uploading={uploading}
+                podeCarregarPlanilha={podeCarregarPlanilha}
+              />
+            )}
             
             <SessaoCard
               sessao={sessao}
