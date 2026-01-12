@@ -50,6 +50,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
   const [estatisticasPorAvaliador, setEstatisticasPorAvaliador] = useState<EstatisticasAvaliador[]>([]);
   const [avaliacoesMap, setAvaliacoesMap] = useState<Map<string, AvaliacaoProcesso>>(new Map());
+  const [profilesMap, setProfilesMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [linhasExibidas, setLinhasExibidas] = useState<string>("10");
 
@@ -67,11 +68,12 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         .from("profiles")
         .select("id, nome");
 
-      const profilesMap = new Map<string, string>();
+      const newProfilesMap = new Map<string, string>();
       if (!profilesError && allProfiles) {
         allProfiles.forEach((p) => {
-          profilesMap.set(p.id, p.nome);
+          newProfilesMap.set(p.id, p.nome);
         });
+        setProfilesMap(newProfilesMap);
       }
 
       // Buscar processos em análise (apenas os que estão realmente sendo avaliados agora)
@@ -92,7 +94,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         logger.error("Erro ao buscar processos em análise:", processosError);
       } else if (processosEmAnalise) {
         const emAndamento: AvaliacaoEmAndamento[] = processosEmAnalise.map((p) => ({
-          avaliador_nome: p.responsavel_avaliacao ? profilesMap.get(p.responsavel_avaliacao) || "Desconhecido" : "Desconhecido",
+          avaliador_nome: p.responsavel_avaliacao ? newProfilesMap.get(p.responsavel_avaliacao) || "Desconhecido" : "Desconhecido",
           processo_codigo: p.codigo_processo,
           processo_cnj: p.numero_cnj,
           inicio: p.data_inicio_avaliacao || "",
@@ -116,7 +118,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         const porAvaliador = new Map<string, EstatisticasAvaliador>();
         
         stats.forEach((s) => {
-          const nome = s.responsavel_avaliacao ? profilesMap.get(s.responsavel_avaliacao) || "Desconhecido" : "Desconhecido";
+          const nome = s.responsavel_avaliacao ? newProfilesMap.get(s.responsavel_avaliacao) || "Desconhecido" : "Desconhecido";
           const existente = porAvaliador.get(nome) || { nome, concluidos: 0, em_analise: 0 };
           
           if (s.status_avaliacao === "CONCLUIDO") {
@@ -505,7 +507,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
                             {avaliacao?.pecas_ids || "—"}
                           </TableCell>
                           <TableCell className="text-xs">
-                            {processo.RESPONSAVEL || "—"}
+                            {processo.RESPONSAVEL ? (profilesMap.get(processo.RESPONSAVEL) || processo.RESPONSAVEL) : "—"}
                           </TableCell>
                         </TableRow>
                       );
