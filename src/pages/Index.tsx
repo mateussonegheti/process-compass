@@ -11,6 +11,8 @@ import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/coge
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useProcessos } from "@/hooks/useProcessos";
+import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 export default function Index() {
   const { profile, isAdmin, isSupervisor } = useAuth();
@@ -105,6 +107,51 @@ export default function Index() {
       dataFimAvaliacao: new Date().toISOString(),
     };
     setAvaliacoes((prev) => [...prev, avaliacaoCompleta]);
+    
+    // Buscar o ID do processo no banco
+    const processoAtual = sessao.processoAtual;
+    if (!processoAtual?.ID) {
+      toast.error("ID do processo não encontrado");
+      setCarregando(false);
+      return;
+    }
+    
+    // Inserir avaliação no banco de dados
+    const { error: insertError } = await supabase
+      .from("avaliacoes")
+      .insert({
+        processo_id: processoAtual.ID,
+        avaliador_id: profile.id,
+        descricao_assunto_faltante: avaliacao.descricaoAssuntoFaltante || null,
+        assunto_tpu: avaliacao.assuntoTpu || null,
+        hierarquia_correta: avaliacao.hierarquiaCorreta || null,
+        divergencia_hierarquia: avaliacao.divergenciaHierarquia || null,
+        destinacao_permanente: avaliacao.destinacaoPermanente || null,
+        descricao_situacao_arquivamento: avaliacao.descricaoSituacaoArquivamento || null,
+        inconsistencia_prazo: avaliacao.inconsistenciaPrazo || null,
+        pecas_tipos: avaliacao.pecasTipos || null,
+        pecas_ids: avaliacao.pecasIds || null,
+        pecas_combinado: avaliacao.pecasCombinado || null,
+        observacoes_pecas: avaliacao.observacoesPecas || null,
+        documento_nao_localizado: avaliacao.documentoNaoLocalizado || false,
+        documento_duplicado: avaliacao.documentoDuplicado || false,
+        erro_tecnico: avaliacao.erroTecnico || false,
+        ocorrencias_outro_detalhe: avaliacao.ocorrenciasOutroDetalhe || null,
+        divergencia_classificacao: avaliacao.divergenciaClassificacao || null,
+        tipo_informado_sistema: avaliacao.tipoInformadoSistema || null,
+        tipo_real_identificado: avaliacao.tipoRealIdentificado || null,
+        processo_vazio: avaliacao.processoVazio || false,
+        observacoes_gerais: avaliacao.observacoesGerais || null,
+        data_inicio: avaliacao.dataInicioAvaliacao,
+        data_fim: new Date().toISOString(),
+      });
+    
+    if (insertError) {
+      logger.error("Erro ao inserir avaliação:", insertError);
+      toast.error("Erro ao salvar avaliação no banco de dados");
+      setCarregando(false);
+      return;
+    }
     
     // Marcar processo como concluído
     const sucesso = await atualizarStatusProcesso(
