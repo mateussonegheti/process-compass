@@ -101,87 +101,85 @@ export function ResizableDataGrid<T>({
   const totalWidth = Object.values(columnWidths).reduce((sum, w) => sum + w, 0);
 
   return (
-    <div className="rounded-md border overflow-hidden">
-      <div className="overflow-auto max-h-[400px]">
-        <div style={{ minWidth: totalWidth }}>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                {columns.map((column, idx) => (
-                  <TableHead
-                    key={column.id}
+    <div className="rounded-md border overflow-auto max-h-[400px]">
+      <div style={{ minWidth: totalWidth }}>
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableRow className="bg-muted/50">
+              {columns.map((column) => (
+                <TableHead
+                  key={column.id}
+                  className={cn(
+                    "font-semibold select-none relative",
+                    "border-r border-border last:border-r-0"
+                  )}
+                  style={{ 
+                    width: columnWidths[column.id],
+                    minWidth: column.minWidth || 60,
+                  }}
+                >
+                  <div 
+                    className="flex items-center cursor-pointer hover:bg-muted/80 px-2 py-1 -mx-2 -my-1 rounded"
+                    onClick={() => onSort(column.id)}
+                  >
+                    <span className="truncate">{column.header}</span>
+                    <SortIcon columnId={column.id} />
+                  </div>
+                  
+                  {/* Resize handle */}
+                  <div
                     className={cn(
-                      "font-semibold select-none relative",
-                      "border-r border-border last:border-r-0"
+                      "absolute right-0 top-0 bottom-0 w-3 cursor-col-resize",
+                      "flex items-center justify-center",
+                      "hover:bg-primary/20 active:bg-primary/30",
+                      "group"
                     )}
-                    style={{ 
-                      width: columnWidths[column.id],
-                      minWidth: column.minWidth || 60,
-                    }}
+                    onMouseDown={(e) => handleMouseDown(e, column.id)}
                   >
-                    <div 
-                      className="flex items-center cursor-pointer hover:bg-muted/80 px-2 py-1 -mx-2 -my-1 rounded"
-                      onClick={() => onSort(column.id)}
-                    >
-                      <span className="truncate">{column.header}</span>
-                      <SortIcon columnId={column.id} />
-                    </div>
-                    
-                    {/* Resize handle */}
-                    <div
-                      className={cn(
-                        "absolute right-0 top-0 bottom-0 w-3 cursor-col-resize",
-                        "flex items-center justify-center",
-                        "hover:bg-primary/20 active:bg-primary/30",
-                        "group"
-                      )}
-                      onMouseDown={(e) => handleMouseDown(e, column.id)}
-                    >
-                      <div className="w-0.5 h-4 bg-border group-hover:bg-primary/50 rounded" />
-                    </div>
-                  </TableHead>
-                ))}
+                    <div className="w-0.5 h-4 bg-border group-hover:bg-primary/50 rounded" />
+                  </div>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow>
+                <TableCell 
+                  colSpan={columns.length} 
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  Nenhum dado disponível
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.length === 0 ? (
-                <TableRow>
-                  <TableCell 
-                    colSpan={columns.length} 
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    Nenhum dado disponível
-                  </TableCell>
+            ) : (
+              data.map((row, rowIdx) => (
+                <TableRow key={keyExtractor(row, rowIdx)} className="text-sm">
+                  {columns.map((column) => {
+                    const value = column.accessor(row);
+                    return (
+                      <TableCell
+                        key={column.id}
+                        className={cn(
+                          "text-xs border-r border-border last:border-r-0",
+                          "truncate"
+                        )}
+                        style={{ 
+                          width: columnWidths[column.id],
+                          maxWidth: columnWidths[column.id],
+                          minWidth: column.minWidth || 60,
+                        }}
+                        title={String(value)}
+                      >
+                        {column.render ? column.render(value, row) : String(value) || "—"}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
-              ) : (
-                data.map((row, rowIdx) => (
-                  <TableRow key={keyExtractor(row, rowIdx)} className="text-sm">
-                    {columns.map((column) => {
-                      const value = column.accessor(row);
-                      return (
-                        <TableCell
-                          key={column.id}
-                          className={cn(
-                            "text-xs border-r border-border last:border-r-0",
-                            "truncate"
-                          )}
-                          style={{ 
-                            width: columnWidths[column.id],
-                            maxWidth: columnWidths[column.id],
-                            minWidth: column.minWidth || 60,
-                          }}
-                          title={String(value)}
-                        >
-                          {column.render ? column.render(value, row) : String(value) || "—"}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
