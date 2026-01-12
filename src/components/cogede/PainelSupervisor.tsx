@@ -143,25 +143,20 @@ export function PainelSupervisor({
     setColunasExportacao([]);
   };
 
-  // Colunas obrigatórias para validação
+  // Colunas obrigatórias para validação (na ordem correta)
   const COLUNAS_OBRIGATORIAS = [
     { nome: "CODIGO_PROCESSO", descricao: "Código único do processo no sistema" },
     { nome: "NUMERO_CNJ", descricao: "Número CNJ do processo (formato: 0000000-00.0000.0.00.0000)" },
-  ];
-
-  // Colunas opcionais mas recomendadas
-  const COLUNAS_OPCIONAIS = [
-    { nome: "POSSUI_ASSUNTO", descricao: "Indica se o processo possui assunto cadastrado (Sim/Não)" },
-    { nome: "ASSUNTO_PRINCIPAL", descricao: "Assunto principal cadastrado no processo" },
-    { nome: "POSSUI_MOV_ARQUIVADO", descricao: "Indica se possui movimentação 'Processo Arquivado' (Sim/Não)" },
     { nome: "DATA_DISTRIBUICAO", descricao: "Data de distribuição do processo (formato: dd/mm/aaaa)" },
+    { nome: "POSSUI_MOV_ARQUIVADO", descricao: "Indica se possui movimentação 'Processo Arquivado' (Sim/Não)" },
     { nome: "DATA_ARQUIVAMENTO_DEF", descricao: "Data do arquivamento definitivo (formato: dd/mm/aaaa)" },
     { nome: "PRAZO_5_ANOS_COMPLETO", descricao: "Indica se o prazo de 5 anos foi atingido (Sim/Não)" },
-    { nome: "STATUS_AVALIACAO", descricao: "Status atual: PENDENTE, EM_ANALISE ou CONCLUIDO (padrão: PENDENTE)" },
-    { nome: "RESPONSAVEL", descricao: "Nome do responsável pela avaliação (opcional)" },
-    { nome: "DATA_INICIO", descricao: "Data de início da avaliação (opcional)" },
-    { nome: "DATA_FIM", descricao: "Data de conclusão da avaliação (opcional)" },
+    { nome: "POSSUI_ASSUNTO", descricao: "Indica se o processo possui assunto cadastrado (Sim/Não)" },
+    { nome: "ASSUNTO_PRINCIPAL", descricao: "Assunto principal cadastrado no processo" },
   ];
+
+  // Colunas opcionais (para compatibilidade futura)
+  const COLUNAS_OPCIONAIS: { nome: string; descricao: string }[] = [];
 
   const handleUploadProcessos = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -410,21 +405,12 @@ export function PainelSupervisor({
               <p className="font-medium text-foreground">Formato do arquivo CSV:</p>
               
               <div>
-                <p className="font-medium text-destructive">Colunas obrigatórias:</p>
-                <ul className="list-disc list-inside ml-2">
-                  {COLUNAS_OBRIGATORIAS.map(col => (
+                <p className="font-medium text-destructive">Colunas obrigatórias (nesta ordem):</p>
+                <ol className="list-decimal list-inside ml-2">
+                  {COLUNAS_OBRIGATORIAS.map((col, index) => (
                     <li key={col.nome}><code className="bg-muted px-1 rounded">{col.nome}</code> - {col.descricao}</li>
                   ))}
-                </ul>
-              </div>
-              
-              <div>
-                <p className="font-medium">Colunas opcionais (recomendadas):</p>
-                <ul className="list-disc list-inside ml-2 text-muted-foreground">
-                  {COLUNAS_OPCIONAIS.slice(0, 6).map(col => (
-                    <li key={col.nome}><code className="bg-muted px-1 rounded">{col.nome}</code> - {col.descricao}</li>
-                  ))}
-                </ul>
+                </ol>
               </div>
               
               <p className="pt-1 border-t">
