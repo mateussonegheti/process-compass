@@ -9,50 +9,13 @@ import { PainelSupervisor } from "@/components/cogede/PainelSupervisor";
 import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
 
-// Dados de exemplo para desenvolvimento (será substituído por upload CSV)
-const PROCESSOS_EXEMPLO: ProcessoFila[] = [
-  {
-    CODIGO_PROCESSO: "2420089270151",
-    NUMERO_CNJ: "99270157020088130024",
-    POSSUI_ASSUNTO: "Sim",
-    ASSUNTO_PRINCIPAL: "Aposentadoria por Tempo de Contribuição",
-    POSSUI_MOV_ARQUIVADO: "Sim",
-    DATA_DISTRIBUICAO: "15/03/2018",
-    DATA_ARQUIVAMENTO_DEF: "22/08/2020",
-    PRAZO_5_ANOS_COMPLETO: "Sim",
-    STATUS_AVALIACAO: "PENDENTE"
-  },
-  {
-    CODIGO_PROCESSO: "2520067890234",
-    NUMERO_CNJ: "00567890234201981600",
-    POSSUI_ASSUNTO: "Não",
-    ASSUNTO_PRINCIPAL: "",
-    POSSUI_MOV_ARQUIVADO: "Sim",
-    DATA_DISTRIBUICAO: "10/06/2019",
-    DATA_ARQUIVAMENTO_DEF: "05/12/2021",
-    PRAZO_5_ANOS_COMPLETO: "Não",
-    STATUS_AVALIACAO: "PENDENTE"
-  },
-  {
-    CODIGO_PROCESSO: "2319998811003",
-    NUMERO_CNJ: "00999881100320178160",
-    POSSUI_ASSUNTO: "Sim",
-    ASSUNTO_PRINCIPAL: "Mandado de Segurança",
-    POSSUI_MOV_ARQUIVADO: "Não",
-    DATA_DISTRIBUICAO: "20/01/2017",
-    DATA_ARQUIVAMENTO_DEF: "",
-    PRAZO_5_ANOS_COMPLETO: "N/A",
-    STATUS_AVALIACAO: "PENDENTE"
-  }
-];
-
 export default function Index() {
   const [sessao, setSessao] = useState<SessaoAvaliacao>({
     responsavel: "",
     processoAtual: undefined,
     iniciada: false
   });
-  const [processos, setProcessos] = useState<ProcessoFila[]>(PROCESSOS_EXEMPLO);
+  const [processos, setProcessos] = useState<ProcessoFila[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDocumental[]>([]);
   const [carregando, setCarregando] = useState(false);
 
