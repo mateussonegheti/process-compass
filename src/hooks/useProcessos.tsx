@@ -173,6 +173,35 @@ export function useProcessos() {
     }
   };
 
+  // Liberar processos órfãos do usuário (EM_ANALISE sem conclusão)
+  const liberarProcessosOrfaos = async (responsavelId: string) => {
+    if (!loteAtivo?.id) return;
+    
+    try {
+      logger.log(`[useProcessos] Liberando processos órfãos do usuário ${responsavelId}`);
+      
+      const { error } = await supabase
+        .from("processos_fila")
+        .update({
+          status_avaliacao: "PENDENTE",
+          responsavel_avaliacao: null,
+          data_inicio_avaliacao: null,
+        })
+        .eq("status_avaliacao", "EM_ANALISE")
+        .eq("responsavel_avaliacao", responsavelId)
+        .eq("lote_id", loteAtivo.id);
+
+      if (error) {
+        logger.error("[useProcessos] Erro ao liberar processos órfãos:", error);
+      } else {
+        logger.log("[useProcessos] Processos órfãos liberados com sucesso");
+        await fetchProcessos();
+      }
+    } catch (error) {
+      logger.error("[useProcessos] Erro ao liberar processos órfãos:", error);
+    }
+  };
+
   // Atualizar status de um processo
   const atualizarStatusProcesso = async (
     codigoProcesso: string,
@@ -185,6 +214,11 @@ export function useProcessos() {
       if (!loteAtivo?.id) {
         logger.error("[useProcessos] Lote ativo não encontrado");
         return false;
+      }
+
+      // Se estamos capturando um novo processo (EM_ANALISE), primeiro liberar qualquer processo órfão
+      if (status === "EM_ANALISE" && responsavelId) {
+        await liberarProcessosOrfaos(responsavelId);
       }
       
       const { error } = await supabase
@@ -269,6 +303,7 @@ export function useProcessos() {
     podeCarregarPlanilha,
     carregarPlanilha,
     atualizarStatusProcesso,
+    liberarProcessosOrfaos,
     refetch: fetchProcessos,
   };
 }
