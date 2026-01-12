@@ -33,6 +33,12 @@ interface EstatisticasAvaliador {
   em_analise: number;
 }
 
+interface AvaliacaoProcesso {
+  processo_id: string;
+  destinacao_permanente: string | null;
+  pecas_ids: string | null;
+}
+
 interface DashboardSupervisorProps {
   processos: ProcessoFila[];
 }
@@ -40,6 +46,7 @@ interface DashboardSupervisorProps {
 export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
   const [estatisticasPorAvaliador, setEstatisticasPorAvaliador] = useState<EstatisticasAvaliador[]>([]);
+  const [avaliacoesMap, setAvaliacoesMap] = useState<Map<string, AvaliacaoProcesso>>(new Map());
   const [loading, setLoading] = useState(true);
   const [linhasExibidas, setLinhasExibidas] = useState<string>("10");
 
@@ -56,6 +63,7 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
       const { data: processosEmAnalise, error: processosError } = await supabase
         .from("processos_fila")
         .select(`
+          id,
           codigo_processo,
           numero_cnj,
           data_inicio_avaliacao,
@@ -107,6 +115,30 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
         });
         
         setEstatisticasPorAvaliador(Array.from(porAvaliador.values()));
+      }
+
+      // Buscar dados de avaliações concluídas (GUARDA e ARQUIVOS)
+      const { data: avaliacoes, error: avaliacoesError } = await supabase
+        .from("avaliacoes")
+        .select(`
+          processo_id,
+          destinacao_permanente,
+          pecas_ids
+        `)
+        .not("data_fim", "is", null);
+
+      if (avaliacoesError) {
+        logger.error("Erro ao buscar avaliações:", avaliacoesError);
+      } else if (avaliacoes) {
+        const map = new Map<string, AvaliacaoProcesso>();
+        avaliacoes.forEach((av) => {
+          map.set(av.processo_id, {
+            processo_id: av.processo_id,
+            destinacao_permanente: av.destinacao_permanente,
+            pecas_ids: av.pecas_ids,
+          });
+        });
+        setAvaliacoesMap(map);
       }
     } catch (error) {
       logger.error("Erro ao buscar dados do dashboard:", error);
@@ -405,6 +437,17 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
                       return "";
                     };
 
+                    // Buscar dados da avaliação
+                    const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
+                    
+                    // Converter destinacao_permanente para GUARDA (I = Integral/Permanente, P = Parcial)
+                    const getGuarda = () => {
+                      if (!avaliacao?.destinacao_permanente) return "—";
+                      if (avaliacao.destinacao_permanente === "Sim") return "I";
+                      if (avaliacao.destinacao_permanente === "Não") return "P";
+                      return avaliacao.destinacao_permanente;
+                    };
+
                     return (
                       <TableRow key={idx} className="text-sm">
                         <TableCell className="font-mono text-xs">
@@ -423,10 +466,10 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
                           {processo.DATA_ARQUIVAMENTO_DEF || "—"}
                         </TableCell>
                         <TableCell className="text-xs">
-                          —
+                          {getGuarda()}
                         </TableCell>
-                        <TableCell className="text-xs">
-                          —
+                        <TableCell className="text-xs max-w-[150px] truncate" title={avaliacao?.pecas_ids || ""}>
+                          {avaliacao?.pecas_ids || "—"}
                         </TableCell>
                         <TableCell className="text-xs">
                           {processo.RESPONSAVEL || "—"}

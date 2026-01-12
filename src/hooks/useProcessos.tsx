@@ -76,6 +76,7 @@ export function useProcessos() {
 
         if (processosData) {
           const processosFormatados: ProcessoFila[] = (processosData as ProcessoDB[]).map((p) => ({
+            ID: p.id,
             CODIGO_PROCESSO: p.codigo_processo,
             NUMERO_CNJ: p.numero_cnj,
             POSSUI_ASSUNTO: p.possui_assunto || "",

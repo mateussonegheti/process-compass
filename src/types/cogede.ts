@@ -1,6 +1,7 @@
 // Tipos do Sistema COGEDE
 
 export interface ProcessoFila {
+  ID?: string; // ID do banco de dados
   CODIGO_PROCESSO: string;
   NUMERO_CNJ: string;
   POSSUI_ASSUNTO: string;
@@ -13,6 +14,9 @@ export interface ProcessoFila {
   RESPONSAVEL?: string;
   DATA_INICIO_AVALIACAO?: string;
   DATA_FIM?: string;
+  // Campos preenchidos pela avaliação
+  GUARDA?: string;
+  ARQUIVOS?: string;
 }
 
 export interface PecaProcessual {
