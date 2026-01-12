@@ -7,6 +7,7 @@ import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
 import { MergePlanilhas } from "@/components/cogede/MergePlanilhas";
 import { PainelSupervisor } from "@/components/cogede/PainelSupervisor";
 import { DashboardSupervisor } from "@/components/cogede/DashboardSupervisor";
+import { MinhasAvaliacoes } from "@/components/cogede/MinhasAvaliacoes";
 import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +58,16 @@ export default function Index() {
       iniciada: true
     });
     toast.success(`Sessão iniciada para ${responsavel}`);
+  };
+
+  // Handler para editar avaliação existente
+  const handleEditarAvaliacao = (processo: ProcessoFila) => {
+    setSessao(prev => ({
+      ...prev,
+      processoAtual: processo,
+      iniciada: true
+    }));
+    toast.info(`Editando avaliação do processo ${processo.CODIGO_PROCESSO}`);
   };
 
   const handleIniciarAvaliacao = async () => {
@@ -281,10 +292,10 @@ export default function Index() {
             {podeVerDashboard && (
               <PainelSupervisor
                 onProcessosCarregados={handleProcessosCarregados}
-                avaliacoesRealizadas={avaliacoes}
                 processosCount={processos.length}
                 uploading={uploading}
                 podeCarregarPlanilha={podeCarregarPlanilha}
+                loteId={loteAtivo?.id}
               />
             )}
             
@@ -304,6 +315,14 @@ export default function Index() {
                 responsavel={sessao.responsavel}
                 onSalvarEProximo={handleSalvarEProximo}
                 carregando={carregando}
+              />
+            )}
+
+            {/* Grid de avaliações do usuário (para todos) */}
+            {!sessao.processoAtual && loteAtivo?.id && (
+              <MinhasAvaliacoes
+                onEditarAvaliacao={handleEditarAvaliacao}
+                loteId={loteAtivo.id}
               />
             )}
           </TabsContent>
