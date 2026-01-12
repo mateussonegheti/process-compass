@@ -379,65 +379,57 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">Código</TableHead>
-                    <TableHead className="font-semibold">Número CNJ</TableHead>
-                    <TableHead className="font-semibold">Distribuição</TableHead>
-                    <TableHead className="font-semibold">Arquivamento</TableHead>
-                    <TableHead className="font-semibold">Assunto</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Responsável</TableHead>
+                    <TableHead className="font-semibold">CODIGO</TableHead>
+                    <TableHead className="font-semibold">NUMERO_PROCESSO</TableHead>
+                    <TableHead className="font-semibold">DATA_DISTRIBUICAO</TableHead>
+                    <TableHead className="font-semibold">ANO</TableHead>
+                    <TableHead className="font-semibold">DATA_ARQUIVAMENTO</TableHead>
+                    <TableHead className="font-semibold">GUARDA</TableHead>
+                    <TableHead className="font-semibold">ARQUIVOS</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(linhasExibidas === "all" 
                     ? processos 
                     : processos.slice(0, parseInt(linhasExibidas))
-                  ).map((processo, idx) => (
-                    <TableRow key={idx} className="text-sm">
-                      <TableCell className="font-mono text-xs">
-                        {processo.CODIGO_PROCESSO}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {processo.NUMERO_CNJ}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {processo.DATA_DISTRIBUICAO || "—"}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {processo.DATA_ARQUIVAMENTO_DEF || "—"}
-                      </TableCell>
-                      <TableCell className="text-xs max-w-[200px] truncate" title={processo.ASSUNTO_PRINCIPAL}>
-                        {processo.ASSUNTO_PRINCIPAL || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            processo.STATUS_AVALIACAO === "CONCLUIDO" 
-                              ? "default" 
-                              : processo.STATUS_AVALIACAO === "EM_ANALISE" 
-                                ? "secondary" 
-                                : "outline"
-                          }
-                          className={
-                            processo.STATUS_AVALIACAO === "CONCLUIDO" 
-                              ? "bg-green-100 text-green-700 hover:bg-green-100" 
-                              : processo.STATUS_AVALIACAO === "EM_ANALISE" 
-                                ? "bg-blue-100 text-blue-700" 
-                                : "bg-amber-50 text-amber-700"
-                          }
-                        >
-                          {processo.STATUS_AVALIACAO === "CONCLUIDO" 
-                            ? "Concluído" 
-                            : processo.STATUS_AVALIACAO === "EM_ANALISE" 
-                              ? "Em Análise" 
-                              : "Pendente"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {processo.RESPONSAVEL || "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  ).map((processo, idx) => {
+                    // Extrair ano da data de distribuição
+                    const extrairAno = (dataStr: string) => {
+                      if (!dataStr) return "";
+                      const partes = dataStr.split("/");
+                      if (partes.length === 3) {
+                        const ano = partes[2].split(" ")[0];
+                        return ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
+                      }
+                      return "";
+                    };
+
+                    return (
+                      <TableRow key={idx} className="text-sm">
+                        <TableCell className="font-mono text-xs">
+                          {processo.CODIGO_PROCESSO}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {processo.NUMERO_CNJ}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {processo.DATA_DISTRIBUICAO || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {extrairAno(processo.DATA_DISTRIBUICAO)}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {processo.DATA_ARQUIVAMENTO_DEF || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          —
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          —
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </ScrollArea>
