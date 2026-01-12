@@ -16,7 +16,10 @@ import {
   TrendingUp,
   Database,
   List,
-  RefreshCw
+  RefreshCw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +49,9 @@ interface DashboardSupervisorProps {
   processos: ProcessoFila[];
 }
 
+type SortColumn = "CODIGO" | "NUMERO_CNJ" | "DATA_DISTRIBUICAO" | "ANO" | "DATA_ARQUIVAMENTO" | "GUARDA" | "ARQUIVOS" | "RESPONSAVEL" | "DATA_FIM";
+type SortDirection = "asc" | "desc";
+
 export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
   const [estatisticasPorAvaliador, setEstatisticasPorAvaliador] = useState<EstatisticasAvaliador[]>([]);
@@ -53,6 +59,8 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
   const [profilesMap, setProfilesMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [linhasExibidas, setLinhasExibidas] = useState<string>("10");
+  const [sortColumn, setSortColumn] = useState<SortColumn>("DATA_FIM");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const totalPendentes = processos.filter((p) => p.STATUS_AVALIACAO === "PENDENTE").length;
   const totalEmAnalise = processos.filter((p) => p.STATUS_AVALIACAO === "EM_ANALISE").length;
@@ -213,6 +221,34 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
     if (diffMin < 60) return `${diffMin} min`;
     const diffHoras = Math.floor(diffMin / 60);
     return `${diffHoras}h ${diffMin % 60}min`;
+  };
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === "asc" 
+      ? <ArrowUp className="h-3 w-3 ml-1" /> 
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const extrairAno = (dataStr: string) => {
+    if (!dataStr) return "";
+    const partes = dataStr.split("/");
+    if (partes.length === 3) {
+      const ano = partes[2].split(" ")[0];
+      return ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
+    }
+    return "";
   };
 
   return (
@@ -443,35 +479,135 @@ export function DashboardSupervisor({ processos }: DashboardSupervisorProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">CODIGO</TableHead>
-                    <TableHead className="font-semibold">NUMERO_PROCESSO</TableHead>
-                    <TableHead className="font-semibold">DATA_DISTRIBUICAO</TableHead>
-                    <TableHead className="font-semibold">ANO</TableHead>
-                    <TableHead className="font-semibold">DATA_ARQUIVAMENTO</TableHead>
-                    <TableHead className="font-semibold">GUARDA</TableHead>
-                    <TableHead className="font-semibold">ARQUIVOS</TableHead>
-                    <TableHead className="font-semibold">RESPONSAVEL</TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("CODIGO")}
+                    >
+                      <div className="flex items-center">
+                        CODIGO
+                        <SortIcon column="CODIGO" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("NUMERO_CNJ")}
+                    >
+                      <div className="flex items-center">
+                        NUMERO_PROCESSO
+                        <SortIcon column="NUMERO_CNJ" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("DATA_DISTRIBUICAO")}
+                    >
+                      <div className="flex items-center">
+                        DATA_DISTRIBUICAO
+                        <SortIcon column="DATA_DISTRIBUICAO" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("ANO")}
+                    >
+                      <div className="flex items-center">
+                        ANO
+                        <SortIcon column="ANO" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("DATA_ARQUIVAMENTO")}
+                    >
+                      <div className="flex items-center">
+                        DATA_ARQUIVAMENTO
+                        <SortIcon column="DATA_ARQUIVAMENTO" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("GUARDA")}
+                    >
+                      <div className="flex items-center">
+                        GUARDA
+                        <SortIcon column="GUARDA" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("ARQUIVOS")}
+                    >
+                      <div className="flex items-center">
+                        ARQUIVOS
+                        <SortIcon column="ARQUIVOS" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-semibold cursor-pointer hover:bg-muted/80 select-none"
+                      onClick={() => handleSort("RESPONSAVEL")}
+                    >
+                      <div className="flex items-center">
+                        RESPONSAVEL
+                        <SortIcon column="RESPONSAVEL" />
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(() => {
                     const processosConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
+                    
+                    // Função para obter valor de ordenação
+                    const getValorOrdenacao = (processo: ProcessoFila, column: SortColumn): string | number => {
+                      const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
+                      const getGuarda = () => {
+                        if (!avaliacao?.destinacao_permanente) return "";
+                        if (avaliacao.destinacao_permanente === "Sim") return "I";
+                        if (avaliacao.destinacao_permanente === "Não") return "P";
+                        return avaliacao.destinacao_permanente;
+                      };
+                      
+                      switch (column) {
+                        case "CODIGO":
+                          return processo.CODIGO_PROCESSO || "";
+                        case "NUMERO_CNJ":
+                          return processo.NUMERO_CNJ || "";
+                        case "DATA_DISTRIBUICAO":
+                          return processo.DATA_DISTRIBUICAO || "";
+                        case "ANO":
+                          return extrairAno(processo.DATA_DISTRIBUICAO);
+                        case "DATA_ARQUIVAMENTO":
+                          return processo.DATA_ARQUIVAMENTO_DEF || "";
+                        case "GUARDA":
+                          return getGuarda();
+                        case "ARQUIVOS":
+                          return avaliacao?.pecas_ids || "";
+                        case "RESPONSAVEL":
+                          return processo.RESPONSAVEL ? (profilesMap.get(processo.RESPONSAVEL) || "") : "";
+                        case "DATA_FIM":
+                          return processo.DATA_FIM || "";
+                        default:
+                          return "";
+                      }
+                    };
+                    
+                    // Ordenar processos
+                    const processosOrdenados = [...processosConcluidos].sort((a, b) => {
+                      const valorA = getValorOrdenacao(a, sortColumn);
+                      const valorB = getValorOrdenacao(b, sortColumn);
+                      
+                      let comparacao = 0;
+                      if (valorA < valorB) comparacao = -1;
+                      else if (valorA > valorB) comparacao = 1;
+                      
+                      return sortDirection === "asc" ? comparacao : -comparacao;
+                    });
+                    
                     const processosExibir = linhasExibidas === "all" 
-                      ? processosConcluidos 
-                      : processosConcluidos.slice(0, parseInt(linhasExibidas));
+                      ? processosOrdenados 
+                      : processosOrdenados.slice(0, parseInt(linhasExibidas));
                     
                     return processosExibir.map((processo, idx) => {
-                      // Extrair ano da data de distribuição
-                      const extrairAno = (dataStr: string) => {
-                        if (!dataStr) return "";
-                        const partes = dataStr.split("/");
-                        if (partes.length === 3) {
-                          const ano = partes[2].split(" ")[0];
-                          return ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
-                        }
-                        return "";
-                      };
-
                       // Buscar dados da avaliação
                       const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
                       
