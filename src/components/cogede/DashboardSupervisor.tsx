@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -72,7 +72,7 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
   const progresso = total > 0 ? (totalConcluidos / total) * 100 : 0;
 
   // Buscar dados em tempo real
-  const fetchDadosRealtime = async () => {
+  const fetchDadosRealtime = useCallback(async () => {
     try {
       // Primeiro buscar todos os profiles para fazer o mapeamento
       const { data: allProfiles, error: profilesError } = await supabase
@@ -186,7 +186,7 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [loteId]);
 
   // Configurar realtime
   useEffect(() => {
@@ -226,7 +226,7 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [loteId]);
+  }, [loteId, fetchDadosRealtime]);
 
   const formatarTempo = (dataIso: string) => {
     if (!dataIso) return "—";
