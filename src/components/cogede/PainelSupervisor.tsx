@@ -143,6 +143,26 @@ export function PainelSupervisor({
     setColunasExportacao([]);
   };
 
+  // Colunas obrigatórias para validação
+  const COLUNAS_OBRIGATORIAS = [
+    { nome: "CODIGO_PROCESSO", descricao: "Código único do processo no sistema" },
+    { nome: "NUMERO_CNJ", descricao: "Número CNJ do processo (formato: 0000000-00.0000.0.00.0000)" },
+  ];
+
+  // Colunas opcionais mas recomendadas
+  const COLUNAS_OPCIONAIS = [
+    { nome: "POSSUI_ASSUNTO", descricao: "Indica se o processo possui assunto cadastrado (Sim/Não)" },
+    { nome: "ASSUNTO_PRINCIPAL", descricao: "Assunto principal cadastrado no processo" },
+    { nome: "POSSUI_MOV_ARQUIVADO", descricao: "Indica se possui movimentação 'Processo Arquivado' (Sim/Não)" },
+    { nome: "DATA_DISTRIBUICAO", descricao: "Data de distribuição do processo (formato: dd/mm/aaaa)" },
+    { nome: "DATA_ARQUIVAMENTO_DEF", descricao: "Data do arquivamento definitivo (formato: dd/mm/aaaa)" },
+    { nome: "PRAZO_5_ANOS_COMPLETO", descricao: "Indica se o prazo de 5 anos foi atingido (Sim/Não)" },
+    { nome: "STATUS_AVALIACAO", descricao: "Status atual: PENDENTE, EM_ANALISE ou CONCLUIDO (padrão: PENDENTE)" },
+    { nome: "RESPONSAVEL", descricao: "Nome do responsável pela avaliação (opcional)" },
+    { nome: "DATA_INICIO", descricao: "Data de início da avaliação (opcional)" },
+    { nome: "DATA_FIM", descricao: "Data de conclusão da avaliação (opcional)" },
+  ];
+
   const handleUploadProcessos = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -167,21 +187,24 @@ export function PainelSupervisor({
         );
         logger.log("Headers encontrados:", headers);
         
+        // Validar colunas obrigatórias
+        const colunasAusentes = COLUNAS_OBRIGATORIAS
+          .filter(col => !headers.includes(col.nome))
+          .map(col => col.nome);
+        
+        if (colunasAusentes.length > 0) {
+          toast.error(
+            `Colunas obrigatórias ausentes: ${colunasAusentes.join(", ")}`,
+            { duration: 6000 }
+          );
+          return;
+        }
+
         // Mapear colunas esperadas (aba FILA_PROCESSOS)
         const colMap: Record<string, number> = {};
         const expectedCols = [
-          "CODIGO_PROCESSO",
-          "NUMERO_CNJ", 
-          "POSSUI_ASSUNTO",
-          "ASSUNTO_PRINCIPAL",
-          "POSSUI_MOV_ARQUIVADO",
-          "DATA_DISTRIBUICAO",
-          "DATA_ARQUIVAMENTO_DEF",
-          "PRAZO_5_ANOS_COMPLETO",
-          "STATUS_AVALIACAO",
-          "RESPONSAVEL",
-          "DATA_INICIO",
-          "DATA_FIM",
+          ...COLUNAS_OBRIGATORIAS.map(c => c.nome),
+          ...COLUNAS_OPCIONAIS.map(c => c.nome),
         ];
 
         expectedCols.forEach((col) => {
@@ -190,6 +213,15 @@ export function PainelSupervisor({
         });
 
         logger.log("Mapeamento de colunas:", colMap);
+        
+        // Avisar sobre colunas opcionais ausentes
+        const opcionaisAusentes = COLUNAS_OPCIONAIS
+          .filter(col => !headers.includes(col.nome))
+          .map(col => col.nome);
+        
+        if (opcionaisAusentes.length > 0) {
+          logger.log("Colunas opcionais ausentes:", opcionaisAusentes);
+        }
 
         const processos: ProcessoFila[] = lines.slice(1).map((line) => {
           const values = parseCSVLine(line, separator).map((v) => v.replace(/"/g, "").trim());
@@ -216,10 +248,10 @@ export function PainelSupervisor({
             DATA_INICIO_AVALIACAO: colMap.DATA_INICIO !== undefined ? values[colMap.DATA_INICIO] || undefined : undefined,
             DATA_FIM: colMap.DATA_FIM !== undefined ? values[colMap.DATA_FIM] || undefined : undefined,
           };
-        }).filter((p) => p.CODIGO_PROCESSO);
+        }).filter((p) => p.CODIGO_PROCESSO && p.NUMERO_CNJ);
 
         if (processos.length === 0) {
-          toast.error("Nenhum processo válido encontrado no CSV. Verifique se a coluna CODIGO_PROCESSO existe.");
+          toast.error("Nenhum processo válido encontrado. Verifique se CODIGO_PROCESSO e NUMERO_CNJ estão preenchidos.");
           return;
         }
 
@@ -227,6 +259,11 @@ export function PainelSupervisor({
         
         const pendentes = processos.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
         toast.success(`${processos.length} processos carregados (${pendentes} pendentes)`);
+        
+        // Avisar sobre colunas opcionais ausentes após sucesso
+        if (opcionaisAusentes.length > 0 && opcionaisAusentes.length <= 3) {
+          toast.info(`Colunas não encontradas (opcionais): ${opcionaisAusentes.join(", ")}`, { duration: 5000 });
+        }
       } catch (error) {
         toast.error("Erro ao processar arquivo CSV");
         logger.error("CSV parsing error:", error);
@@ -369,11 +406,32 @@ export function PainelSupervisor({
           )}
           
           {temPermissao && (
-            <p className="text-xs text-muted-foreground">
-              O CSV deve conter as colunas: CODIGO_PROCESSO, NUMERO_CNJ, DATA_DISTRIBUICAO, POSSUI_MOV_ARQUIVADO, etc.
-              <br />Aceita separador vírgula (,) ou ponto e vírgula (;) automaticamente.
-              <br /><strong>Atenção:</strong> Carregar uma nova planilha substituirá a anterior.
-            </p>
+            <div className="text-xs text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
+              <p className="font-medium text-foreground">Formato do arquivo CSV:</p>
+              
+              <div>
+                <p className="font-medium text-destructive">Colunas obrigatórias:</p>
+                <ul className="list-disc list-inside ml-2">
+                  {COLUNAS_OBRIGATORIAS.map(col => (
+                    <li key={col.nome}><code className="bg-muted px-1 rounded">{col.nome}</code> - {col.descricao}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div>
+                <p className="font-medium">Colunas opcionais (recomendadas):</p>
+                <ul className="list-disc list-inside ml-2 text-muted-foreground">
+                  {COLUNAS_OPCIONAIS.slice(0, 6).map(col => (
+                    <li key={col.nome}><code className="bg-muted px-1 rounded">{col.nome}</code> - {col.descricao}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <p className="pt-1 border-t">
+                📝 Aceita separador vírgula (,) ou ponto e vírgula (;) automaticamente.
+                <br />⚠️ <strong>Atenção:</strong> Carregar uma nova planilha substituirá a anterior.
+              </p>
+            </div>
           )}
         </div>
 
