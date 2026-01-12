@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, GitMerge, Brain } from "lucide-react";
+import { FileText, GitMerge } from "lucide-react";
 import { Header } from "@/components/cogede/Header";
 import { SessaoCard } from "@/components/cogede/SessaoCard";
 import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
 import { MergePlanilhas } from "@/components/cogede/MergePlanilhas";
-import { ClassificadorIA } from "@/components/cogede/ClassificadorIA";
 import { PainelSupervisor } from "@/components/cogede/PainelSupervisor";
 import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
@@ -169,18 +168,14 @@ export default function Index() {
       
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="avaliacao" className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
-              Avaliação
-            </TabsTrigger>
-            <TabsTrigger value="classificador" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Classificador IA
+              Avaliação Documental
             </TabsTrigger>
             <TabsTrigger value="merge" className="gap-2">
               <GitMerge className="h-4 w-4" />
-              Merge
+              Merge de Planilhas
             </TabsTrigger>
           </TabsList>
 
@@ -209,10 +204,6 @@ export default function Index() {
                 carregando={carregando}
               />
             )}
-          </TabsContent>
-
-          <TabsContent value="classificador">
-            <ClassificadorIA />
           </TabsContent>
 
           <TabsContent value="merge">
