@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff } from "lucide-react";
 import { ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 interface PainelSupervisorProps {
   onProcessosCarregados: (processos: ProcessoFila[]) => void;
@@ -145,12 +146,12 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
 
         // Detectar separador automaticamente
         const separator = detectSeparator(lines[0]);
-        console.log(`Separador detectado: "${separator}"`);
+        logger.log(`Separador detectado: "${separator}"`);
 
         const headers = parseCSVLine(lines[0], separator).map((h) => 
           h.replace(/"/g, "").toUpperCase().trim()
         );
-        console.log("Headers encontrados:", headers);
+        logger.log("Headers encontrados:", headers);
         
         // Mapear colunas esperadas (aba FILA_PROCESSOS)
         const colMap: Record<string, number> = {};
@@ -174,7 +175,7 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
           if (idx !== -1) colMap[col] = idx;
         });
 
-        console.log("Mapeamento de colunas:", colMap);
+        logger.log("Mapeamento de colunas:", colMap);
 
         const processos: ProcessoFila[] = lines.slice(1).map((line) => {
           const values = parseCSVLine(line, separator).map((v) => v.replace(/"/g, "").trim());
@@ -214,7 +215,7 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
         toast.success(`${processos.length} processos carregados (${pendentes} pendentes)`);
       } catch (error) {
         toast.error("Erro ao processar arquivo CSV");
-        console.error(error);
+        logger.error("CSV parsing error:", error);
       }
     };
     reader.readAsText(file);

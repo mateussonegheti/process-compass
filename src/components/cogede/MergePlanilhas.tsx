@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { 
   Table, 
@@ -21,6 +20,7 @@ import {
   FileWarning
 } from "lucide-react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 interface ProcessoCSV {
   NOME_PROCESSO_HASH: string;
@@ -119,7 +119,7 @@ export function MergePlanilhas() {
 
       toast.success(`Merge concluído! ${processosComUUID.length} processos com UUID encontrado.`);
     } catch (error) {
-      console.error("Erro no merge:", error);
+      logger.error("Erro no merge:", error);
       toast.error("Erro ao processar os arquivos");
     } finally {
       setProcessando(false);
