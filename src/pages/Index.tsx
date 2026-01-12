@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, GitMerge } from "lucide-react";
 import { Header } from "@/components/cogede/Header";
@@ -8,8 +8,11 @@ import { MergePlanilhas } from "@/components/cogede/MergePlanilhas";
 import { PainelSupervisor } from "@/components/cogede/PainelSupervisor";
 import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Index() {
+  const { profile } = useAuth();
+  
   const [sessao, setSessao] = useState<SessaoAvaliacao>({
     responsavel: "",
     processoAtual: undefined,
@@ -18,6 +21,16 @@ export default function Index() {
   const [processos, setProcessos] = useState<ProcessoFila[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDocumental[]>([]);
   const [carregando, setCarregando] = useState(false);
+
+  // Auto-preencher responsável quando o perfil do usuário estiver disponível
+  useEffect(() => {
+    if (profile?.nome && !sessao.responsavel) {
+      setSessao(prev => ({
+        ...prev,
+        responsavel: profile.nome
+      }));
+    }
+  }, [profile?.nome, sessao.responsavel]);
 
   const totalPendentes = processos.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
   const totalEmAnalise = processos.filter(p => p.STATUS_AVALIACAO === "EM_ANALISE").length;
