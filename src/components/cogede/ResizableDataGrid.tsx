@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, ReactNode } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowUpDown, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type SortDirection = "asc" | "desc";
@@ -103,7 +103,7 @@ export function ResizableDataGrid<T>({
   return (
     <div className="rounded-md border overflow-auto max-h-[400px]">
       <div style={{ minWidth: totalWidth }}>
-        <Table>
+        <table className="w-full caption-bottom text-sm table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow className="bg-muted/50">
               {columns.map((column) => (
@@ -179,7 +179,7 @@ export function ResizableDataGrid<T>({
               ))
             )}
           </TableBody>
-        </Table>
+        </table>
       </div>
     </div>
   );
