@@ -1,23 +1,60 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2 } from "lucide-react";
-import { ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
+import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database } from "lucide-react";
+import { ProcessoFila } from "@/types/cogede";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/hooks/useAuth";
 import { validateCSVFile, validateRowCount, sanitizeCellValue, hasSuspiciousContent, MAX_ROW_COUNT } from "@/lib/csvValidation";
+import { supabase } from "@/integrations/supabase/client";
+
+interface AvaliacaoConsolidada {
+  // Dados do processo
+  codigoProcesso: string;
+  numeroCnj: string;
+  dataDistribuicao: string;
+  dataArquivamentoDef: string;
+  possuiAssunto: string;
+  assuntoPrincipal: string;
+  possuiMovArquivado: string;
+  prazo5AnosCompleto: string;
+  // Dados da avaliação
+  responsavel: string;
+  descricaoAssuntoFaltante?: string;
+  assuntoTpu?: string;
+  hierarquiaCorreta?: string;
+  divergenciaHierarquia?: string;
+  destinacaoPermanente?: string;
+  descricaoSituacaoArquivamento?: string;
+  inconsistenciaPrazo?: string;
+  pecasTipos?: string;
+  pecasIds?: string;
+  pecasCombinado?: string;
+  observacoesPecas?: string;
+  documentoNaoLocalizado?: boolean;
+  documentoDuplicado?: boolean;
+  erroTecnico?: boolean;
+  ocorrenciasOutroDetalhe?: string;
+  divergenciaClassificacao?: string;
+  tipoInformadoSistema?: string;
+  tipoRealIdentificado?: string;
+  processoVazio?: boolean;
+  observacoesGerais?: string;
+  dataInicioAvaliacao?: string;
+  dataFimAvaliacao?: string;
+}
 
 interface PainelSupervisorProps {
   onProcessosCarregados: (processos: ProcessoFila[]) => void;
-  avaliacoesRealizadas: AvaliacaoDocumental[];
   processosCount: number;
   uploading?: boolean;
   podeCarregarPlanilha?: boolean;
+  loteId?: string;
 }
 
 // Formatar data para dd/mm/aaaa
@@ -115,20 +152,153 @@ const detectSeparator = (line: string): string => {
 
 export function PainelSupervisor({ 
   onProcessosCarregados, 
-  avaliacoesRealizadas, 
   processosCount,
   uploading = false,
-  podeCarregarPlanilha = false
+  podeCarregarPlanilha = false,
+  loteId
 }: PainelSupervisorProps) {
   const { isAdmin, isSupervisor } = useAuth();
   const [colunasExportacao, setColunasExportacao] = useState<string[]>(
     COLUNAS_EXPORTACAO.map((c) => c.key)
   );
   const [mostrarColunas, setMostrarColunas] = useState(false);
+  const [avaliacoesConsolidadas, setAvaliacoesConsolidadas] = useState<AvaliacaoConsolidada[]>([]);
+  const [loadingExport, setLoadingExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Verificar permissão (prop tem prioridade, senão usa hook)
   const temPermissao = podeCarregarPlanilha || isAdmin || isSupervisor;
+
+  // Buscar avaliações consolidadas do banco
+  const fetchAvaliacoesConsolidadas = useCallback(async () => {
+    if (!loteId) return;
+    
+    setLoadingExport(true);
+    try {
+      // Buscar processos concluídos do lote
+      const { data: processos, error: processosError } = await supabase
+        .from("processos_fila")
+        .select("*")
+        .eq("lote_id", loteId)
+        .eq("status_avaliacao", "CONCLUIDO");
+
+      if (processosError) {
+        logger.error("Erro ao buscar processos:", processosError);
+        return;
+      }
+
+      if (!processos || processos.length === 0) {
+        setAvaliacoesConsolidadas([]);
+        return;
+      }
+
+      // Buscar avaliações
+      const processoIds = processos.map(p => p.id);
+      const { data: avaliacoes, error: avaliacoesError } = await supabase
+        .from("avaliacoes")
+        .select("*")
+        .in("processo_id", processoIds);
+
+      if (avaliacoesError) {
+        logger.error("Erro ao buscar avaliações:", avaliacoesError);
+        return;
+      }
+
+      // Buscar nomes dos avaliadores
+      const avaliadorIds = [...new Set(avaliacoes?.map(a => a.avaliador_id) || [])];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, nome")
+        .in("id", avaliadorIds);
+
+      if (profilesError) {
+        logger.error("Erro ao buscar profiles:", profilesError);
+      }
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p.nome]) || []);
+      const avaliacoesMap = new Map(avaliacoes?.map(a => [a.processo_id, a]) || []);
+
+      // Combinar dados
+      const consolidadas: AvaliacaoConsolidada[] = processos.map(p => {
+        const av = avaliacoesMap.get(p.id);
+        return {
+          codigoProcesso: p.codigo_processo,
+          numeroCnj: p.numero_cnj,
+          dataDistribuicao: p.data_distribuicao || "",
+          dataArquivamentoDef: p.data_arquivamento_def || "",
+          possuiAssunto: p.possui_assunto || "",
+          assuntoPrincipal: p.assunto_principal || "",
+          possuiMovArquivado: p.possui_mov_arquivado || "",
+          prazo5AnosCompleto: p.prazo_5_anos_completo || "",
+          responsavel: av?.avaliador_id ? (profilesMap.get(av.avaliador_id) || "Desconhecido") : "—",
+          descricaoAssuntoFaltante: av?.descricao_assunto_faltante || undefined,
+          assuntoTpu: av?.assunto_tpu || undefined,
+          hierarquiaCorreta: av?.hierarquia_correta || undefined,
+          divergenciaHierarquia: av?.divergencia_hierarquia || undefined,
+          destinacaoPermanente: av?.destinacao_permanente || undefined,
+          descricaoSituacaoArquivamento: av?.descricao_situacao_arquivamento || undefined,
+          inconsistenciaPrazo: av?.inconsistencia_prazo || undefined,
+          pecasTipos: av?.pecas_tipos || undefined,
+          pecasIds: av?.pecas_ids || undefined,
+          pecasCombinado: av?.pecas_combinado || undefined,
+          observacoesPecas: av?.observacoes_pecas || undefined,
+          documentoNaoLocalizado: av?.documento_nao_localizado || false,
+          documentoDuplicado: av?.documento_duplicado || false,
+          erroTecnico: av?.erro_tecnico || false,
+          ocorrenciasOutroDetalhe: av?.ocorrencias_outro_detalhe || undefined,
+          divergenciaClassificacao: av?.divergencia_classificacao || undefined,
+          tipoInformadoSistema: av?.tipo_informado_sistema || undefined,
+          tipoRealIdentificado: av?.tipo_real_identificado || undefined,
+          processoVazio: av?.processo_vazio || false,
+          observacoesGerais: av?.observacoes_gerais || undefined,
+          dataInicioAvaliacao: av?.data_inicio || undefined,
+          dataFimAvaliacao: av?.data_fim || undefined,
+        };
+      });
+
+      setAvaliacoesConsolidadas(consolidadas);
+    } catch (error) {
+      logger.error("Erro ao buscar avaliações consolidadas:", error);
+    } finally {
+      setLoadingExport(false);
+    }
+  }, [loteId]);
+
+  // Carregar avaliações quando o lote mudar
+  useEffect(() => {
+    fetchAvaliacoesConsolidadas();
+
+    // Subscrever a mudanças
+    const channel = supabase
+      .channel("avaliacoes-consolidadas")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "avaliacoes",
+        },
+        () => {
+          fetchAvaliacoesConsolidadas();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "processos_fila",
+        },
+        () => {
+          fetchAvaliacoesConsolidadas();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchAvaliacoesConsolidadas]);
 
   const toggleColuna = (key: string) => {
     setColunasExportacao((prev) =>
@@ -305,8 +475,8 @@ export function PainelSupervisor({
   };
 
   const exportarAvaliacoes = () => {
-    if (avaliacoesRealizadas.length === 0) {
-      toast.error("Nenhuma avaliação realizada para exportar");
+    if (avaliacoesConsolidadas.length === 0) {
+      toast.error("Nenhuma avaliação concluída para exportar");
       return;
     }
 
@@ -321,7 +491,7 @@ export function PainelSupervisor({
       .join(",");
 
     // Criar linhas
-    const rows = avaliacoesRealizadas.map((av) => {
+    const rows = avaliacoesConsolidadas.map((av) => {
       return colunasExportacao
         .map((key) => {
           // Campo especial: anoDistribuicao (extrair ano da data de distribuição)
@@ -365,11 +535,11 @@ export function PainelSupervisor({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "processos.csv";
+    link.download = `avaliacoes_lote_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
 
-    toast.success("Avaliações exportadas para processos.csv!");
+    toast.success(`${avaliacoesConsolidadas.length} avaliações exportadas!`);
   };
 
   // Agrupar colunas
@@ -507,9 +677,16 @@ export function PainelSupervisor({
           )}
 
           <div className="flex items-center gap-3">
-            <Button onClick={exportarAvaliacoes} disabled={avaliacoesRealizadas.length === 0}>
-              <Download className="h-4 w-4 mr-2" />
-              Exportar processos.csv ({avaliacoesRealizadas.length} avaliações)
+            <Button 
+              onClick={exportarAvaliacoes} 
+              disabled={avaliacoesConsolidadas.length === 0 || loadingExport}
+            >
+              {loadingExport ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Database className="h-4 w-4 mr-2" />
+              )}
+              Exportar Consolidado ({avaliacoesConsolidadas.length} avaliações)
             </Button>
           </div>
         </div>
