@@ -4,15 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2 } from "lucide-react";
 import { ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PainelSupervisorProps {
   onProcessosCarregados: (processos: ProcessoFila[]) => void;
   avaliacoesRealizadas: AvaliacaoDocumental[];
   processosCount: number;
+  uploading?: boolean;
+  podeCarregarPlanilha?: boolean;
 }
 
 // Formatar data para dd/mm/aaaa
@@ -108,12 +112,22 @@ const detectSeparator = (line: string): string => {
   return semicolonCount >= commaCount ? ";" : ",";
 };
 
-export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, processosCount }: PainelSupervisorProps) {
+export function PainelSupervisor({ 
+  onProcessosCarregados, 
+  avaliacoesRealizadas, 
+  processosCount,
+  uploading = false,
+  podeCarregarPlanilha = false
+}: PainelSupervisorProps) {
+  const { isAdmin, isSupervisor } = useAuth();
   const [colunasExportacao, setColunasExportacao] = useState<string[]>(
     COLUNAS_EXPORTACAO.map((c) => c.key)
   );
   const [mostrarColunas, setMostrarColunas] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Verificar permissão (prop tem prioridade, senão usa hook)
+  const temPermissao = podeCarregarPlanilha || isAdmin || isSupervisor;
 
   const toggleColuna = (key: string) => {
     setColunasExportacao((prev) =>
@@ -312,32 +326,55 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
         {/* Upload de Processos */}
         <div className="space-y-3">
           <Label className="text-sm font-medium">Fonte de Dados</Label>
-          <div className="flex items-center gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleUploadProcessos}
-              className="hidden"
-              id="upload-processos"
-            />
-            <Button variant="outline" asChild>
-              <label htmlFor="upload-processos" className="cursor-pointer flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Carregar FILA_PROCESSOS.csv
-              </label>
-            </Button>
-            {processosCount > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <FileSpreadsheet className="h-3 w-3" />
-                {processosCount} processos carregados
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            O CSV deve conter as colunas: CODIGO_PROCESSO, NUMERO_CNJ, DATA_DISTRIBUICAO, POSSUI_MOV_ARQUIVADO, etc.
-            <br />Aceita separador vírgula (,) ou ponto e vírgula (;) automaticamente.
-          </p>
+          
+          {!temPermissao && (
+            <Alert>
+              <ShieldAlert className="h-4 w-4" />
+              <AlertDescription>
+                Apenas administradores e supervisores podem carregar novas planilhas.
+                {processosCount > 0 && " A planilha atual está disponível para avaliação."}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {temPermissao && (
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleUploadProcessos}
+                className="hidden"
+                id="upload-processos"
+                disabled={uploading}
+              />
+              <Button variant="outline" asChild disabled={uploading}>
+                <label htmlFor="upload-processos" className="cursor-pointer flex items-center gap-2">
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {uploading ? "Carregando..." : "Carregar FILA_PROCESSOS.csv"}
+                </label>
+              </Button>
+            </div>
+          )}
+          
+          {processosCount > 0 && (
+            <Badge variant="secondary" className="gap-1">
+              <FileSpreadsheet className="h-3 w-3" />
+              {processosCount} processos carregados
+            </Badge>
+          )}
+          
+          {temPermissao && (
+            <p className="text-xs text-muted-foreground">
+              O CSV deve conter as colunas: CODIGO_PROCESSO, NUMERO_CNJ, DATA_DISTRIBUICAO, POSSUI_MOV_ARQUIVADO, etc.
+              <br />Aceita separador vírgula (,) ou ponto e vírgula (;) automaticamente.
+              <br /><strong>Atenção:</strong> Carregar uma nova planilha substituirá a anterior.
+            </p>
+          )}
         </div>
 
         {/* Exportar Avaliações */}

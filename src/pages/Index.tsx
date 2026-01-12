@@ -1,24 +1,33 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, GitMerge } from "lucide-react";
+import { FileText, GitMerge, LayoutDashboard } from "lucide-react";
 import { Header } from "@/components/cogede/Header";
 import { SessaoCard } from "@/components/cogede/SessaoCard";
 import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
 import { MergePlanilhas } from "@/components/cogede/MergePlanilhas";
 import { PainelSupervisor } from "@/components/cogede/PainelSupervisor";
+import { DashboardSupervisor } from "@/components/cogede/DashboardSupervisor";
 import { SessaoAvaliacao, ProcessoFila, AvaliacaoDocumental } from "@/types/cogede";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useProcessos } from "@/hooks/useProcessos";
 
 export default function Index() {
-  const { profile } = useAuth();
+  const { profile, isAdmin, isSupervisor } = useAuth();
+  const { 
+    processos, 
+    loading: processosLoading, 
+    uploading,
+    podeCarregarPlanilha,
+    carregarPlanilha,
+    atualizarStatusProcesso 
+  } = useProcessos();
   
   const [sessao, setSessao] = useState<SessaoAvaliacao>({
     responsavel: "",
     processoAtual: undefined,
     iniciada: false
   });
-  const [processos, setProcessos] = useState<ProcessoFila[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDocumental[]>([]);
   const [carregando, setCarregando] = useState(false);
 
@@ -36,6 +45,8 @@ export default function Index() {
   const totalEmAnalise = processos.filter(p => p.STATUS_AVALIACAO === "EM_ANALISE").length;
   const totalConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length;
 
+  const podeVerDashboard = isAdmin || isSupervisor;
+
   const handleIniciarSessao = (responsavel: string) => {
     setSessao({
       responsavel,
@@ -45,21 +56,23 @@ export default function Index() {
     toast.success(`Sessão iniciada para ${responsavel}`);
   };
 
-  const handleIniciarAvaliacao = () => {
+  const handleIniciarAvaliacao = async () => {
+    if (!profile?.id) return;
+    
     setCarregando(true);
     
-    // Simular busca do próximo processo pendente
-    setTimeout(() => {
-      const proximoProcesso = processos.find(p => p.STATUS_AVALIACAO === "PENDENTE");
+    // Buscar próximo processo pendente
+    const proximoProcesso = processos.find(p => p.STATUS_AVALIACAO === "PENDENTE");
+    
+    if (proximoProcesso) {
+      // Atualizar no banco
+      const sucesso = await atualizarStatusProcesso(
+        proximoProcesso.CODIGO_PROCESSO,
+        "EM_ANALISE",
+        profile.id
+      );
       
-      if (proximoProcesso) {
-        // Marcar como EM_ANALISE
-        setProcessos(prev => prev.map(p => 
-          p.CODIGO_PROCESSO === proximoProcesso.CODIGO_PROCESSO
-            ? { ...p, STATUS_AVALIACAO: "EM_ANALISE" as const, RESPONSAVEL: sessao.responsavel, DATA_INICIO_AVALIACAO: new Date().toISOString() }
-            : p
-        ));
-        
+      if (sucesso) {
         setSessao(prev => ({
           ...prev,
           processoAtual: {
@@ -72,14 +85,18 @@ export default function Index() {
         
         toast.success(`Processo ${proximoProcesso.CODIGO_PROCESSO} capturado para avaliação`);
       } else {
-        toast.info("Não há mais processos pendentes na fila");
+        toast.error("Erro ao capturar processo");
       }
-      
-      setCarregando(false);
-    }, 1000);
+    } else {
+      toast.info("Não há mais processos pendentes na fila");
+    }
+    
+    setCarregando(false);
   };
 
-  const handleSalvarEProximo = (avaliacao: AvaliacaoDocumental) => {
+  const handleSalvarEProximo = async (avaliacao: AvaliacaoDocumental) => {
+    if (!profile?.id) return;
+    
     setCarregando(true);
     
     // Adicionar data de fim e salvar avaliação
@@ -89,15 +106,14 @@ export default function Index() {
     };
     setAvaliacoes((prev) => [...prev, avaliacaoCompleta]);
     
-    // Simular salvamento
-    setTimeout(() => {
-      // Marcar processo atual como CONCLUIDO
-      setProcessos(prev => prev.map(p => 
-        p.CODIGO_PROCESSO === avaliacao.codigoProcesso
-          ? { ...p, STATUS_AVALIACAO: "CONCLUIDO" as const }
-          : p
-      ));
-      
+    // Marcar processo como concluído
+    const sucesso = await atualizarStatusProcesso(
+      avaliacao.codigoProcesso,
+      "CONCLUIDO",
+      profile.id
+    );
+    
+    if (sucesso) {
       toast.success("Avaliação salva com sucesso!");
       
       // Buscar próximo processo
@@ -107,34 +123,38 @@ export default function Index() {
       );
       
       if (proximoProcesso) {
-        setProcessos(prev => prev.map(p => 
-          p.CODIGO_PROCESSO === proximoProcesso.CODIGO_PROCESSO
-            ? { ...p, STATUS_AVALIACAO: "EM_ANALISE" as const, RESPONSAVEL: sessao.responsavel }
-            : p
-        ));
+        const sucessoProximo = await atualizarStatusProcesso(
+          proximoProcesso.CODIGO_PROCESSO,
+          "EM_ANALISE",
+          profile.id
+        );
         
-        setSessao(prev => ({
-          ...prev,
-          processoAtual: {
-            ...proximoProcesso,
-            STATUS_AVALIACAO: "EM_ANALISE",
-            RESPONSAVEL: sessao.responsavel,
-            DATA_INICIO_AVALIACAO: new Date().toISOString()
-          }
-        }));
-        
-        toast.info("Próximo processo carregado automaticamente");
+        if (sucessoProximo) {
+          setSessao(prev => ({
+            ...prev,
+            processoAtual: {
+              ...proximoProcesso,
+              STATUS_AVALIACAO: "EM_ANALISE",
+              RESPONSAVEL: sessao.responsavel,
+              DATA_INICIO_AVALIACAO: new Date().toISOString()
+            }
+          }));
+          
+          toast.info("Próximo processo carregado automaticamente");
+        }
       } else {
         setSessao(prev => ({ ...prev, processoAtual: undefined }));
         toast.info("Todos os processos foram avaliados!");
       }
-      
-      setCarregando(false);
-    }, 1500);
+    } else {
+      toast.error("Erro ao salvar avaliação");
+    }
+    
+    setCarregando(false);
   };
 
-  const handleProcessosCarregados = (novosProcessos: ProcessoFila[]) => {
-    setProcessos(novosProcessos);
+  const handleProcessosCarregados = async (novosProcessos: ProcessoFila[]) => {
+    await carregarPlanilha(novosProcessos);
     setSessao((prev) => ({ ...prev, processoAtual: undefined }));
   };
 
@@ -144,14 +164,20 @@ export default function Index() {
       
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="avaliacao" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className={`grid w-full max-w-lg ${podeVerDashboard ? "grid-cols-3" : "grid-cols-2"}`}>
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
-              Avaliação Documental
+              Avaliação
             </TabsTrigger>
+            {podeVerDashboard && (
+              <TabsTrigger value="dashboard" className="gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+            )}
             <TabsTrigger value="merge" className="gap-2">
               <GitMerge className="h-4 w-4" />
-              Merge de Planilhas
+              Merge
             </TabsTrigger>
           </TabsList>
 
@@ -160,13 +186,15 @@ export default function Index() {
               onProcessosCarregados={handleProcessosCarregados}
               avaliacoesRealizadas={avaliacoes}
               processosCount={processos.length}
+              uploading={uploading}
+              podeCarregarPlanilha={podeCarregarPlanilha}
             />
             
             <SessaoCard
               sessao={sessao}
               onIniciarSessao={handleIniciarSessao}
               onIniciarAvaliacao={handleIniciarAvaliacao}
-              carregando={carregando}
+              carregando={carregando || processosLoading}
               totalPendentes={totalPendentes}
               totalEmAnalise={totalEmAnalise}
               totalConcluidos={totalConcluidos}
@@ -181,6 +209,12 @@ export default function Index() {
               />
             )}
           </TabsContent>
+
+          {podeVerDashboard && (
+            <TabsContent value="dashboard" className="space-y-6">
+              <DashboardSupervisor processos={processos} />
+            </TabsContent>
+          )}
 
           <TabsContent value="merge">
             <MergePlanilhas />
