@@ -60,6 +60,7 @@ export interface AvaliacaoDocumental {
   divergenciaClassificacao?: string;
   tipoInformadoSistema?: string;
   tipoRealIdentificado?: string;
+  divergenciasDetalhes?: string;
   
   // Seção 5 - Inconsistências
   processoVazio?: boolean;

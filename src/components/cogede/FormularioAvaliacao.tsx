@@ -18,6 +18,14 @@ interface FormularioAvaliacaoProps {
   carregando: boolean;
 }
 
+// Interface para divergência de classificação
+interface DivergenciaClassificacao {
+  id: string;
+  tipoInformado: string;
+  tipoReal: string;
+  idPeca: string;
+}
+
 const initialFormData = {
   // Campos manuais - Seção 2
   descricaoAssuntoFaltante: "",
@@ -37,8 +45,6 @@ const initialFormData = {
   erroTecnico: false,
   ocorrenciasOutroDetalhe: "",
   divergenciaClassificacao: "",
-  tipoInformadoSistema: "",
-  tipoRealIdentificado: "",
 
   // Campos manuais - Seção 5
   processoVazio: false,
@@ -48,12 +54,38 @@ const initialFormData = {
 export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, carregando }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
+  const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
 
   // Limpar formulário quando mudar de processo
   useEffect(() => {
     setPecas([]);
     setFormData(initialFormData);
+    setDivergencias([]);
   }, [processo.CODIGO_PROCESSO]);
+
+  // Funções para gerenciar divergências
+  const adicionarDivergencia = () => {
+    setDivergencias([...divergencias, { id: crypto.randomUUID(), tipoInformado: "", tipoReal: "", idPeca: "" }]);
+  };
+
+  const removerDivergencia = (id: string) => {
+    setDivergencias(divergencias.filter((d) => d.id !== id));
+  };
+
+  const atualizarDivergencia = (id: string, campo: keyof Omit<DivergenciaClassificacao, 'id'>, valor: string) => {
+    setDivergencias(divergencias.map((d) => (d.id === id ? { ...d, [campo]: valor } : d)));
+  };
+
+  // Gerar campos concatenados para divergências
+  const gerarCamposDivergencias = () => {
+    const tiposInformados = divergencias.map((d) => d.tipoInformado).filter(Boolean).join("; ");
+    const tiposReais = divergencias.map((d) => d.tipoReal).filter(Boolean).join("; ");
+    const combinado = divergencias
+      .map((d) => `${d.tipoInformado} → ${d.tipoReal} (ID: ${d.idPeca})`)
+      .filter((d) => d !== " →  (ID: )")
+      .join(" | ");
+    return { tiposInformados, tiposReais, combinado };
+  };
 
   const naoTemAssunto = processo.POSSUI_ASSUNTO?.toLowerCase() === "não";
   const naoTemMovArquivado = processo.POSSUI_MOV_ARQUIVADO?.toLowerCase() === "não";
@@ -118,6 +150,8 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
 
     const { tipos, ids, combinado } = gerarCamposConcatenados();
 
+    const { tiposInformados, tiposReais, combinado: divergenciasCombinado } = gerarCamposDivergencias();
+
     const avaliacao: AvaliacaoDocumental = {
       codigoProcesso: processo.CODIGO_PROCESSO,
       numeroCnj: processo.NUMERO_CNJ,
@@ -144,8 +178,9 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
       erroTecnico: formData.erroTecnico,
       ocorrenciasOutroDetalhe: formData.ocorrenciasOutroDetalhe,
       divergenciaClassificacao: formData.divergenciaClassificacao,
-      tipoInformadoSistema: formData.tipoInformadoSistema,
-      tipoRealIdentificado: formData.tipoRealIdentificado,
+      tipoInformadoSistema: tiposInformados,
+      tipoRealIdentificado: tiposReais,
+      divergenciasDetalhes: divergenciasCombinado,
       processoVazio: formData.processoVazio,
       observacoesGerais: formData.observacoesGerais,
       responsavel,
@@ -498,25 +533,67 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
             </div>
 
             {temDivergenciaClassificacao && (
-              <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="space-y-2">
-                  <Label className="text-amber-800">Tipo informado no sistema</Label>
-                  <Input
-                    placeholder="Ex: Petição Inicial"
-                    value={formData.tipoInformadoSistema}
-                    onChange={(e) => setFormData({ ...formData, tipoInformadoSistema: e.target.value })}
-                    className="bg-white"
-                  />
+              <div className="space-y-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                {/* Cabeçalho da tabela */}
+                <div className="grid grid-cols-[1fr_1fr_120px_40px] gap-2 text-sm font-medium text-amber-800">
+                  <span>Tipo Informado</span>
+                  <span>Tipo Real</span>
+                  <span>ID da Peça</span>
+                  <span></span>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-amber-800">Tipo real identificado</Label>
-                  <Input
-                    placeholder="Ex: Contestação"
-                    value={formData.tipoRealIdentificado}
-                    onChange={(e) => setFormData({ ...formData, tipoRealIdentificado: e.target.value })}
-                    className="bg-white"
-                  />
-                </div>
+
+                {/* Lista de divergências */}
+                {divergencias.map((divergencia) => (
+                  <div key={divergencia.id} className="grid grid-cols-[1fr_1fr_120px_40px] gap-2 items-center">
+                    <Input
+                      placeholder="Ex: Petição Inicial"
+                      value={divergencia.tipoInformado}
+                      onChange={(e) => atualizarDivergencia(divergencia.id, "tipoInformado", e.target.value)}
+                      className="bg-white"
+                    />
+                    <Input
+                      placeholder="Ex: Contestação"
+                      value={divergencia.tipoReal}
+                      onChange={(e) => atualizarDivergencia(divergencia.id, "tipoReal", e.target.value)}
+                      className="bg-white"
+                    />
+                    <Input
+                      placeholder="ID"
+                      value={divergencia.idPeca}
+                      onChange={(e) => atualizarDivergencia(divergencia.id, "idPeca", e.target.value)}
+                      className="bg-white"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removerDivergencia(divergencia.id)}
+                      className="text-destructive hover:text-destructive h-9 w-9"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                {/* Botão de adicionar */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={adicionarDivergencia}
+                  className="w-full bg-white hover:bg-amber-100"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Divergência
+                </Button>
+
+                {/* Resumo concatenado */}
+                {divergencias.length > 0 && (
+                  <div className="pt-2 border-t border-amber-200">
+                    <Label className="text-xs text-amber-700">Resumo das divergências:</Label>
+                    <p className="text-sm font-mono text-amber-900 mt-1">
+                      {gerarCamposDivergencias().combinado || "—"}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
