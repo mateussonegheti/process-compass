@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, GitMerge, LayoutDashboard } from "lucide-react";
+import { FileText, GitMerge, LayoutDashboard, ClipboardList } from "lucide-react";
 import { Header } from "@/components/cogede/Header";
 import { SessaoCard } from "@/components/cogede/SessaoCard";
 import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
@@ -271,10 +271,14 @@ export default function Index() {
       
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="avaliacao" className="space-y-6">
-          <TabsList className={`grid w-full max-w-lg ${podeVerDashboard ? "grid-cols-3" : "grid-cols-2"}`}>
+          <TabsList className={`grid w-full max-w-2xl ${podeVerDashboard ? "grid-cols-4" : "grid-cols-3"}`}>
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
               Avaliação
+            </TabsTrigger>
+            <TabsTrigger value="minhas-avaliacoes" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Minhas Avaliações
             </TabsTrigger>
             {podeVerDashboard && (
               <TabsTrigger value="dashboard" className="gap-2">
@@ -317,13 +321,18 @@ export default function Index() {
                 carregando={carregando}
               />
             )}
+          </TabsContent>
 
-            {/* Grid de avaliações do usuário (para todos) */}
-            {!sessao.processoAtual && loteAtivo?.id && (
+          <TabsContent value="minhas-avaliacoes" className="space-y-6">
+            {loteAtivo?.id ? (
               <MinhasAvaliacoes
                 onEditarAvaliacao={handleEditarAvaliacao}
                 loteId={loteAtivo.id}
               />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                Nenhum lote ativo. Aguarde o supervisor carregar uma planilha.
+              </div>
             )}
           </TabsContent>
 
