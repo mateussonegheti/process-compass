@@ -167,6 +167,8 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
           "RESPONSAVEL",
           "DATA_INICIO",
           "DATA_FIM",
+          "ID_PECA",
+          "TIPOS_PECAS",
         ];
 
         expectedCols.forEach((col) => {
@@ -200,6 +202,8 @@ export function PainelSupervisor({ onProcessosCarregados, avaliacoesRealizadas, 
             RESPONSAVEL: colMap.RESPONSAVEL !== undefined ? values[colMap.RESPONSAVEL] || undefined : undefined,
             DATA_INICIO_AVALIACAO: colMap.DATA_INICIO !== undefined ? values[colMap.DATA_INICIO] || undefined : undefined,
             DATA_FIM: colMap.DATA_FIM !== undefined ? values[colMap.DATA_FIM] || undefined : undefined,
+            ID_PECA: colMap.ID_PECA !== undefined ? values[colMap.ID_PECA] || undefined : undefined,
+            TIPOS_PECAS: colMap.TIPOS_PECAS !== undefined ? values[colMap.TIPOS_PECAS] || undefined : undefined,
           };
         }).filter((p) => p.CODIGO_PROCESSO);
 
