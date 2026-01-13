@@ -679,7 +679,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           </CardContent>
         </Card>
 
-        {/* Estatísticas por Avaliador 
+        {/* Estatísticas por Avaliador */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -734,7 +734,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           </CardContent>
         </Card>
       </div>
-*/}
+
       {/* Grid de Dados - Apenas processos concluídos */}
       <Card>
         <CardHeader>
