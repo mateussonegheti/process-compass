@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResizableDataGrid, ColumnDef } from "./ResizableDataGrid";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { 
   Activity, 
   Users, 
@@ -15,7 +16,8 @@ import {
   TrendingUp,
   Database,
   List,
-  RefreshCw
+  RefreshCw,
+  Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +43,14 @@ interface AvaliacaoProcesso {
   pecas_ids: string | null;
 }
 
+interface LoteInfo {
+  id: string;
+  nome: string | null;
+  created_at: string;
+  total_processos: number;
+  ativo: boolean;
+}
+
 interface DashboardSupervisorProps {
   processos: ProcessoFila[];
   loteId?: string;
@@ -55,7 +65,7 @@ interface ProcessoComDados extends ProcessoFila {
 
 type SortColumn = "CODIGO" | "NUMERO_CNJ" | "DATA_DISTRIBUICAO" | "ANO" | "DATA_ARQUIVAMENTO" | "GUARDA" | "ARQUIVOS" | "RESPONSAVEL" | "DATA_FIM";
 
-export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorProps) {
+export function DashboardSupervisor({ processos: processosProps, loteId: loteIdProp }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
   const [estatisticasPorAvaliador, setEstatisticasPorAvaliador] = useState<EstatisticasAvaliador[]>([]);
   const [avaliacoesMap, setAvaliacoesMap] = useState<Map<string, AvaliacaoProcesso>>(new Map());
@@ -64,11 +74,27 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
   const [linhasExibidas, setLinhasExibidas] = useState<string>("10");
   const [sortColumn, setSortColumn] = useState<SortColumn>("DATA_FIM");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  
+  // Novos estados para seletores
+  const [lotes, setLotes] = useState<LoteInfo[]>([]);
+  const [loteSelecionado, setLoteSelecionado] = useState<string | undefined>(loteIdProp);
+  const [avaliadores, setAvaliadores] = useState<{ id: string; nome: string }[]>([]);
+  const [avaliadorSelecionado, setAvaliadorSelecionado] = useState<string>("todos");
+  const [processosDoLote, setProcessosDoLote] = useState<ProcessoFila[]>(processosProps);
 
-  const totalPendentes = processos.filter((p) => p.STATUS_AVALIACAO === "PENDENTE").length;
-  const totalEmAnalise = processos.filter((p) => p.STATUS_AVALIACAO === "EM_ANALISE").length;
-  const totalConcluidos = processos.filter((p) => p.STATUS_AVALIACAO === "CONCLUIDO").length;
-  const total = processos.length;
+  // Usar lote selecionado ou prop
+  const loteId = loteSelecionado || loteIdProp;
+
+  // Calcular totais baseado nos processos atuais e filtro de avaliador
+  const processosFiltrados = useMemo(() => {
+    if (avaliadorSelecionado === "todos") return processosDoLote;
+    return processosDoLote.filter(p => p.RESPONSAVEL === avaliadorSelecionado);
+  }, [processosDoLote, avaliadorSelecionado]);
+
+  const totalPendentes = processosFiltrados.filter((p) => p.STATUS_AVALIACAO === "PENDENTE").length;
+  const totalEmAnalise = processosFiltrados.filter((p) => p.STATUS_AVALIACAO === "EM_ANALISE").length;
+  const totalConcluidos = processosFiltrados.filter((p) => p.STATUS_AVALIACAO === "CONCLUIDO").length;
+  const total = processosFiltrados.length;
   const progresso = total > 0 ? (totalConcluidos / total) * 100 : 0;
 
   // Buscar dados em tempo real
@@ -188,9 +214,70 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
     }
   }, [loteId]);
 
+  // Buscar todos os lotes disponíveis
+  const fetchLotes = useCallback(async () => {
+    const { data: lotesData, error } = await supabase
+      .from("lotes_importacao")
+      .select("id, nome, created_at, total_processos, ativo")
+      .order("created_at", { ascending: false });
+
+    if (!error && lotesData) {
+      setLotes(lotesData);
+      
+      // Extrair avaliadores únicos dos profiles que avaliaram no lote
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, nome");
+      
+      if (profilesData) {
+        setAvaliadores(profilesData);
+      }
+    }
+  }, []);
+
+  // Buscar processos do lote selecionado
+  const fetchProcessosDoLote = useCallback(async () => {
+    if (!loteId) {
+      setProcessosDoLote(processosProps);
+      return;
+    }
+
+    // Se é o lote da prop, usar os processos da prop
+    if (loteId === loteIdProp) {
+      setProcessosDoLote(processosProps);
+      return;
+    }
+
+    // Senão, buscar do banco
+    const { data: processosData, error } = await supabase
+      .from("processos_fila")
+      .select("*")
+      .eq("lote_id", loteId);
+
+    if (!error && processosData) {
+      const processosFormatados: ProcessoFila[] = processosData.map(p => ({
+        ID: p.id,
+        CODIGO_PROCESSO: p.codigo_processo,
+        NUMERO_CNJ: p.numero_cnj,
+        POSSUI_ASSUNTO: p.possui_assunto || "",
+        ASSUNTO_PRINCIPAL: p.assunto_principal || "",
+        POSSUI_MOV_ARQUIVADO: p.possui_mov_arquivado || "",
+        DATA_DISTRIBUICAO: p.data_distribuicao || "",
+        DATA_ARQUIVAMENTO_DEF: p.data_arquivamento_def || "",
+        PRAZO_5_ANOS_COMPLETO: p.prazo_5_anos_completo || "",
+        STATUS_AVALIACAO: p.status_avaliacao as "PENDENTE" | "EM_ANALISE" | "CONCLUIDO",
+        RESPONSAVEL: p.responsavel_avaliacao || undefined,
+        DATA_INICIO_AVALIACAO: p.data_inicio_avaliacao || undefined,
+        DATA_FIM: p.data_fim_avaliacao || undefined,
+      }));
+      setProcessosDoLote(processosFormatados);
+    }
+  }, [loteId, loteIdProp, processosProps]);
+
   // Configurar realtime
   useEffect(() => {
     fetchDadosRealtime();
+    fetchLotes();
 
     // Subscrever a mudanças
     const channel = supabase
@@ -204,6 +291,7 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
         },
         () => {
           fetchDadosRealtime();
+          fetchProcessosDoLote();
         }
       )
       .on(
@@ -226,7 +314,12 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [loteId, fetchDadosRealtime]);
+  }, [loteId, fetchDadosRealtime, fetchLotes, fetchProcessosDoLote]);
+
+  // Atualizar processos quando o lote selecionado mudar
+  useEffect(() => {
+    fetchProcessosDoLote();
+  }, [fetchProcessosDoLote]);
 
   const formatarTempo = (dataIso: string) => {
     if (!dataIso) return "—";
@@ -262,7 +355,7 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
 
   // Preparar dados para o grid
   const processosComDados = useMemo((): ProcessoComDados[] => {
-    const processosConcluidos = processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
+    const processosConcluidos = processosFiltrados.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
     
     return processosConcluidos.map(processo => {
       const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
@@ -284,7 +377,7 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
         ano: extrairAno(processo.DATA_DISTRIBUICAO),
       };
     });
-  }, [processos, avaliacoesMap, profilesMap]);
+  }, [processosFiltrados, avaliacoesMap, profilesMap]);
 
   // Ordenar dados
   const processosOrdenados = useMemo(() => {
@@ -409,6 +502,71 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
 
   return (
     <div className="space-y-6">
+      {/* Filtros: Seletor de Lote e Avaliador */}
+      <Card className="bg-muted/30">
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Filtros:</Label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Label htmlFor="lote-select" className="text-sm text-muted-foreground">Lote:</Label>
+              <Select 
+                value={loteSelecionado || ""} 
+                onValueChange={(value) => {
+                  setLoteSelecionado(value || undefined);
+                  setAvaliadorSelecionado("todos");
+                }}
+              >
+                <SelectTrigger id="lote-select" className="w-[280px]">
+                  <SelectValue placeholder="Selecione um lote" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lotes.map((lote) => (
+                    <SelectItem key={lote.id} value={lote.id}>
+                      <div className="flex items-center gap-2">
+                        {lote.ativo && <Badge variant="default" className="text-xs">Ativo</Badge>}
+                        <span>{lote.nome || `Lote ${new Date(lote.created_at).toLocaleDateString("pt-BR")}`}</span>
+                        <span className="text-muted-foreground">({lote.total_processos} processos)</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="avaliador-select" className="text-sm text-muted-foreground">Avaliador:</Label>
+              <Select value={avaliadorSelecionado} onValueChange={setAvaliadorSelecionado}>
+                <SelectTrigger id="avaliador-select" className="w-[200px]">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os avaliadores</SelectItem>
+                  {avaliadores.map((av) => (
+                    <SelectItem key={av.id} value={av.id}>
+                      {av.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {avaliadorSelecionado !== "todos" && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setAvaliadorSelecionado("todos")}
+              >
+                Limpar filtro
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Cards de Resumo */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -587,7 +745,7 @@ export function DashboardSupervisor({ processos, loteId }: DashboardSupervisorPr
                 Dados dos Processos Avaliados
               </CardTitle>
               <CardDescription>
-                Processos com avaliação concluída ({processosComDados.length} de {processos.length})
+                Processos com avaliação concluída ({processosComDados.length} de {processosFiltrados.length})
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">

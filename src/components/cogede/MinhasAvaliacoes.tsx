@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, FileText, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Edit, FileText, Loader2, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logger } from "@/lib/logger";
@@ -17,6 +19,7 @@ interface AvaliacaoComProcesso {
   codigo_processo: string;
   numero_cnj: string;
   destinacao_permanente: string | null;
+  lote_nome?: string;
 }
 
 interface MinhasAvaliacoesProps {
@@ -28,6 +31,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
   const { profile } = useAuth();
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoComProcesso[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mostrarTodos, setMostrarTodos] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -58,14 +62,15 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
           return;
         }
 
-        // Buscar dados dos processos
+        // Buscar dados dos processos com informações do lote
         const processoIds = avaliacoesData.map(a => a.processo_id);
         let query = supabase
           .from("processos_fila")
-          .select("id, codigo_processo, numero_cnj")
+          .select("id, codigo_processo, numero_cnj, lote_id")
           .in("id", processoIds);
         
-        if (loteId) {
+        // Filtrar por lote apenas se NÃO estiver mostrando todos
+        if (!mostrarTodos && loteId) {
           query = query.eq("lote_id", loteId);
         }
 
@@ -75,6 +80,15 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
           logger.error("Erro ao buscar processos:", processosError);
           return;
         }
+
+        // Buscar nomes dos lotes
+        const loteIds = [...new Set(processosData?.map(p => p.lote_id) || [])];
+        const { data: lotesData } = await supabase
+          .from("lotes_importacao")
+          .select("id, nome, created_at")
+          .in("id", loteIds);
+        
+        const lotesMap = new Map(lotesData?.map(l => [l.id, l.nome || `Lote ${new Date(l.created_at).toLocaleDateString("pt-BR")}`]) || []);
 
         // Combinar dados
         const processosMap = new Map(processosData?.map(p => [p.id, p]) || []);
@@ -91,6 +105,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
               codigo_processo: processo.codigo_processo,
               numero_cnj: processo.numero_cnj,
               destinacao_permanente: av.destinacao_permanente,
+              lote_nome: lotesMap.get(processo.lote_id) || "—",
             };
           });
 
@@ -123,7 +138,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.id, loteId]);
+  }, [profile?.id, loteId, mostrarTodos]);
 
   const handleEditar = async (avaliacao: AvaliacaoComProcesso) => {
     // Buscar dados completos do processo
@@ -183,22 +198,37 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Minhas Avaliações
-          <Badge variant="secondary" className="ml-2">
-            {avaliacoes.length}
-          </Badge>
-        </CardTitle>
-        <CardDescription>
-          Processos que você avaliou neste lote. Clique em "Editar" para corrigir alguma avaliação.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Minhas Avaliações
+              <Badge variant="secondary" className="ml-2">
+                {avaliacoes.length}
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              {mostrarTodos 
+                ? "Todas as suas avaliações de todos os lotes" 
+                : "Processos que você avaliou neste lote"}
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="mostrar-todos" className="text-sm">Histórico completo</Label>
+            <Switch
+              id="mostrar-todos"
+              checked={mostrarTodos}
+              onCheckedChange={setMostrarTodos}
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {avaliacoes.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>Você ainda não avaliou nenhum processo neste lote.</p>
+            <p>{mostrarTodos ? "Você ainda não avaliou nenhum processo." : "Você ainda não avaliou nenhum processo neste lote."}</p>
           </div>
         ) : (
           <div className="border rounded-md">
@@ -207,6 +237,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
                 <TableRow>
                   <TableHead>Código</TableHead>
                   <TableHead>Número CNJ</TableHead>
+                  {mostrarTodos && <TableHead>Lote</TableHead>}
                   <TableHead>Guarda</TableHead>
                   <TableHead>Avaliado em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -217,6 +248,13 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
                   <TableRow key={av.id}>
                     <TableCell className="font-mono">{av.codigo_processo}</TableCell>
                     <TableCell className="font-mono">{av.numero_cnj}</TableCell>
+                    {mostrarTodos && (
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {av.lote_nome}
+                        </Badge>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge variant={av.destinacao_permanente === "Sim" ? "default" : "secondary"}>
                         {av.destinacao_permanente === "Sim" ? "I (Permanente)" : av.destinacao_permanente === "Não" ? "P (Parcial)" : "—"}
