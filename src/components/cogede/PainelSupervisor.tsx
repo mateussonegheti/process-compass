@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProcessoFila } from "@/types/cogede";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
@@ -166,20 +167,50 @@ export function PainelSupervisor({
   const [loadingExport, setLoadingExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Estado para seletor de lote de exportação
+  const [lotes, setLotes] = useState<{ id: string; nome: string | null; created_at: string; total_processos: number; ativo: boolean }[]>([]);
+  const [loteExportacao, setLoteExportacao] = useState<string | undefined>(loteId);
+  
   // Verificar permissão (prop tem prioridade, senão usa hook)
   const temPermissao = podeCarregarPlanilha || isAdmin || isSupervisor;
 
+  // Buscar todos os lotes disponíveis
+  const fetchLotes = useCallback(async () => {
+    const { data: lotesData, error } = await supabase
+      .from("lotes_importacao")
+      .select("id, nome, created_at, total_processos, ativo")
+      .order("created_at", { ascending: false });
+
+    if (!error && lotesData) {
+      setLotes(lotesData);
+    }
+  }, []);
+
+  // Buscar lotes ao montar
+  useEffect(() => {
+    fetchLotes();
+  }, [fetchLotes]);
+
+  // Atualizar lote de exportação quando o lote ativo mudar
+  useEffect(() => {
+    if (loteId && !loteExportacao) {
+      setLoteExportacao(loteId);
+    }
+  }, [loteId, loteExportacao]);
+
   // Buscar avaliações consolidadas do banco
   const fetchAvaliacoesConsolidadas = useCallback(async () => {
-    if (!loteId) return;
+    const loteParaExportar = loteExportacao || loteId;
+    if (!loteParaExportar) return;
     
     setLoadingExport(true);
     try {
+      const loteParaExportar = loteExportacao || loteId;
       // Buscar processos concluídos do lote
       const { data: processos, error: processosError } = await supabase
         .from("processos_fila")
         .select("*")
-        .eq("lote_id", loteId)
+        .eq("lote_id", loteParaExportar)
         .eq("status_avaliacao", "CONCLUIDO");
 
       if (processosError) {
@@ -262,7 +293,7 @@ export function PainelSupervisor({
     } finally {
       setLoadingExport(false);
     }
-  }, [loteId]);
+  }, [loteExportacao, loteId]);
 
   // Carregar avaliações quando o lote mudar
   useEffect(() => {
@@ -635,6 +666,37 @@ export function PainelSupervisor({
             >
               {mostrarColunas ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               {mostrarColunas ? "Ocultar colunas" : "Selecionar colunas"}
+            </Button>
+          </div>
+
+          {/* Seletor de Lote para Exportação */}
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm text-muted-foreground">Lote:</Label>
+            <Select 
+              value={loteExportacao || ""} 
+              onValueChange={(value) => setLoteExportacao(value || undefined)}
+            >
+              <SelectTrigger className="w-[300px]">
+                <SelectValue placeholder="Selecione um lote para exportar" />
+              </SelectTrigger>
+              <SelectContent>
+                {lotes.map((lote) => (
+                  <SelectItem key={lote.id} value={lote.id}>
+                    {lote.ativo && "(Ativo) "}
+                    {lote.nome || `Lote ${new Date(lote.created_at).toLocaleDateString("pt-BR")}`}
+                    {` (${lote.total_processos} processos)`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchAvaliacoesConsolidadas}
+              disabled={loadingExport || !loteExportacao}
+            >
+              {loadingExport ? <Loader2 className="h-4 w-4 animate-spin" /> : "Carregar"}
             </Button>
           </div>
 
