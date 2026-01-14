@@ -36,7 +36,7 @@ export default function Index() {
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDocumental[]>([]);
   const [carregando, setCarregando] = useState(false);
 
-  // Auto-preencher responsável e liberar processos órfãos quando o perfil do usuário estiver disponível
+  // Auto-preencher responsável quando o perfil do usuário estiver disponível
   useEffect(() => {
     if (profile?.nome && !sessao.responsavel) {
       setSessao(prev => ({
@@ -44,12 +44,14 @@ export default function Index() {
         responsavel: profile.nome
       }));
     }
-    
-    // Liberar processos órfãos do usuário ao carregar a página
+  }, [profile?.nome, sessao.responsavel]);
+
+  // Liberar processos órfãos do usuário ao carregar a página (apenas uma vez)
+  useEffect(() => {
     if (profile?.id && loteAtivo?.id) {
       liberarProcessosOrfaos(profile.id);
     }
-  }, [profile?.nome, profile?.id, sessao.responsavel, loteAtivo?.id, liberarProcessosOrfaos]);
+  }, [profile?.id, loteAtivo?.id, liberarProcessosOrfaos]);
 
   const totalPendentes = processos.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
   const totalEmAnalise = processos.filter(p => p.STATUS_AVALIACAO === "EM_ANALISE").length;
