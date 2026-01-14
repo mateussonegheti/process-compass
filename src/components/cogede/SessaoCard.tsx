@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +23,11 @@ export function SessaoCard({
   carregando,
   totalPendentes,
   totalEmAnalise,
-  totalConcluidos
+  totalConcluidos,
 }: SessaoCardProps) {
   const { profile, loading } = useAuth();
+
+  const [sessaoAutoIniciada, setSessaoAutoIniciada] = useState(false);
 
   // Auto-iniciar sessão quando o perfil estiver disponível
   useEffect(() => {
@@ -42,9 +44,7 @@ export function SessaoCard({
             <User className="h-5 w-5" />
             Carregando...
           </CardTitle>
-          <CardDescription>
-            Preparando sessão de avaliação...
-          </CardDescription>
+          <CardDescription>Preparando sessão de avaliação...</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-6">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -79,17 +79,13 @@ export function SessaoCard({
       </CardHeader>
       <CardContent>
         {!sessao.processoAtual ? (
-          <Button 
-            onClick={onIniciarAvaliacao} 
+          <Button
+            onClick={onIniciarAvaliacao}
             disabled={carregando || totalPendentes === 0}
             className="w-full"
             size="lg"
           >
-            {carregando ? (
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-            ) : (
-              <FileSearch className="h-5 w-5 mr-2" />
-            )}
+            {carregando ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <FileSearch className="h-5 w-5 mr-2" />}
             {carregando ? "Buscando processo..." : "Iniciar Avaliação"}
           </Button>
         ) : (
@@ -97,9 +93,7 @@ export function SessaoCard({
             <FileSearch className="h-5 w-5 text-primary" />
             <div>
               <p className="font-medium">Avaliando processo</p>
-              <p className="text-sm text-muted-foreground">
-                {sessao.processoAtual.CODIGO_PROCESSO}
-              </p>
+              <p className="text-sm text-muted-foreground">{sessao.processoAtual.CODIGO_PROCESSO}</p>
             </div>
           </div>
         )}
