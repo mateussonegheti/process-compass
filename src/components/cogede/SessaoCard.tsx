@@ -31,10 +31,11 @@ export function SessaoCard({
 
   // Auto-iniciar sessão quando o perfil estiver disponível
   useEffect(() => {
-    if (!sessao.iniciada && profile?.nome && !loading) {
+    if (!sessaoAutoIniciada && !sessao.iniciada && profile?.nome && !loading) {
+      setSessaoAutoIniciada(true);
       onIniciarSessao(profile.nome);
     }
-  }, [sessao.iniciada, profile?.nome, loading, onIniciarSessao]);
+  }, [sessaoAutoIniciada, sessao.iniciada, profile?.nome, loading, onIniciarSessao]);
 
   if (!sessao.iniciada) {
     return (
@@ -80,6 +81,7 @@ export function SessaoCard({
       <CardContent>
         {!sessao.processoAtual ? (
           <Button
+            type="button"
             onClick={onIniciarAvaliacao}
             disabled={carregando || totalPendentes === 0}
             className="w-full"
