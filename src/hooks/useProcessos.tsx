@@ -174,7 +174,7 @@ export function useProcessos() {
   };
 
   // Liberar processos órfãos do usuário (EM_ANALISE sem conclusão)
-  const liberarProcessosOrfaos = async (responsavelId: string) => {
+  const liberarProcessosOrfaos = useCallback(async (responsavelId: string) => {
     if (!loteAtivo?.id) return;
     
     try {
@@ -200,7 +200,7 @@ export function useProcessos() {
     } catch (error) {
       logger.error("[useProcessos] Erro ao liberar processos órfãos:", error);
     }
-  };
+  }, [loteAtivo?.id, fetchProcessos]);
 
   // Atualizar status de um processo
   const atualizarStatusProcesso = async (

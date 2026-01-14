@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +26,15 @@ export function SessaoCard({
   totalConcluidos,
 }: SessaoCardProps) {
   const { profile, loading } = useAuth();
-
-  const [sessaoAutoIniciada, setSessaoAutoIniciada] = useState(false);
+  const sessaoAutoIniciadaRef = useRef(false);
 
   // Auto-iniciar sessão quando o perfil estiver disponível
   useEffect(() => {
-    if (!sessaoAutoIniciada && !sessao.iniciada && profile?.nome && !loading) {
-      setSessaoAutoIniciada(true);
+    if (!sessaoAutoIniciadaRef.current && !sessao.iniciada && profile?.nome && !loading) {
+      sessaoAutoIniciadaRef.current = true;
       onIniciarSessao(profile.nome);
     }
-  }, [sessaoAutoIniciada, sessao.iniciada, profile?.nome, loading, onIniciarSessao]);
+  }, [sessao.iniciada, profile?.nome, loading, onIniciarSessao]);
 
   if (!sessao.iniciada) {
     return (
