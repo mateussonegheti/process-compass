@@ -6,18 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ResizableDataGrid, ColumnDef } from "./ResizableDataGrid";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { 
-  Activity, 
-  Users, 
-  FileCheck, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Activity,
+  Users,
+  FileCheck,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   TrendingUp,
   Database,
   List,
   RefreshCw,
-  Filter
+  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,7 +63,16 @@ interface ProcessoComDados extends ProcessoFila {
   ano: string;
 }
 
-type SortColumn = "CODIGO" | "NUMERO_CNJ" | "DATA_DISTRIBUICAO" | "ANO" | "DATA_ARQUIVAMENTO" | "GUARDA" | "ARQUIVOS" | "RESPONSAVEL" | "DATA_FIM";
+type SortColumn =
+  | "CODIGO"
+  | "NUMERO_CNJ"
+  | "DATA_DISTRIBUICAO"
+  | "ANO"
+  | "DATA_ARQUIVAMENTO"
+  | "GUARDA"
+  | "ARQUIVOS"
+  | "RESPONSAVEL"
+  | "DATA_FIM";
 
 export function DashboardSupervisor({ processos: processosProps, loteId: loteIdProp }: DashboardSupervisorProps) {
   const [avaliacoesEmAndamento, setAvaliacoesEmAndamento] = useState<AvaliacaoEmAndamento[]>([]);
@@ -74,7 +83,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
   const [linhasExibidas, setLinhasExibidas] = useState<string>("10");
   const [sortColumn, setSortColumn] = useState<SortColumn>("DATA_FIM");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  
+
   // Novos estados para seletores
   const [lotes, setLotes] = useState<LoteInfo[]>([]);
   const [loteSelecionado, setLoteSelecionado] = useState<string | undefined>(loteIdProp);
@@ -88,7 +97,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
   // Calcular totais baseado nos processos atuais e filtro de avaliador
   const processosFiltrados = useMemo(() => {
     if (avaliadorSelecionado === "todos") return processosDoLote;
-    return processosDoLote.filter(p => p.RESPONSAVEL === avaliadorSelecionado);
+    return processosDoLote.filter((p) => p.RESPONSAVEL === avaliadorSelecionado);
   }, [processosDoLote, avaliadorSelecionado]);
 
   const totalPendentes = processosFiltrados.filter((p) => p.STATUS_AVALIACAO === "PENDENTE").length;
@@ -101,9 +110,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
   const fetchDadosRealtime = useCallback(async () => {
     try {
       // Primeiro buscar todos os profiles para fazer o mapeamento
-      const { data: allProfiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, nome");
+      const { data: allProfiles, error: profilesError } = await supabase.from("profiles").select("id, nome");
 
       const newProfilesMap = new Map<string, string>();
       if (!profilesError && allProfiles) {
@@ -116,29 +123,33 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
       // Buscar processos em análise (apenas os que estão realmente sendo avaliados agora)
       let queryEmAnalise = supabase
         .from("processos_fila")
-        .select(`
+        .select(
+          `
           id,
           codigo_processo,
           numero_cnj,
           data_inicio_avaliacao,
           responsavel_avaliacao
-        `)
+        `,
+        )
         .eq("status_avaliacao", "EM_ANALISE")
         .not("responsavel_avaliacao", "is", null)
         .not("data_inicio_avaliacao", "is", null);
-      
+
       // Filtrar por lote se informado
       if (loteId) {
         queryEmAnalise = queryEmAnalise.eq("lote_id", loteId);
       }
-      
+
       const { data: processosEmAnalise, error: processosError } = await queryEmAnalise;
 
       if (processosError) {
         logger.error("Erro ao buscar processos em análise:", processosError);
       } else if (processosEmAnalise) {
         const emAndamento: AvaliacaoEmAndamento[] = processosEmAnalise.map((p) => ({
-          avaliador_nome: p.responsavel_avaliacao ? newProfilesMap.get(p.responsavel_avaliacao) || "Desconhecido" : "Desconhecido",
+          avaliador_nome: p.responsavel_avaliacao
+            ? newProfilesMap.get(p.responsavel_avaliacao) || "Desconhecido"
+            : "Desconhecido",
           processo_codigo: p.codigo_processo,
           processo_cnj: p.numero_cnj,
           inicio: p.data_inicio_avaliacao || "",
@@ -149,49 +160,55 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
       // Buscar estatísticas por avaliador (apenas processos concluídos)
       let queryStats = supabase
         .from("processos_fila")
-        .select(`
+        .select(
+          `
           status_avaliacao,
           responsavel_avaliacao
-        `)
+        `,
+        )
         .not("responsavel_avaliacao", "is", null)
         .in("status_avaliacao", ["CONCLUIDO", "EM_ANALISE"]);
-      
+
       // Filtrar por lote se informado
       if (loteId) {
         queryStats = queryStats.eq("lote_id", loteId);
       }
-      
+
       const { data: stats, error: statsError } = await queryStats;
 
       if (statsError) {
         logger.error("Erro ao buscar estatísticas:", statsError);
       } else if (stats) {
         const porAvaliador = new Map<string, EstatisticasAvaliador>();
-        
+
         stats.forEach((s) => {
-          const nome = s.responsavel_avaliacao ? newProfilesMap.get(s.responsavel_avaliacao) || "Desconhecido" : "Desconhecido";
+          const nome = s.responsavel_avaliacao
+            ? newProfilesMap.get(s.responsavel_avaliacao) || "Desconhecido"
+            : "Desconhecido";
           const existente = porAvaliador.get(nome) || { nome, concluidos: 0, em_analise: 0 };
-          
+
           if (s.status_avaliacao === "CONCLUIDO") {
             existente.concluidos++;
           } else if (s.status_avaliacao === "EM_ANALISE") {
             existente.em_analise++;
           }
-          
+
           porAvaliador.set(nome, existente);
         });
-        
+
         setEstatisticasPorAvaliador(Array.from(porAvaliador.values()));
       }
 
       // Buscar dados de avaliações concluídas (GUARDA e ARQUIVOS)
       const { data: avaliacoes, error: avaliacoesError } = await supabase
         .from("avaliacoes")
-        .select(`
+        .select(
+          `
           processo_id,
           destinacao_permanente,
           pecas_ids
-        `)
+        `,
+        )
         .not("data_fim", "is", null);
 
       if (avaliacoesError) {
@@ -223,12 +240,10 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
 
     if (!error && lotesData) {
       setLotes(lotesData);
-      
+
       // Extrair avaliadores únicos dos profiles que avaliaram no lote
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, nome");
-      
+      const { data: profilesData } = await supabase.from("profiles").select("id, nome");
+
       if (profilesData) {
         setAvaliadores(profilesData);
       }
@@ -249,13 +264,10 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
     }
 
     // Senão, buscar do banco
-    const { data: processosData, error } = await supabase
-      .from("processos_fila")
-      .select("*")
-      .eq("lote_id", loteId);
+    const { data: processosData, error } = await supabase.from("processos_fila").select("*").eq("lote_id", loteId);
 
     if (!error && processosData) {
-      const processosFormatados: ProcessoFila[] = processosData.map(p => ({
+      const processosFormatados: ProcessoFila[] = processosData.map((p) => ({
         ID: p.id,
         CODIGO_PROCESSO: p.codigo_processo,
         NUMERO_CNJ: p.numero_cnj,
@@ -292,7 +304,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
         () => {
           fetchDadosRealtime();
           fetchProcessosDoLote();
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -303,7 +315,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
         },
         () => {
           fetchDadosRealtime();
-        }
+        },
       )
       .subscribe();
 
@@ -327,7 +339,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
     const agora = new Date();
     const diffMs = agora.getTime() - inicio.getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    
+
     if (diffMin < 60) return `${diffMin} min`;
     const diffHoras = Math.floor(diffMin / 60);
     return `${diffHoras}h ${diffMin % 60}min`;
@@ -355,11 +367,11 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
 
   // Preparar dados para o grid
   const processosComDados = useMemo((): ProcessoComDados[] => {
-    const processosConcluidos = processosFiltrados.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO");
-    
-    return processosConcluidos.map(processo => {
+    const processosConcluidos = processosFiltrados.filter((p) => p.STATUS_AVALIACAO === "CONCLUIDO");
+
+    return processosConcluidos.map((processo) => {
       const avaliacao = processo.ID ? avaliacoesMap.get(processo.ID) : null;
-      
+
       let guarda = "—";
       if (avaliacao?.destinacao_permanente) {
         if (avaliacao.destinacao_permanente === "Sim") guarda = "I";
@@ -371,9 +383,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
         ...processo,
         guarda,
         arquivos: avaliacao?.pecas_ids || "—",
-        responsavelNome: processo.RESPONSAVEL 
-          ? (profilesMap.get(processo.RESPONSAVEL) || processo.RESPONSAVEL) 
-          : "—",
+        responsavelNome: processo.RESPONSAVEL ? profilesMap.get(processo.RESPONSAVEL) || processo.RESPONSAVEL : "—",
         ano: extrairAno(processo.DATA_DISTRIBUICAO),
       };
     });
@@ -431,74 +441,75 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
       return sortDirection === "asc" ? comparacao : -comparacao;
     });
 
-    const limite = linhasExibidas === "all" 
-      ? sorted.length 
-      : parseInt(linhasExibidas);
-    
+    const limite = linhasExibidas === "all" ? sorted.length : parseInt(linhasExibidas);
+
     return sorted.slice(0, limite);
   }, [processosComDados, sortColumn, sortDirection, linhasExibidas]);
 
   // Definição das colunas do grid
-  const columns: ColumnDef<ProcessoComDados>[] = useMemo(() => [
-    {
-      id: "CODIGO",
-      header: "CODIGO",
-      accessor: (row) => row.CODIGO_PROCESSO || "",
-      defaultWidth: 120,
-      minWidth: 80,
-      render: (value) => <span className="font-mono">{String(value)}</span>,
-    },
-    {
-      id: "NUMERO_CNJ",
-      header: "NUMERO_PROCESSO",
-      accessor: (row) => row.NUMERO_CNJ || "",
-      defaultWidth: 200,
-      minWidth: 120,
-      render: (value) => <span className="font-mono">{String(value)}</span>,
-    },
-    {
-      id: "DATA_DISTRIBUICAO",
-      header: "DATA_DISTRIBUICAO",
-      accessor: (row) => row.DATA_DISTRIBUICAO || "",
-      defaultWidth: 150,
-      minWidth: 100,
-    },
-    {
-      id: "ANO",
-      header: "ANO",
-      accessor: (row) => row.ano || "",
-      defaultWidth: 70,
-      minWidth: 50,
-    },
-    {
-      id: "DATA_ARQUIVAMENTO",
-      header: "DATA_ARQUIVAMENTO",
-      accessor: (row) => row.DATA_ARQUIVAMENTO_DEF || "",
-      defaultWidth: 150,
-      minWidth: 100,
-    },
-    {
-      id: "GUARDA",
-      header: "GUARDA",
-      accessor: (row) => row.guarda || "",
-      defaultWidth: 80,
-      minWidth: 60,
-    },
-    {
-      id: "ARQUIVOS",
-      header: "ARQUIVOS",
-      accessor: (row) => row.arquivos || "",
-      defaultWidth: 150,
-      minWidth: 80,
-    },
-    {
-      id: "RESPONSAVEL",
-      header: "RESPONSAVEL",
-      accessor: (row) => row.responsavelNome || "",
-      defaultWidth: 200,
-      minWidth: 100,
-    },
-  ], []);
+  const columns: ColumnDef<ProcessoComDados>[] = useMemo(
+    () => [
+      {
+        id: "CODIGO",
+        header: "CODIGO",
+        accessor: (row) => row.CODIGO_PROCESSO || "",
+        defaultWidth: 120,
+        minWidth: 80,
+        render: (value) => <span className="font-mono">{String(value)}</span>,
+      },
+      {
+        id: "NUMERO_CNJ",
+        header: "NUMERO_PROCESSO",
+        accessor: (row) => row.NUMERO_CNJ || "",
+        defaultWidth: 200,
+        minWidth: 120,
+        render: (value) => <span className="font-mono">{String(value)}</span>,
+      },
+      {
+        id: "DATA_DISTRIBUICAO",
+        header: "DATA_DISTRIBUICAO",
+        accessor: (row) => row.DATA_DISTRIBUICAO || "",
+        defaultWidth: 150,
+        minWidth: 100,
+      },
+      {
+        id: "ANO",
+        header: "ANO",
+        accessor: (row) => row.ano || "",
+        defaultWidth: 70,
+        minWidth: 50,
+      },
+      {
+        id: "DATA_ARQUIVAMENTO",
+        header: "DATA_ARQUIVAMENTO",
+        accessor: (row) => row.DATA_ARQUIVAMENTO_DEF || "",
+        defaultWidth: 150,
+        minWidth: 100,
+      },
+      {
+        id: "GUARDA",
+        header: "GUARDA",
+        accessor: (row) => row.guarda || "",
+        defaultWidth: 80,
+        minWidth: 60,
+      },
+      {
+        id: "ARQUIVOS",
+        header: "ARQUIVOS",
+        accessor: (row) => row.arquivos || "",
+        defaultWidth: 150,
+        minWidth: 80,
+      },
+      {
+        id: "RESPONSAVEL",
+        header: "RESPONSAVEL",
+        accessor: (row) => row.responsavelNome || "",
+        defaultWidth: 200,
+        minWidth: 100,
+      },
+    ],
+    [],
+  );
 
   return (
     <div className="space-y-6">
@@ -510,11 +521,13 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Label className="text-sm font-medium">Filtros:</Label>
             </div>
-            
+
             <div className="flex items-center gap-2">
-              <Label htmlFor="lote-select" className="text-sm text-muted-foreground">Lote:</Label>
-              <Select 
-                value={loteSelecionado || ""} 
+              <Label htmlFor="lote-select" className="text-sm text-muted-foreground">
+                Lote:
+              </Label>
+              <Select
+                value={loteSelecionado || ""}
                 onValueChange={(value) => {
                   setLoteSelecionado(value || undefined);
                   setAvaliadorSelecionado("todos");
@@ -527,7 +540,11 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
                   {lotes.map((lote) => (
                     <SelectItem key={lote.id} value={lote.id}>
                       <div className="flex items-center gap-2">
-                        {lote.ativo && <Badge variant="default" className="text-xs">Ativo</Badge>}
+                        {lote.ativo && (
+                          <Badge variant="default" className="text-xs">
+                            Ativo
+                          </Badge>
+                        )}
                         <span>{lote.nome || `Lote ${new Date(lote.created_at).toLocaleDateString("pt-BR")}`}</span>
                         <span className="text-muted-foreground">({lote.total_processos} processos)</span>
                       </div>
@@ -538,7 +555,9 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
             </div>
 
             <div className="flex items-center gap-2">
-              <Label htmlFor="avaliador-select" className="text-sm text-muted-foreground">Avaliador:</Label>
+              <Label htmlFor="avaliador-select" className="text-sm text-muted-foreground">
+                Avaliador:
+              </Label>
               <Select value={avaliadorSelecionado} onValueChange={setAvaliadorSelecionado}>
                 <SelectTrigger id="avaliador-select" className="w-[200px]">
                   <SelectValue placeholder="Todos" />
@@ -555,11 +574,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
             </div>
 
             {avaliadorSelecionado !== "todos" && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setAvaliadorSelecionado("todos")}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setAvaliadorSelecionado("todos")}>
                 Limpar filtro
               </Button>
             )}
@@ -577,9 +592,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           <CardContent>
             <div className="text-2xl font-bold">{total}</div>
             <Progress value={progresso} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">
-              {progresso.toFixed(1)}% concluído
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{progresso.toFixed(1)}% concluído</p>
           </CardContent>
         </Card>
 
@@ -590,9 +603,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">{totalPendentes}</div>
-            <p className="text-xs text-muted-foreground">
-              aguardando avaliação
-            </p>
+            <p className="text-xs text-muted-foreground">aguardando avaliação</p>
           </CardContent>
         </Card>
 
@@ -603,9 +614,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{totalEmAnalise}</div>
-            <p className="text-xs text-muted-foreground">
-              sendo avaliados agora
-            </p>
+            <p className="text-xs text-muted-foreground">sendo avaliados agora</p>
           </CardContent>
         </Card>
 
@@ -616,9 +625,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{totalConcluidos}</div>
-            <p className="text-xs text-muted-foreground">
-              avaliações finalizadas
-            </p>
+            <p className="text-xs text-muted-foreground">avaliações finalizadas</p>
           </CardContent>
         </Card>
       </div>
@@ -636,15 +643,11 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
                 </Badge>
               )}
             </CardTitle>
-            <CardDescription>
-              Acompanhamento em tempo real das avaliações
-            </CardDescription>
+            <CardDescription>Acompanhamento em tempo real das avaliações</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-4 text-muted-foreground">
-                Carregando...
-              </div>
+              <div className="text-center py-4 text-muted-foreground">Carregando...</div>
             ) : avaliacoesEmAndamento.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -653,25 +656,20 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
             ) : (
               <div className="space-y-3">
                 {avaliacoesEmAndamento.map((av, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
-                  >
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                       <div>
                         <p className="font-medium text-sm">{av.avaliador_nome}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {av.processo_codigo}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{av.processo_codigo}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    {/*    <div className="text-right">
                       <Badge variant="outline" className="text-xs">
                         <Clock className="h-3 w-3 mr-1" />
                         {formatarTempo(av.inicio)}
                       </Badge>
-                    </div>
+                    </div> */}
                   </div>
                 ))}
               </div>
@@ -686,15 +684,11 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
               <Users className="h-5 w-5" />
               Produtividade por Avaliador
             </CardTitle>
-            <CardDescription>
-              Quantidade de processos avaliados por cada membro
-            </CardDescription>
+            <CardDescription>Quantidade de processos avaliados por cada membro</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-4 text-muted-foreground">
-                Carregando...
-              </div>
+              <div className="text-center py-4 text-muted-foreground">Carregando...</div>
             ) : estatisticasPorAvaliador.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -705,15 +699,10 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
                 {estatisticasPorAvaliador
                   .sort((a, b) => b.concluidos - a.concluidos)
                   .map((av, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                    >
+                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-sm font-bold text-primary">
-                            {idx + 1}
-                          </span>
+                          <span className="text-sm font-bold text-primary">{idx + 1}</span>
                         </div>
                         <p className="font-medium text-sm">{av.nome}</p>
                       </div>
@@ -749,12 +738,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={fetchDadosRealtime}
-                disabled={loading}
-              >
+              <Button variant="outline" size="sm" onClick={fetchDadosRealtime} disabled={loading}>
                 <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
                 Atualizar
               </Button>
