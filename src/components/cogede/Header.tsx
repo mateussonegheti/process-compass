@@ -1,4 +1,5 @@
-import { FileText, LogOut, Shield, User } from "lucide-react";
+import { useState } from "react";
+import { FileText, LogOut, Shield, User, KeyRound, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const roleLabels: Record<AppRole, string> = {
   admin: "Administrador",
@@ -28,10 +41,41 @@ const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline"> = 
 export function Header() {
   const navigate = useNavigate();
   const { profile, role, signOut, isAdmin } = useAuth();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
+  };
+
+  const handleResetPassword = async () => {
+    if (!profile?.email) return;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    
+    if (error) {
+      toast.error("Erro ao enviar email de recuperação");
+    } else {
+      toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      // Sign out first, then user will need admin to delete
+      await signOut();
+      toast.info("Para excluir sua conta permanentemente, entre em contato com o administrador.");
+      navigate("/login");
+    } catch {
+      toast.error("Erro ao processar solicitação");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
   };
 
   const getInitials = (nome: string) => {
@@ -105,6 +149,18 @@ export function Header() {
                       <DropdownMenuSeparator />
                     </>
                   )}
+                  <DropdownMenuItem onClick={handleResetPassword}>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Recuperar Senha
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir Conta
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Sair
@@ -115,6 +171,28 @@ export function Header() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Conta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja solicitar a exclusão da sua conta? 
+              Esta ação não pode ser desfeita e todos os seus dados serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Processando..." : "Confirmar Exclusão"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }

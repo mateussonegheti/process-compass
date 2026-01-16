@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Edit, FileText, Loader2, History } from "lucide-react";
+import { Edit, FileText, Loader2, History, Clock, CheckCircle2, AlertTriangle, Play } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logger } from "@/lib/logger";
@@ -20,6 +21,8 @@ interface AvaliacaoComProcesso {
   numero_cnj: string;
   destinacao_permanente: string | null;
   lote_nome?: string;
+  status_avaliacao: string;
+  tem_ocorrencia: boolean;
 }
 
 interface MinhasAvaliacoesProps {
@@ -46,7 +49,11 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
             processo_id,
             data_inicio,
             data_fim,
-            destinacao_permanente
+            destinacao_permanente,
+            documento_nao_localizado,
+            documento_duplicado,
+            erro_tecnico,
+            processo_vazio
           `)
           .eq("avaliador_id", profile.id)
           .order("data_fim", { ascending: false });
@@ -66,7 +73,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
         const processoIds = avaliacoesData.map(a => a.processo_id);
         let query = supabase
           .from("processos_fila")
-          .select("id, codigo_processo, numero_cnj, lote_id")
+          .select("id, codigo_processo, numero_cnj, lote_id, status_avaliacao")
           .in("id", processoIds);
         
         // Filtrar por lote apenas se NÃO estiver mostrando todos
@@ -97,6 +104,12 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
           .filter(av => processosMap.has(av.processo_id))
           .map(av => {
             const processo = processosMap.get(av.processo_id)!;
+            const temOcorrencia = Boolean(
+              av.documento_nao_localizado || 
+              av.documento_duplicado || 
+              av.erro_tecnico || 
+              av.processo_vazio
+            );
             return {
               id: av.id,
               processo_id: av.processo_id,
@@ -106,6 +119,8 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
               numero_cnj: processo.numero_cnj,
               destinacao_permanente: av.destinacao_permanente,
               lote_nome: lotesMap.get(processo.lote_id) || "—",
+              status_avaliacao: processo.status_avaliacao,
+              tem_ocorrencia: temOcorrencia,
             };
           });
 
@@ -179,8 +194,6 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
@@ -235,6 +248,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">Status</TableHead>
                   <TableHead>Código</TableHead>
                   <TableHead>Número CNJ</TableHead>
                   {mostrarTodos && <TableHead>Lote</TableHead>}
@@ -246,6 +260,30 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
               <TableBody>
                 {avaliacoes.map((av) => (
                   <TableRow key={av.id}>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          {av.tem_ocorrencia ? (
+                            <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" />
+                          ) : av.status_avaliacao === "CONCLUIDO" ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 cursor-help" />
+                          ) : av.status_avaliacao === "EM_ANALISE" ? (
+                            <Play className="h-4 w-4 text-blue-500 cursor-help" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-muted-foreground cursor-help" />
+                          )}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {av.tem_ocorrencia 
+                            ? "Processo com ocorrência" 
+                            : av.status_avaliacao === "CONCLUIDO" 
+                              ? "Concluído" 
+                              : av.status_avaliacao === "EM_ANALISE" 
+                                ? "Em análise" 
+                                : "Pendente"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
                     <TableCell className="font-mono">{av.codigo_processo}</TableCell>
                     <TableCell className="font-mono">{av.numero_cnj}</TableCell>
                     {mostrarTodos && (

@@ -279,7 +279,7 @@ export default function Index() {
       
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="avaliacao" className="space-y-6">
-          <TabsList className={`grid w-full max-w-2xl ${podeVerDashboard ? "grid-cols-4" : "grid-cols-3"}`}>
+          <TabsList className={`grid w-full max-w-2xl ${podeVerDashboard ? "grid-cols-4" : "grid-cols-2"}`}>
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
               Avaliação
@@ -294,10 +294,12 @@ export default function Index() {
                 Dashboard
               </TabsTrigger>
             )}
-            <TabsTrigger value="merge" className="gap-2">
-              <GitMerge className="h-4 w-4" />
-              Merge
-            </TabsTrigger>
+            {podeVerDashboard && (
+              <TabsTrigger value="merge" className="gap-2">
+                <GitMerge className="h-4 w-4" />
+                Merge
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="avaliacao" className="space-y-6">

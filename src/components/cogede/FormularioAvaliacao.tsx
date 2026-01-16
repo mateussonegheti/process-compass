@@ -148,6 +148,14 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
       return;
     }
 
+    // Validar IDs de peças duplicados
+    const idsPreenchidos = pecas.map(p => p.idProjudi.trim()).filter(Boolean);
+    const idsDuplicados = idsPreenchidos.filter((id, index) => idsPreenchidos.indexOf(id) !== index);
+    if (idsDuplicados.length > 0) {
+      toast.error(`IDs de peça duplicados: ${[...new Set(idsDuplicados)].join(", ")}`);
+      return;
+    }
+
     const { tipos, ids, combinado } = gerarCamposConcatenados();
 
     const { tiposInformados, tiposReais, combinado: divergenciasCombinado } = gerarCamposDivergencias();
