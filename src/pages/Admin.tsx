@@ -405,6 +405,8 @@ export default function Admin() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar Perfil de Acesso</DialogTitle>
