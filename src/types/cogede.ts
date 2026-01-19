@@ -10,7 +10,7 @@ export interface ProcessoFila {
   DATA_DISTRIBUICAO: string;
   DATA_ARQUIVAMENTO_DEF: string;
   PRAZO_5_ANOS_COMPLETO: string;
-  STATUS_AVALIACAO: 'PENDENTE' | 'EM_ANALISE' | 'CONCLUIDO';
+  STATUS_AVALIACAO: "PENDENTE" | "EM_ANALISE" | "CONCLUIDO";
   RESPONSAVEL?: string;
   DATA_INICIO_AVALIACAO?: string;
   DATA_FIM?: string;
@@ -29,7 +29,7 @@ export interface AvaliacaoDocumental {
   // Seção 1 - Identificação (auto-preenchido)
   codigoProcesso: string;
   numeroCnj: string;
-  
+
   // Seção 2 - Assunto/TPU (parcialmente auto-preenchido)
   possuiAssunto: string;
   assuntoPrincipal: string;
@@ -38,7 +38,7 @@ export interface AvaliacaoDocumental {
   hierarquiaCorreta?: string;
   divergenciaHierarquia?: string;
   destinacaoPermanente?: string;
-  
+
   // Seção 3 - Movimentações/Prazos (parcialmente auto-preenchido)
   possuiMovArquivado: string;
   descricaoSituacaoArquivamento?: string;
@@ -46,7 +46,7 @@ export interface AvaliacaoDocumental {
   dataArquivamentoDef: string;
   prazo5AnosCompleto: string;
   inconsistenciaPrazo?: string;
-  
+
   // Seção 4 - Peças Processuais
   pecas: PecaProcessual[];
   pecasTipos: string;
@@ -61,11 +61,11 @@ export interface AvaliacaoDocumental {
   tipoInformadoSistema?: string;
   tipoRealIdentificado?: string;
   divergenciasDetalhes?: string;
-  
+
   // Seção 5 - Inconsistências
   processoVazio?: boolean;
   observacoesGerais?: string;
-  
+
   // Metadados
   responsavel: string;
   dataInicioAvaliacao: string;
@@ -138,7 +138,7 @@ export const ASSUNTOS_TPU = [
   "Remuneração",
   "Rescisão Contratual",
   "Reversão",
-  "Revisão de Aposentadoria"
+  "Revisão de Aposentadoria",
 ];
 
 export const TIPOS_PECA = [
@@ -167,7 +167,7 @@ export const TIPOS_PECA = [
   "Termo de Audiência",
   "Voto",
   "Voto de Sessão",
-  "Voto Relator"
+  "Voto Relator",
   "Voto Vogal",
-  "Outros"
+  "Outros",
 ];
