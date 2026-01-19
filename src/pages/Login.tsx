@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, FileText, Shield } from "lucide-react";
+import { Loader2, FileText, Shield, KeyRound, ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -19,6 +20,9 @@ export default function Login() {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupNome, setSignupNome] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [sendingReset, setSendingReset] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +66,93 @@ export default function Login() {
 
     setLoading(false);
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!forgotEmail.trim()) {
+      toast.error("Digite seu e-mail");
+      return;
+    }
+
+    setSendingReset(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+
+    if (error) {
+      toast.error("Erro ao enviar e-mail de recuperação", {
+        description: error.message,
+      });
+    } else {
+      toast.success("E-mail de recuperação enviado!", {
+        description: "Verifique sua caixa de entrada e spam.",
+      });
+      setShowForgotPassword(false);
+      setForgotEmail("");
+    }
+
+    setSendingReset(false);
+  };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <KeyRound className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold">Recuperar Senha</CardTitle>
+              <CardDescription>
+                Digite seu e-mail para receber o link de recuperação
+              </CardDescription>
+            </div>
+          </CardHeader>
+
+          <form onSubmit={handleForgotPassword}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">E-mail</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  disabled={sendingReset}
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-3">
+              <Button type="submit" className="w-full" disabled={sendingReset}>
+                {sendingReset ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Enviar Link de Recuperação"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setShowForgotPassword(false)}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar ao Login
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
@@ -111,6 +202,14 @@ export default function Login() {
                     disabled={loading}
                   />
                 </div>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="p-0 h-auto text-sm text-muted-foreground"
+                  onClick={() => setShowForgotPassword(true)}
+                >
+                  Esqueci minha senha
+                </Button>
               </CardContent>
               <CardFooter>
                 <Button type="submit" className="w-full" disabled={loading}>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, LogOut, Shield, User, KeyRound, Trash2 } from "lucide-react";
+import { FileText, LogOut, Shield, KeyRound, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline"> = 
 
 export function Header() {
   const navigate = useNavigate();
-  const { profile, role, signOut, isAdmin } = useAuth();
+  const { profile, role, signOut, isAdmin, user } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -49,7 +49,7 @@ export function Header() {
     navigate("/login");
   };
 
-  const handleResetPassword = async () => {
+  const handleChangePassword = async () => {
     if (!profile?.email) return;
     
     const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
@@ -57,21 +57,35 @@ export function Header() {
     });
     
     if (error) {
-      toast.error("Erro ao enviar email de recuperação");
+      toast.error("Erro ao enviar email de alteração de senha");
     } else {
-      toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
+      toast.success("Email enviado! Verifique sua caixa de entrada para alterar sua senha.");
     }
   };
 
   const handleDeleteAccount = async () => {
+    if (!user?.id) return;
+    
     setIsDeleting(true);
     try {
-      // Sign out first, then user will need admin to delete
-      await signOut();
-      toast.info("Para excluir sua conta permanentemente, entre em contato com o administrador.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { userId: user.id, selfDelete: true },
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao excluir conta');
+      }
+
+      toast.success("Conta excluída com sucesso!");
       navigate("/login");
-    } catch {
-      toast.error("Erro ao processar solicitação");
+    } catch (error: unknown) {
+      console.error('Error deleting account:', error);
+      toast.error("Erro ao excluir conta. Tente novamente ou contate o administrador.");
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -149,9 +163,9 @@ export function Header() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem onClick={handleResetPassword}>
+                  <DropdownMenuItem onClick={handleChangePassword}>
                     <KeyRound className="mr-2 h-4 w-4" />
-                    Recuperar Senha
+                    Alterar Senha
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => setShowDeleteDialog(true)}
@@ -177,7 +191,7 @@ export function Header() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Conta</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja solicitar a exclusão da sua conta? 
+              Tem certeza que deseja excluir sua conta? 
               Esta ação não pode ser desfeita e todos os seus dados serão removidos permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -188,7 +202,7 @@ export function Header() {
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Processando..." : "Confirmar Exclusão"}
+              {isDeleting ? "Excluindo..." : "Confirmar Exclusão"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
