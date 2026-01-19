@@ -31,7 +31,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Users, Shield, Edit, ArrowLeft, Package, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, Users, Shield, Edit, ArrowLeft, Package, Trash2, AlertTriangle, RotateCcw, UserX } from "lucide-react";
 import { logger } from "@/lib/logger";
 import {
   AlertDialog,
@@ -75,7 +75,7 @@ const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline"> = 
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading, user } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,9 +86,11 @@ export default function Admin() {
   const [deleteLoteDialog, setDeleteLoteDialog] = useState(false);
   const [loteToDelete, setLoteToDelete] = useState<Lote | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Note: Access control is now enforced in ProtectedRoute component
-  // This component assumes the user is already authorized as admin
+  const [resetSystemDialog, setResetSystemDialog] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [deleteUserDialog, setDeleteUserDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -118,7 +120,7 @@ export default function Admin() {
     if (!loteToDelete) return;
     setIsDeleting(true);
     try {
-      // First delete related avaliacoes and processos
+      // First delete related avaliacoes
       const { data: processos } = await supabase
         .from("processos_fila")
         .select("id")
@@ -127,11 +129,15 @@ export default function Admin() {
       if (processos && processos.length > 0) {
         const processoIds = processos.map(p => p.id);
         await supabase.from("avaliacoes").delete().in("processo_id", processoIds);
-        await supabase.from("processos_fila").delete().eq("lote_id", loteToDelete.id);
       }
       
-      // Deactivate lote (can't delete due to RLS)
-      await supabase.from("lotes_importacao").update({ ativo: false }).eq("id", loteToDelete.id);
+      // Delete processos
+      await supabase.from("processos_fila").delete().eq("lote_id", loteToDelete.id);
+      
+      // Delete lote
+      const { error } = await supabase.from("lotes_importacao").delete().eq("id", loteToDelete.id);
+      
+      if (error) throw error;
       
       toast.success("Lote e processos excluídos com sucesso!");
       fetchLotes();
@@ -145,10 +151,78 @@ export default function Admin() {
     }
   };
 
+  const handleResetSystem = async () => {
+    setIsResetting(true);
+    try {
+      // Get all lotes
+      const { data: allLotes } = await supabase.from("lotes_importacao").select("id");
+      
+      if (allLotes && allLotes.length > 0) {
+        const loteIds = allLotes.map(l => l.id);
+        
+        // Get all processos
+        const { data: allProcessos } = await supabase
+          .from("processos_fila")
+          .select("id")
+          .in("lote_id", loteIds);
+        
+        if (allProcessos && allProcessos.length > 0) {
+          const processoIds = allProcessos.map(p => p.id);
+          // Delete all avaliacoes
+          await supabase.from("avaliacoes").delete().in("processo_id", processoIds);
+        }
+        
+        // Delete all processos
+        await supabase.from("processos_fila").delete().in("lote_id", loteIds);
+        
+        // Delete all lotes
+        await supabase.from("lotes_importacao").delete().in("id", loteIds);
+      }
+      
+      toast.success("Sistema resetado com sucesso! Todos os dados foram apagados.");
+      fetchLotes();
+    } catch (error) {
+      logger.error("Error resetting system:", error);
+      toast.error("Erro ao resetar sistema");
+    } finally {
+      setIsResetting(false);
+      setResetSystemDialog(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete || !user?.id) return;
+    
+    setIsDeletingUser(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { userId: userToDelete.user_id, selfDelete: false },
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao excluir usuário');
+      }
+
+      toast.success(`Usuário ${userToDelete.nome} excluído com sucesso!`);
+      fetchUsers();
+    } catch (error: unknown) {
+      logger.error("Error deleting user:", error);
+      toast.error("Erro ao excluir usuário");
+    } finally {
+      setIsDeletingUser(false);
+      setDeleteUserDialog(false);
+      setUserToDelete(null);
+    }
+  };
+
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Fetch profiles with roles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
@@ -162,7 +236,6 @@ export default function Admin() {
 
       if (rolesError) throw rolesError;
 
-      // Combine data
       const usersWithRoles: UserWithRole[] = (profiles || []).map((profile) => {
         const userRole = roles?.find((r) => r.user_id === profile.user_id);
         return {
@@ -307,26 +380,39 @@ export default function Admin() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.nome}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                {users.map((userItem) => (
+                  <TableRow key={userItem.id}>
+                    <TableCell className="font-medium">{userItem.nome}</TableCell>
+                    <TableCell>{userItem.email}</TableCell>
                     <TableCell>
-                      <Badge variant={roleBadgeVariants[user.role]}>
-                        {roleLabels[user.role]}
+                      <Badge variant={roleBadgeVariants[userItem.role]}>
+                        {roleLabels[userItem.role]}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                      {new Date(userItem.created_at).toLocaleDateString("pt-BR")}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditRole(user)}
+                        onClick={() => handleEditRole(userItem)}
                       >
                         <Edit className="h-4 w-4 mr-1" />
-                        Editar Perfil
+                        Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setUserToDelete(userItem);
+                          setDeleteUserDialog(true);
+                        }}
+                        disabled={userItem.user_id === user?.id}
+                      >
+                        <UserX className="h-4 w-4 mr-1" />
+                        Excluir
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -345,18 +431,34 @@ export default function Admin() {
         {/* Gerenciamento de Lotes */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Gerenciamento de Lotes
-            </CardTitle>
-            <CardDescription>
-              Gerencie os lotes de importação e seus processos
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Gerenciamento de Lotes
+                </CardTitle>
+                <CardDescription>
+                  Gerencie os lotes de importação e seus processos
+                </CardDescription>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setResetSystemDialog(true)}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Resetar Sistema
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingLotes ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : lotes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum lote cadastrado
               </div>
             ) : (
               <Table>
@@ -406,6 +508,7 @@ export default function Admin() {
           </CardContent>
         </Card>
 
+        {/* Dialog para editar role */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -459,6 +562,7 @@ export default function Admin() {
           </DialogContent>
         </Dialog>
 
+        {/* Dialog para deletar lote */}
         <AlertDialog open={deleteLoteDialog} onOpenChange={setDeleteLoteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -479,6 +583,68 @@ export default function Admin() {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {isDeleting ? "Excluindo..." : "Confirmar Exclusão"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog para resetar sistema */}
+        <AlertDialog open={resetSystemDialog} onOpenChange={setResetSystemDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Resetar Sistema
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>
+                  <strong>ATENÇÃO:</strong> Esta ação irá apagar TODOS os dados do sistema:
+                </p>
+                <ul className="list-disc list-inside text-sm">
+                  <li>Todos os lotes de importação</li>
+                  <li>Todos os processos</li>
+                  <li>Todas as avaliações realizadas</li>
+                </ul>
+                <p className="font-semibold text-destructive">
+                  Esta ação NÃO pode ser desfeita!
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleResetSystem}
+                disabled={isResetting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isResetting ? "Resetando..." : "Confirmar Reset"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog para deletar usuário */}
+        <AlertDialog open={deleteUserDialog} onOpenChange={setDeleteUserDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <UserX className="h-5 w-5 text-destructive" />
+                Excluir Usuário
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o usuário "{userToDelete?.nome}"? 
+                Esta ação irá remover o usuário e todas as suas avaliações.
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteUser}
+                disabled={isDeletingUser}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeletingUser ? "Excluindo..." : "Confirmar Exclusão"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

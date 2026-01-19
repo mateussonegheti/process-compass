@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, GitMerge, LayoutDashboard, ClipboardList } from "lucide-react";
 import { Header } from "@/components/cogede/Header";
@@ -35,6 +35,7 @@ export default function Index() {
   });
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDocumental[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const cleanupExecutedRef = useRef(false);
 
   // Auto-preencher responsável quando o perfil do usuário estiver disponível
   useEffect(() => {
@@ -52,6 +53,82 @@ export default function Index() {
       liberarProcessosOrfaos(profile.id);
     }
   }, [profile?.id, loteAtivo?.id, liberarProcessosOrfaos]);
+
+  // Cleanup function para liberar processo quando usuário sai
+  const cleanupOnExit = useCallback(async () => {
+    if (cleanupExecutedRef.current) return;
+    if (!sessao.processoAtual?.CODIGO_PROCESSO || !profile?.id || !loteAtivo?.id) return;
+    
+    cleanupExecutedRef.current = true;
+    logger.log("[Index] Executando cleanup - liberando processo do usuário");
+    
+    try {
+      // Use sendBeacon for reliable delivery on page unload
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/processos_fila?codigo_processo=eq.${encodeURIComponent(sessao.processoAtual.CODIGO_PROCESSO)}&lote_id=eq.${loteAtivo.id}`;
+      
+      const payload = JSON.stringify({
+        status_avaliacao: "PENDENTE",
+        responsavel_avaliacao: null,
+        data_inicio_avaliacao: null
+      });
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        'Prefer': 'return=minimal'
+      };
+
+      // Try sendBeacon first (works on page unload)
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(url, blob);
+      } else {
+        // Fallback to fetch
+        await fetch(url, {
+          method: 'PATCH',
+          headers,
+          body: payload,
+          keepalive: true
+        });
+      }
+    } catch (error) {
+      logger.error("[Index] Erro ao liberar processo no cleanup:", error);
+    }
+  }, [sessao.processoAtual?.CODIGO_PROCESSO, profile?.id, loteAtivo?.id]);
+
+  // Adicionar listeners para cleanup na saída
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (sessao.processoAtual) {
+        cleanupOnExit();
+        // Mostrar confirmação se há processo em andamento
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && sessao.processoAtual) {
+        cleanupOnExit();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [sessao.processoAtual, cleanupOnExit]);
+
+  // Reset cleanup flag when a new process is captured
+  useEffect(() => {
+    if (sessao.processoAtual) {
+      cleanupExecutedRef.current = false;
+    }
+  }, [sessao.processoAtual?.CODIGO_PROCESSO]);
 
   const totalPendentes = processos.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
   const totalEmAnalise = processos.filter(p => p.STATUS_AVALIACAO === "EM_ANALISE").length;
