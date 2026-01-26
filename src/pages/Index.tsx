@@ -129,8 +129,30 @@ export default function Index() {
   };
 
   // Handler para editar avaliação existente
-  const handleEditarAvaliacao = (processo: ProcessoFila, avaliacaoAnterior?: Record<string, unknown>) => {
-    // Definir processo atual e iniciar sessão
+  const handleEditarAvaliacao = async (processo: ProcessoFila, avaliacaoAnterior?: Record<string, unknown>) => {
+    // Se há um processo em EM_ANALISE, liberar ele da fila antes de editar outro
+    if (sessao.processoAtual?.STATUS_AVALIACAO === "EM_ANALISE" && sessao.processoAtual.ID) {
+      try {
+        logger.log(`[Index] Liberando processo ${sessao.processoAtual.CODIGO_PROCESSO} ao editar anterior`);
+        
+        await supabase
+          .from("processos_fila")
+          .update({
+            status_avaliacao: "PENDENTE",
+            responsavel_avaliacao: null,
+            data_inicio_avaliacao: null,
+            ultima_interacao: null,
+            tempo_captura: null
+          })
+          .eq("id", sessao.processoAtual.ID);
+      } catch (error) {
+        logger.error("[Index] Erro ao liberar processo anterior:", error);
+        toast.error("Erro ao liberar processo anterior");
+        return;
+      }
+    }
+
+    // Agora editar o processo anterior
     setSessao(prev => ({
       ...prev,
       processoAtual: processo,
@@ -145,6 +167,7 @@ export default function Index() {
     // Navegação automática para aba de avaliação
     setAbaSelecionada("avaliacao");
 
+    logger.info(`[Index] Editando avaliação do processo ${processo.CODIGO_PROCESSO}`);
     toast.info(`Editando avaliação do processo ${processo.CODIGO_PROCESSO}`);
   };
 

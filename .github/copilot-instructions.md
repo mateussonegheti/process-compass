@@ -116,6 +116,79 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-key
 - **Portuguese naming**: Domain types and components use Portuguese (COGEDE system)
 - **shadcn/ui pattern**: Radix-based, headless by default; compose with Tailwind
 
+## Process Queue Management (Sistema de Fila)
+
+### Process States & Transitions
+```
+PENDENTE → EM_ANALISE → CONCLUIDO
+            ↓ (inatividade 1h)
+          PENDENTE (volta silenciosamente)
+```
+
+**States:**
+- **PENDENTE**: Aguardando avaliação (responsavel_avaliacao = NULL)
+- **EM_ANALISE**: Avaliador está preenchendo (responsavel_avaliacao = avaliador_id)
+- **CONCLUIDO**: Avaliação finalizada (salvo no banco)
+
+### Critical Rules
+
+1. **Lock por Avaliador**: Dois avaliadores NUNCA podem abrir o mesmo processo em EM_ANALISE
+   - Campo `responsavel_avaliacao` garante isso
+   - Ao clicar "Iniciar", sistema atualiza para EM_ANALISE com ID do avaliador
+
+2. **Timeout Automático (1 HORA)**: Processo sem interação por 1h volta a PENDENTE silenciosamente
+   - Hook `useInactivityTimeout` rastreia: digitação, clicks, scroll, salvamento
+   - Atualiza `ultima_interacao` timestamp a cada 30s de atividade
+   - Função `liberar_processos_orfaos()` roda periodicamente (via Supabase CRON)
+   - Sem avisos ao usuário - processo volta automaticamente
+
+3. **Ao Editar Processo Anterior**: Se avaliador A está em EM_ANALISE com Processo Y e vai editar Processo X (CONCLUIDO)
+   - Handler `handleEditarAvaliacao` libera Processo Y automaticamente
+   - Y volta a PENDENTE (responsavel_avaliacao = NULL)
+   - Agora A pode editar X normalmente
+
+4. **Re-edição sem Salvar**: Quando editor fecha sem salvar
+   - Processo mantém status anterior (ex: CONCLUIDO continua CONCLUIDO)
+   - Nenhuma validação necessária - apenas guardado é persistido no banco
+
+5. **Pode Salvar Vazio**: Avaliador pode deixar campos em branco
+   - Sistema permite (validação é opcional)
+   - Nota: recomendado adicionar validação obrigatória via Zod se necessário
+
+### Database Schema
+```sql
+processos_fila {
+  id: UUID (PK)
+  codigo_processo: VARCHAR
+  ...existing fields...
+  
+  -- Queue control
+  responsavel_avaliacao: UUID (FK users) - Quem está avaliando agora
+  status_avaliacao: ENUM (PENDENTE|EM_ANALISE|CONCLUIDO)
+  
+  -- Inactivity tracking
+  ultima_interacao: TIMESTAMP - Última ação do avaliador
+  tempo_captura: TIMESTAMP - Quando foi pego para EM_ANALISE
+  
+  -- Edit control
+  avaliador_id_original: UUID (FK users) - Quem avaliou originalmente
+}
+```
+
+### Key Hooks & Functions
+
+**`useInactivityTimeout(processoId, enabled)`**
+- Path: `src/hooks/useInactivityTimeout.ts`
+- Detecta: keydown, click, scroll, change, input
+- Atualiza `ultima_interacao` cada 30s de atividade
+- Chamado em `FormularioAvaliacao.tsx`
+
+**`liberar_processos_orfaos()`**
+- SQL: `supabase/migrations/20260126_add_queue_control.sql`
+- Limpa processos em EM_ANALISE com 1h+ sem interação
+- Volta para PENDENTE silenciosamente
+- Executado via CRON do Supabase
+
 ## Notes for AI Agents
 
 - This is a **GitHub Pages deployment**: Static site; no backend API routes
@@ -123,3 +196,4 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-key
 - **No Next.js or SSR**: Pure SPA, so all rendering happens client-side
 - **Bundle size**: Monitor dependencies; Vite handles tree-shaking
 - **GitHub Actions**: Triggered only on main branch; PR builds may differ from live site
+- **Queue Management**: Critical for multi-user evaluation scenarios - monitor timeout logic carefully

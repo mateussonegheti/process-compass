@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Save, ArrowRight, Lock, Plus, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU, TIPOS_PECA } from "@/types/cogede";
 import { toast } from "sonner";
+import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 
 interface FormularioAvaliacaoProps {
   processo: ProcessoFila;
@@ -56,6 +57,9 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
+
+  // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
+  useInactivityTimeout(processo.ID, true);
 
   // Carregar dados da avaliação anterior ao montar ou quando avaliacaoAnterior mudar
   // Este efeito restaura dados salvos quando o avaliador está editando uma avaliação existente
