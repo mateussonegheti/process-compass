@@ -67,28 +67,28 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
     if (avaliacaoAnterior) {
       // Carregar form data completa com todos os campos preenchidos anteriormente
       setFormData({
-        descricaoAssuntoFaltante: avaliacaoAnterior.descricao_assunto_faltante || "",
-        assuntoTpu: avaliacaoAnterior.assunto_tpu || "",
-        hierarquiaCorreta: avaliacaoAnterior.hierarquia_correta || "",
-        divergenciaHierarquia: avaliacaoAnterior.divergencia_hierarquia || "",
-        destinacaoPermanente: avaliacaoAnterior.destinacao_permanente || "",
-        descricaoSituacaoArquivamento: avaliacaoAnterior.descricao_situacao_arquivamento || "",
-        inconsistenciaPrazo: avaliacaoAnterior.inconsistencia_prazo || "",
-        observacoesPecas: avaliacaoAnterior.observacoes_pecas || "",
-        documentoNaoLocalizado: avaliacaoAnterior.documento_nao_localizado || false,
-        documentoDuplicado: avaliacaoAnterior.documento_duplicado || false,
-        erroTecnico: avaliacaoAnterior.erro_tecnico || false,
-        ocorrenciasOutroDetalhe: avaliacaoAnterior.ocorrencias_outro_detalhe || "",
-        divergenciaClassificacao: avaliacaoAnterior.divergencia_classificacao || "",
-        processoVazio: avaliacaoAnterior.processo_vazio || false,
-        observacoesGerais: avaliacaoAnterior.observacoes_gerais || "",
+        descricaoAssuntoFaltante: (avaliacaoAnterior.descricao_assunto_faltante as string) || "",
+        assuntoTpu: (avaliacaoAnterior.assunto_tpu as string) || "",
+        hierarquiaCorreta: (avaliacaoAnterior.hierarquia_correta as string) || "",
+        divergenciaHierarquia: (avaliacaoAnterior.divergencia_hierarquia as string) || "",
+        destinacaoPermanente: (avaliacaoAnterior.destinacao_permanente as string) || "",
+        descricaoSituacaoArquivamento: (avaliacaoAnterior.descricao_situacao_arquivamento as string) || "",
+        inconsistenciaPrazo: (avaliacaoAnterior.inconsistencia_prazo as string) || "",
+        observacoesPecas: (avaliacaoAnterior.observacoes_pecas as string) || "",
+        documentoNaoLocalizado: (avaliacaoAnterior.documento_nao_localizado as boolean) || false,
+        documentoDuplicado: (avaliacaoAnterior.documento_duplicado as boolean) || false,
+        erroTecnico: (avaliacaoAnterior.erro_tecnico as boolean) || false,
+        ocorrenciasOutroDetalhe: (avaliacaoAnterior.ocorrencias_outro_detalhe as string) || "",
+        divergenciaClassificacao: (avaliacaoAnterior.divergencia_classificacao as string) || "",
+        processoVazio: (avaliacaoAnterior.processo_vazio as boolean) || false,
+        observacoesGerais: (avaliacaoAnterior.observacoes_gerais as string) || "",
       });
 
       // Carregar peças se existirem (processos documentados anteriormente)
       if (avaliacaoAnterior.pecas_combinado) {
         // Parse das peças do formato concatenado
         // Esperamos que seja "Tipo1: ID1 | Tipo2: ID2"
-        const pecasString = avaliacaoAnterior.pecas_combinado;
+        const pecasString = avaliacaoAnterior.pecas_combinado as string;
         const pecasArray = pecasString.split(" | ").filter((p: string) => p.trim());
         const novasPecas: PecaProcessual[] = pecasArray.map((p: string) => {
           const [tipo, idProjudi] = p.split(": ");
@@ -108,7 +108,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
       if (avaliacaoAnterior.divergencia_classificacao === "Sim" && avaliacaoAnterior.divergencias_detalhes) {
         // Parse das divergências do formato concatenado
         // Esperamos que seja "Tipo1 → Real1 (ID: id1) | Tipo2 → Real2 (ID: id2)"
-        const divergenciasString = avaliacaoAnterior.divergencias_detalhes;
+        const divergenciasString = avaliacaoAnterior.divergencias_detalhes as string;
         const divergenciasArray = divergenciasString.split(" | ").filter((d: string) => d.trim());
         const novasDivergencias: DivergenciaClassificacao[] = divergenciasArray.map((d: string) => {
           const match = d.match(/(.+?)\s*→\s*(.+?)\s*\(ID:\s*(.+?)\)/);
