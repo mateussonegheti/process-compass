@@ -21,9 +21,10 @@ export function useInactivityTimeout(processoId: string | undefined, enabled = t
     if (!processoId) return;
 
     try {
+      // Atualizar updated_at para indicar última atividade
       await supabase
         .from("processos_fila")
-        .update({ ultima_interacao: new Date().toISOString() })
+        .update({ updated_at: new Date().toISOString() })
         .eq("id", processoId);
       
       lastActivityRef.current = Date.now();
