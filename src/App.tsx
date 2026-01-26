@@ -104,7 +104,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/process-compass">
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>
