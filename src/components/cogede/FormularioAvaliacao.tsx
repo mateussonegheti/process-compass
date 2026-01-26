@@ -16,6 +16,7 @@ interface FormularioAvaliacaoProps {
   responsavel: string;
   onSalvarEProximo: (avaliacao: AvaliacaoDocumental) => void;
   carregando: boolean;
+  avaliacaoAnterior?: Record<string, unknown>; // Dados da avaliação anterior para edição
 }
 
 // Interface para divergência de classificação
@@ -51,17 +52,84 @@ const initialFormData = {
   observacoesGerais: "",
 };
 
-export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, carregando }: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, carregando, avaliacaoAnterior }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
 
-  // Limpar formulário quando mudar de processo
+  // Carregar dados da avaliação anterior ao montar ou quando avaliacaoAnterior mudar
+  // Este efeito restaura dados salvos quando o avaliador está editando uma avaliação existente
   useEffect(() => {
-    setPecas([]);
-    setFormData(initialFormData);
-    setDivergencias([]);
-  }, [processo.CODIGO_PROCESSO]);
+    if (avaliacaoAnterior) {
+      // Carregar form data completa com todos os campos preenchidos anteriormente
+      setFormData({
+        descricaoAssuntoFaltante: avaliacaoAnterior.descricao_assunto_faltante || "",
+        assuntoTpu: avaliacaoAnterior.assunto_tpu || "",
+        hierarquiaCorreta: avaliacaoAnterior.hierarquia_correta || "",
+        divergenciaHierarquia: avaliacaoAnterior.divergencia_hierarquia || "",
+        destinacaoPermanente: avaliacaoAnterior.destinacao_permanente || "",
+        descricaoSituacaoArquivamento: avaliacaoAnterior.descricao_situacao_arquivamento || "",
+        inconsistenciaPrazo: avaliacaoAnterior.inconsistencia_prazo || "",
+        observacoesPecas: avaliacaoAnterior.observacoes_pecas || "",
+        documentoNaoLocalizado: avaliacaoAnterior.documento_nao_localizado || false,
+        documentoDuplicado: avaliacaoAnterior.documento_duplicado || false,
+        erroTecnico: avaliacaoAnterior.erro_tecnico || false,
+        ocorrenciasOutroDetalhe: avaliacaoAnterior.ocorrencias_outro_detalhe || "",
+        divergenciaClassificacao: avaliacaoAnterior.divergencia_classificacao || "",
+        processoVazio: avaliacaoAnterior.processo_vazio || false,
+        observacoesGerais: avaliacaoAnterior.observacoes_gerais || "",
+      });
+
+      // Carregar peças se existirem (processos documentados anteriormente)
+      if (avaliacaoAnterior.pecas_combinado) {
+        // Parse das peças do formato concatenado
+        // Esperamos que seja "Tipo1: ID1 | Tipo2: ID2"
+        const pecasString = avaliacaoAnterior.pecas_combinado;
+        const pecasArray = pecasString.split(" | ").filter((p: string) => p.trim());
+        const novasPecas: PecaProcessual[] = pecasArray.map((p: string) => {
+          const [tipo, idProjudi] = p.split(": ");
+          return {
+            id: crypto.randomUUID(),
+            tipo: tipo?.trim() || "",
+            idProjudi: idProjudi?.trim() || "",
+          };
+        });
+        setPecas(novasPecas);
+      } else {
+        // Se não há peças anteriores, iniciar com lista vazia para novo preenchimento
+        setPecas([]);
+      }
+
+      // Carregar divergências de classificação se existirem
+      if (avaliacaoAnterior.divergencia_classificacao === "Sim" && avaliacaoAnterior.divergencias_detalhes) {
+        // Parse das divergências do formato concatenado
+        // Esperamos que seja "Tipo1 → Real1 (ID: id1) | Tipo2 → Real2 (ID: id2)"
+        const divergenciasString = avaliacaoAnterior.divergencias_detalhes;
+        const divergenciasArray = divergenciasString.split(" | ").filter((d: string) => d.trim());
+        const novasDivergencias: DivergenciaClassificacao[] = divergenciasArray.map((d: string) => {
+          const match = d.match(/(.+?)\s*→\s*(.+?)\s*\(ID:\s*(.+?)\)/);
+          if (match) {
+            return {
+              id: crypto.randomUUID(),
+              tipoInformado: match[1]?.trim() || "",
+              tipoReal: match[2]?.trim() || "",
+              idPeca: match[3]?.trim() || "",
+            };
+          }
+          return { id: crypto.randomUUID(), tipoInformado: "", tipoReal: "", idPeca: "" };
+        });
+        setDivergencias(novasDivergencias);
+      } else {
+        // Se não há divergências anteriores, iniciar lista vazia
+        setDivergencias([]);
+      }
+    } else {
+      // Modo de nova avaliação: limpar formulário e inicializar com campos vazios
+      setPecas([]);
+      setFormData(initialFormData);
+      setDivergencias([]);
+    }
+  }, [avaliacaoAnterior, processo.CODIGO_PROCESSO]);
 
   // Funções para gerenciar divergências
   const adicionarDivergencia = () => {

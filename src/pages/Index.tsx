@@ -35,6 +35,8 @@ export default function Index() {
   });
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDocumental[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [abaSelecionada, setAbaSelecionada] = useState("avaliacao");
+  const [avaliacaoAnterior, setAvaliacaoAnterior] = useState<Record<string, unknown> | null>(null);
   const cleanupExecutedRef = useRef(false);
 
   // Auto-preencher responsável quando o perfil do usuário estiver disponível
@@ -127,12 +129,22 @@ export default function Index() {
   };
 
   // Handler para editar avaliação existente
-  const handleEditarAvaliacao = (processo: ProcessoFila) => {
+  const handleEditarAvaliacao = (processo: ProcessoFila, avaliacaoAnterior?: Record<string, unknown>) => {
+    // Definir processo atual e iniciar sessão
     setSessao(prev => ({
       ...prev,
       processoAtual: processo,
       iniciada: true
     }));
+
+    // Carregar dados da avaliação anterior se foram passados
+    if (avaliacaoAnterior) {
+      setAvaliacaoAnterior(avaliacaoAnterior);
+    }
+
+    // Navegação automática para aba de avaliação
+    setAbaSelecionada("avaliacao");
+
     toast.info(`Editando avaliação do processo ${processo.CODIGO_PROCESSO}`);
   };
 
@@ -321,6 +333,9 @@ export default function Index() {
     } else {
       toast.error("Erro ao salvar avaliação");
     }
+
+    // Limpar dados da avaliação anterior após salvar
+    setAvaliacaoAnterior(null);
     
     setCarregando(false);
   };
@@ -336,7 +351,7 @@ export default function Index() {
       <Header />
       
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="avaliacao" className="space-y-6">
+        <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada} className="space-y-6">
           <TabsList className={`grid w-full max-w-2xl ${podeVerDashboard ? "grid-cols-4" : "grid-cols-2"}`}>
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -387,6 +402,7 @@ export default function Index() {
                 responsavel={sessao.responsavel}
                 onSalvarEProximo={handleSalvarEProximo}
                 carregando={carregando}
+                avaliacaoAnterior={avaliacaoAnterior}
               />
             )}
           </TabsContent>

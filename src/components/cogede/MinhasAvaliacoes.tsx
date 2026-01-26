@@ -26,7 +26,7 @@ interface AvaliacaoComProcesso {
 }
 
 interface MinhasAvaliacoesProps {
-  onEditarAvaliacao: (processo: ProcessoFila) => void;
+  onEditarAvaliacao: (processo: ProcessoFila, avaliacaoAnterior?: Record<string, unknown>) => void;
   loteId?: string;
 }
 
@@ -184,7 +184,22 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
       DATA_FIM: processoCompleto.data_fim_avaliacao || undefined,
     };
 
-    onEditarAvaliacao(processoFormatado);
+    // Buscar dados da avaliação anterior
+    const { data: avaliacaoAnterior, error: erroAvaliacao } = await supabase
+      .from("avaliacoes")
+      .select("*")
+      .eq("id", avaliacao.id)
+      .maybeSingle();
+
+    if (erroAvaliacao) {
+      logger.error("Erro ao buscar avaliação anterior:", erroAvaliacao);
+      // Ainda assim passar o processo sem os dados da avaliação
+      onEditarAvaliacao(processoFormatado, null);
+      return;
+    }
+
+    // Passar processo e avaliação anterior
+    onEditarAvaliacao(processoFormatado, avaliacaoAnterior);
   };
 
   const formatarData = (dataIso: string | null) => {
