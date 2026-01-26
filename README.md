@@ -1,53 +1,101 @@
-# Welcome to your Lovable project
+# Process Compass - Ferramenta de Gestão de Processos
 
-## Project info
+## 🚀 Acesso Online (GitHub Pages)
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+O projeto está **hosteado gratuitamente no GitHub Pages** e pode ser acessado em:
 
-## How can I edit this code?
+**[process-compass.mateussonegheti.me](https://mateussonegheti.github.io/process-compass/)**
 
-There are several ways of editing your application.
+Ou diretamente via GitHub Pages:
+**[https://mateussonegheti.github.io/process-compass/](https://mateussonegheti.github.io/process-compass/)**
 
-**Use Lovable**
+### Funcionalidades Principais
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Dashboard de Supervisor** - Visualize e gerencie avaliações de processos
+- **Formulário de Avaliação** - Avalie processos empresariais
+- **Painel de Relatórios** - Análise consolidada de dados
+- **Merge de Planilhas** - Combine múltiplos arquivos de dados
+- **Autenticação Integrada** - Sistema de login seguro via Supabase
 
-Changes made via Lovable will be committed automatically to this repo.
+## 📋 Desenvolvimento Local
 
-**Use your preferred IDE**
+### Pré-requisitos
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js 20+ ou Bun
+- npm/bun para gerenciador de pacotes
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Instalação
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone o repositório
+git clone https://github.com/mateussonegheti/process-compass.git
+cd process-compass
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Instale as dependências (com npm)
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Ou com bun
+bun install
 ```
 
-**Edit a file directly in GitHub**
+### Executar Localmente
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+# Desenvolvimento com hot reload
+npm run dev
+# ou
+bun run dev
 
-**Use GitHub Codespaces**
+# Acessar em: http://localhost:8080
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
+### Build para Produção
+
+```sh
+npm run build
+# ou
+bun run build
+
+# Preview da build
+npm run preview
+```
+
+## 🔧 Configuração do GitHub Pages
+
+Este projeto está automaticamente configurado para deploy no GitHub Pages através de um workflow do GitHub Actions:
+
+- **Workflow**: `.github/workflows/deploy.yml`
+- **Base URL**: `/process-compass/`
+- **Trigger**: Deploy automático ao fazer push para a branch `main`
+
+O site é reconstruído e reimplantado automaticamente a cada atualização.
+
+## 📁 Estrutura do Projeto
+
+```
+src/
+├── components/
+│   ├── cogede/          # Componentes principais da aplicação
+│   └── ui/              # Componentes shadcn/ui reutilizáveis
+├── pages/               # Páginas da aplicação
+├── hooks/               # React hooks customizados
+├── integrations/        # Integrações externas (Supabase)
+├── lib/                 # Utilitários e helpers
+└── types/               # Definições de tipos TypeScript
+```
+
+## 🏗️ Stack Tecnológico
+
+- **Frontend**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Database**: Supabase PostgreSQL
+- **Autenticação**: Supabase Auth
+- **State Management**: React Query
+- **Formulários**: React Hook Form
+
+## 📝 Desenvolvimento
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
 ## What technologies are used for this project?
