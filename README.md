@@ -95,7 +95,46 @@ src/
 - **State Management**: React Query
 - **Formulários**: React Hook Form
 
-## 📝 Desenvolvimento
+## � Segurança
+
+### Configuração de Variáveis de Ambiente
+
+O projeto usa variáveis de ambiente prefixadas com `VITE_` para expor valores públicos:
+
+```env
+VITE_SUPABASE_PROJECT_ID=your_project_id
+VITE_SUPABASE_URL=https://your_project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your_public_key
+```
+
+**Importante**: 
+- ✅ Essas variáveis são **intencionalmente públicas** e compiladas no bundle
+- ✅ O Supabase foi projetado para usar chaves públicas no frontend
+- ✅ A segurança é garantida por **Row Level Security (RLS)** no banco de dados
+- ❌ **NUNCA** expose a `SERVICE_ROLE_KEY` no código frontend
+
+### Protegendo seus Dados
+
+1. **Row Level Security (RLS)** está habilitado em todas as tabelas
+2. **Autenticação Supabase** valida todas as requisições
+3. **Policies** restringem acesso baseado em papéis (admin, supervisor, avaliador)
+4. **Arquivo `.env` local** não é commitado (está em `.gitignore`)
+
+### Fluxo de Dados
+
+```
+Frontend (React)
+    ↓
+Supabase Client (usa chave pública)
+    ↓
+Supabase Auth (valida usuário)
+    ↓
+Row Level Security (valida permissões)
+    ↓
+PostgreSQL Database (dados protegidos)
+```
+
+## �📝 Desenvolvimento
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
 ## What technologies are used for this project?

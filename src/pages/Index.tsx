@@ -63,35 +63,16 @@ export default function Index() {
     logger.log("[Index] Executando cleanup - liberando processo do usuário");
     
     try {
-      // Use sendBeacon for reliable delivery on page unload
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/processos_fila?codigo_processo=eq.${encodeURIComponent(sessao.processoAtual.CODIGO_PROCESSO)}&lote_id=eq.${loteAtivo.id}`;
-      
-      const payload = JSON.stringify({
-        status_avaliacao: "PENDENTE",
-        responsavel_avaliacao: null,
-        data_inicio_avaliacao: null
-      });
-
-      const headers = {
-        'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        'Prefer': 'return=minimal'
-      };
-
-      // Try sendBeacon first (works on page unload)
-      if (navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: 'application/json' });
-        navigator.sendBeacon(url, blob);
-      } else {
-        // Fallback to fetch
-        await fetch(url, {
-          method: 'PATCH',
-          headers,
-          body: payload,
-          keepalive: true
-        });
-      }
+      // Use Supabase client instead of direct HTTP calls for better security
+      await supabase
+        .from("processos_fila")
+        .update({
+          status_avaliacao: "PENDENTE",
+          responsavel_avaliacao: null,
+          data_inicio_avaliacao: null
+        })
+        .eq("codigo_processo", sessao.processoAtual.CODIGO_PROCESSO)
+        .eq("lote_id", loteAtivo.id);
     } catch (error) {
       logger.error("[Index] Erro ao liberar processo no cleanup:", error);
     }
