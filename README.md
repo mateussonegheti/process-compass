@@ -1,13 +1,5 @@
 # Process Compass - Ferramenta de Gestão de Processos
 
-## 🚀 Acesso Online (GitHub Pages)
-
-O projeto está **hosteado gratuitamente no GitHub Pages** e pode ser acessado em:
-
-**[process-compass.mateussonegheti.me](https://mateussonegheti.github.io/process-compass/)**
-
-Ou diretamente via GitHub Pages:
-**[https://mateussonegheti.github.io/process-compass/](https://mateussonegheti.github.io/process-compass/)**
 
 ### Funcionalidades Principais
 
