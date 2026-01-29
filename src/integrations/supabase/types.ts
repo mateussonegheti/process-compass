@@ -279,6 +279,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      capturar_processo: {
+        Args: {
+          p_codigo_processo: string
+          p_lote_id: string
+          p_profile_id: string
+        }
+        Returns: Json
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -289,6 +297,19 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      liberar_processo: {
+        Args: {
+          p_codigo_processo: string
+          p_lote_id: string
+          p_profile_id: string
+        }
+        Returns: Json
+      }
+      liberar_processos_inativos: { Args: never; Returns: Json }
+      liberar_processos_usuario: {
+        Args: { p_lote_id: string; p_profile_id: string }
+        Returns: Json
       }
     }
     Enums: {

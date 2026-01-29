@@ -181,27 +181,33 @@ export default function Index() {
 
   // Handler para finalizar avaliação (liberar processo sem salvar)
   const handleFinalizarAvaliacao = async () => {
-    if (!sessao.processoAtual || !profile?.id) return;
+    if (!sessao.processoAtual || !profile?.id || !loteAtivo?.id) return;
     
     setCarregando(true);
     
     try {
       logger.log(`[Index] Finalizando avaliação - liberando processo ${sessao.processoAtual.CODIGO_PROCESSO}`);
       
-      // Liberar o processo de volta para PENDENTE
-      const sucesso = await atualizarStatusProcesso(
-        sessao.processoAtual.CODIGO_PROCESSO,
-        "PENDENTE"
-      );
+      // Usar função RPC para liberar processo
+      const { data, error } = await supabase.rpc('liberar_processo', {
+        p_codigo_processo: sessao.processoAtual.CODIGO_PROCESSO,
+        p_lote_id: loteAtivo.id,
+        p_profile_id: profile.id
+      });
       
-      if (sucesso) {
+      const result = data as { success: boolean; message?: string } | null;
+      
+      if (error) {
+        logger.error("[Index] Erro ao liberar processo:", error);
+        toast.error("Erro ao finalizar avaliação");
+      } else if (result?.success) {
         toast.success("Avaliação finalizada. O processo foi devolvido para a fila.");
         setSessao(prev => ({ ...prev, processoAtual: undefined }));
         setAvaliacaoAnterior(null);
         setModoEdicao(false);
         setAvaliacaoIdEdicao(null);
       } else {
-        toast.error("Erro ao finalizar avaliação");
+        toast.error(result?.message || "Erro ao finalizar avaliação");
       }
     } catch (error) {
       logger.error("[Index] Erro ao finalizar avaliação:", error);
@@ -238,14 +244,23 @@ export default function Index() {
     }
     
     if (proximoProcessoDb) {
-      // Atualizar no banco
-      const sucesso = await atualizarStatusProcesso(
-        proximoProcessoDb.codigo_processo,
-        "EM_ANALISE",
-        profile.id
-      );
+      // Usar função RPC para capturar o processo atomicamente
+      const { data: capturaData, error: capturaError } = await supabase.rpc('capturar_processo', {
+        p_codigo_processo: proximoProcessoDb.codigo_processo,
+        p_lote_id: loteAtivo.id,
+        p_profile_id: profile.id
+      });
       
-      if (sucesso) {
+      const capturaResult = capturaData as { success: boolean; processo_id?: string; message?: string } | null;
+      
+      if (capturaError) {
+        logger.error("Erro ao capturar processo:", capturaError);
+        toast.error("Erro ao capturar processo");
+        setCarregando(false);
+        return;
+      }
+      
+      if (capturaResult?.success) {
         const processoFormatado: ProcessoFila = {
           ID: proximoProcessoDb.id,
           CODIGO_PROCESSO: proximoProcessoDb.codigo_processo,
@@ -268,7 +283,7 @@ export default function Index() {
         
         toast.success(`Processo ${proximoProcessoDb.codigo_processo} capturado para avaliação`);
       } else {
-        toast.error("Erro ao capturar processo");
+        toast.error(capturaResult?.message || "Erro ao capturar processo");
       }
     } else {
       toast.info("Não há mais processos pendentes na fila");
