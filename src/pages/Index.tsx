@@ -37,6 +37,8 @@ export default function Index() {
   const [carregando, setCarregando] = useState(false);
   const [abaSelecionada, setAbaSelecionada] = useState("avaliacao");
   const [avaliacaoAnterior, setAvaliacaoAnterior] = useState<Record<string, unknown> | null>(null);
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [avaliacaoIdEdicao, setAvaliacaoIdEdicao] = useState<string | null>(null);
   const cleanupExecutedRef = useRef(false);
 
   // Auto-preencher responsável quando o perfil do usuário estiver disponível
@@ -129,7 +131,7 @@ export default function Index() {
   };
 
   // Handler para editar avaliação existente
-  const handleEditarAvaliacao = async (processo: ProcessoFila, avaliacaoAnterior?: Record<string, unknown>) => {
+  const handleEditarAvaliacao = async (processo: ProcessoFila, avaliacaoAnteriorData?: Record<string, unknown>) => {
     // Se há um processo em EM_ANALISE, liberar ele da fila antes de editar outro
     if (sessao.processoAtual?.STATUS_AVALIACAO === "EM_ANALISE" && sessao.processoAtual.ID) {
       try {
@@ -160,8 +162,14 @@ export default function Index() {
     }));
 
     // Carregar dados da avaliação anterior se foram passados
-    if (avaliacaoAnterior) {
-      setAvaliacaoAnterior(avaliacaoAnterior);
+    if (avaliacaoAnteriorData) {
+      setAvaliacaoAnterior(avaliacaoAnteriorData);
+      setModoEdicao(true);
+      setAvaliacaoIdEdicao(avaliacaoAnteriorData.id as string);
+    } else {
+      setAvaliacaoAnterior(null);
+      setModoEdicao(false);
+      setAvaliacaoIdEdicao(null);
     }
 
     // Navegação automática para aba de avaliação
@@ -169,6 +177,38 @@ export default function Index() {
 
     logger.info(`[Index] Editando avaliação do processo ${processo.CODIGO_PROCESSO}`);
     toast.info(`Editando avaliação do processo ${processo.CODIGO_PROCESSO}`);
+  };
+
+  // Handler para finalizar avaliação (liberar processo sem salvar)
+  const handleFinalizarAvaliacao = async () => {
+    if (!sessao.processoAtual || !profile?.id) return;
+    
+    setCarregando(true);
+    
+    try {
+      logger.log(`[Index] Finalizando avaliação - liberando processo ${sessao.processoAtual.CODIGO_PROCESSO}`);
+      
+      // Liberar o processo de volta para PENDENTE
+      const sucesso = await atualizarStatusProcesso(
+        sessao.processoAtual.CODIGO_PROCESSO,
+        "PENDENTE"
+      );
+      
+      if (sucesso) {
+        toast.success("Avaliação finalizada. O processo foi devolvido para a fila.");
+        setSessao(prev => ({ ...prev, processoAtual: undefined }));
+        setAvaliacaoAnterior(null);
+        setModoEdicao(false);
+        setAvaliacaoIdEdicao(null);
+      } else {
+        toast.error("Erro ao finalizar avaliação");
+      }
+    } catch (error) {
+      logger.error("[Index] Erro ao finalizar avaliação:", error);
+      toast.error("Erro ao finalizar avaliação");
+    } finally {
+      setCarregando(false);
+    }
   };
 
   const handleIniciarAvaliacao = async () => {
@@ -257,38 +297,56 @@ export default function Index() {
       return;
     }
     
-    // Inserir avaliação no banco de dados
-    const { error: insertError } = await supabase
-      .from("avaliacoes")
-      .insert({
-        processo_id: processoAtual.ID,
-        avaliador_id: profile.id,
-        descricao_assunto_faltante: avaliacao.descricaoAssuntoFaltante || null,
-        assunto_tpu: avaliacao.assuntoTpu || null,
-        hierarquia_correta: avaliacao.hierarquiaCorreta || null,
-        divergencia_hierarquia: avaliacao.divergenciaHierarquia || null,
-        destinacao_permanente: avaliacao.destinacaoPermanente || null,
-        descricao_situacao_arquivamento: avaliacao.descricaoSituacaoArquivamento || null,
-        inconsistencia_prazo: avaliacao.inconsistenciaPrazo || null,
-        pecas_tipos: avaliacao.pecasTipos || null,
-        pecas_ids: avaliacao.pecasIds || null,
-        pecas_combinado: avaliacao.pecasCombinado || null,
-        observacoes_pecas: avaliacao.observacoesPecas || null,
-        documento_nao_localizado: avaliacao.documentoNaoLocalizado || false,
-        documento_duplicado: avaliacao.documentoDuplicado || false,
-        erro_tecnico: avaliacao.erroTecnico || false,
-        ocorrencias_outro_detalhe: avaliacao.ocorrenciasOutroDetalhe || null,
-        divergencia_classificacao: avaliacao.divergenciaClassificacao || null,
-        tipo_informado_sistema: avaliacao.tipoInformadoSistema || null,
-        tipo_real_identificado: avaliacao.tipoRealIdentificado || null,
-        processo_vazio: avaliacao.processoVazio || false,
-        observacoes_gerais: avaliacao.observacoesGerais || null,
-        data_inicio: avaliacao.dataInicioAvaliacao,
-        data_fim: new Date().toISOString(),
-      });
+    // Dados da avaliação para inserir ou atualizar
+    const dadosAvaliacao = {
+      processo_id: processoAtual.ID,
+      avaliador_id: profile.id,
+      descricao_assunto_faltante: avaliacao.descricaoAssuntoFaltante || null,
+      assunto_tpu: avaliacao.assuntoTpu || null,
+      hierarquia_correta: avaliacao.hierarquiaCorreta || null,
+      divergencia_hierarquia: avaliacao.divergenciaHierarquia || null,
+      destinacao_permanente: avaliacao.destinacaoPermanente || null,
+      descricao_situacao_arquivamento: avaliacao.descricaoSituacaoArquivamento || null,
+      inconsistencia_prazo: avaliacao.inconsistenciaPrazo || null,
+      pecas_tipos: avaliacao.pecasTipos || null,
+      pecas_ids: avaliacao.pecasIds || null,
+      pecas_combinado: avaliacao.pecasCombinado || null,
+      observacoes_pecas: avaliacao.observacoesPecas || null,
+      documento_nao_localizado: avaliacao.documentoNaoLocalizado || false,
+      documento_duplicado: avaliacao.documentoDuplicado || false,
+      erro_tecnico: avaliacao.erroTecnico || false,
+      ocorrencias_outro_detalhe: avaliacao.ocorrenciasOutroDetalhe || null,
+      divergencia_classificacao: avaliacao.divergenciaClassificacao || null,
+      tipo_informado_sistema: avaliacao.tipoInformadoSistema || null,
+      tipo_real_identificado: avaliacao.tipoRealIdentificado || null,
+      processo_vazio: avaliacao.processoVazio || false,
+      observacoes_gerais: avaliacao.observacoesGerais || null,
+      data_fim: new Date().toISOString(),
+    };
     
-    if (insertError) {
-      logger.error("Erro ao inserir avaliação:", insertError);
+    let dbError = null;
+    
+    // Se estiver em modo de edição, fazer UPDATE ao invés de INSERT
+    if (modoEdicao && avaliacaoIdEdicao) {
+      logger.log(`[Index] Atualizando avaliação existente ${avaliacaoIdEdicao}`);
+      const { error: updateError } = await supabase
+        .from("avaliacoes")
+        .update(dadosAvaliacao)
+        .eq("id", avaliacaoIdEdicao);
+      dbError = updateError;
+    } else {
+      // Nova avaliação - INSERT
+      const { error: insertError } = await supabase
+        .from("avaliacoes")
+        .insert({
+          ...dadosAvaliacao,
+          data_inicio: avaliacao.dataInicioAvaliacao,
+        });
+      dbError = insertError;
+    }
+    
+    if (dbError) {
+      logger.error("Erro ao salvar avaliação:", dbError);
       toast.error("Erro ao salvar avaliação no banco de dados");
       setCarregando(false);
       return;
@@ -302,7 +360,17 @@ export default function Index() {
     );
     
     if (sucesso) {
-      toast.success("Avaliação salva com sucesso!");
+      toast.success(modoEdicao ? "Avaliação atualizada com sucesso!" : "Avaliação salva com sucesso!");
+      
+      // Se estava em modo de edição, apenas limpar e voltar
+      if (modoEdicao) {
+        setSessao(prev => ({ ...prev, processoAtual: undefined }));
+        setAvaliacaoAnterior(null);
+        setModoEdicao(false);
+        setAvaliacaoIdEdicao(null);
+        setCarregando(false);
+        return;
+      }
       
       // Buscar próximo processo diretamente do banco para ter dados completos
       const { data: proximoProcessoDb, error: proximoError } = await supabase
@@ -359,6 +427,8 @@ export default function Index() {
 
     // Limpar dados da avaliação anterior após salvar
     setAvaliacaoAnterior(null);
+    setModoEdicao(false);
+    setAvaliacaoIdEdicao(null);
     
     setCarregando(false);
   };
@@ -424,8 +494,10 @@ export default function Index() {
                 processo={sessao.processoAtual}
                 responsavel={sessao.responsavel}
                 onSalvarEProximo={handleSalvarEProximo}
+                onFinalizarAvaliacao={handleFinalizarAvaliacao}
                 carregando={carregando}
                 avaliacaoAnterior={avaliacaoAnterior}
+                modoEdicao={modoEdicao}
               />
             )}
           </TabsContent>
