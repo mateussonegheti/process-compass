@@ -24,7 +24,7 @@ interface ProcessoDB {
   data_distribuicao: string | null;
   data_arquivamento_def: string | null;
   prazo_5_anos_completo: string | null;
-  status_avaliacao: "PENDENTE" | "EM_ANALISE" | "CONCLUIDO";
+  status_avaliacao: string;
   responsavel_avaliacao: string | null;
   data_inicio_avaliacao: string | null;
   data_fim_avaliacao: string | null;
@@ -33,7 +33,6 @@ interface ProcessoDB {
 
 export function useProcessos() {
   const { profile, isAdmin, isSupervisor } = useAuth();
-
   const [processos, setProcessos] = useState<ProcessoFila[]>([]);
   const [loteAtivo, setLoteAtivo] = useState<LoteImportacao | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,13 +40,12 @@ export function useProcessos() {
 
   const podeCarregarPlanilha = isAdmin || isSupervisor;
 
-  // ======================================================
-  // BUSCAR LOTE ATIVO E PROCESSOS
-  // ======================================================
+  // Buscar lote ativo e processos
   const fetchProcessos = useCallback(async () => {
     try {
       setLoading(true);
-
+      
+      // Buscar lote ativo
       const { data: lotes, error: lotesError } = await supabase
         .from("lotes_importacao")
         .select("*")
@@ -60,45 +58,44 @@ export function useProcessos() {
         return;
       }
 
-      if (!lotes || lotes.length === 0) {
+      if (lotes && lotes.length > 0) {
+        const lote = lotes[0] as LoteImportacao;
+        setLoteAtivo(lote);
+
+        // Buscar processos do lote
+        const { data: processosData, error: processosError } = await supabase
+          .from("processos_fila")
+          .select("*")
+          .eq("lote_id", lote.id)
+          .order("created_at", { ascending: true });
+
+        if (processosError) {
+          logger.error("Erro ao buscar processos:", processosError);
+          return;
+        }
+
+        if (processosData) {
+          const processosFormatados: ProcessoFila[] = (processosData as ProcessoDB[]).map((p) => ({
+            ID: p.id,
+            CODIGO_PROCESSO: p.codigo_processo,
+            NUMERO_CNJ: p.numero_cnj,
+            POSSUI_ASSUNTO: p.possui_assunto || "",
+            ASSUNTO_PRINCIPAL: p.assunto_principal || "",
+            POSSUI_MOV_ARQUIVADO: p.possui_mov_arquivado || "",
+            DATA_DISTRIBUICAO: p.data_distribuicao || "",
+            DATA_ARQUIVAMENTO_DEF: p.data_arquivamento_def || "",
+            PRAZO_5_ANOS_COMPLETO: p.prazo_5_anos_completo || "",
+            STATUS_AVALIACAO: p.status_avaliacao as "PENDENTE" | "EM_ANALISE" | "CONCLUIDO",
+            RESPONSAVEL: p.responsavel_avaliacao || undefined,
+            DATA_INICIO_AVALIACAO: p.data_inicio_avaliacao || undefined,
+            DATA_FIM: p.data_fim_avaliacao || undefined,
+          }));
+          setProcessos(processosFormatados);
+        }
+      } else {
         setLoteAtivo(null);
         setProcessos([]);
-        return;
       }
-
-      const lote = lotes[0] as LoteImportacao;
-      setLoteAtivo(lote);
-
-      const { data: processosData, error: processosError } = await supabase
-        .from("processos_fila")
-        .select("*")
-        .eq("lote_id", lote.id)
-        .order("created_at", { ascending: true });
-
-      if (processosError) {
-        logger.error("Erro ao buscar processos:", processosError);
-        return;
-      }
-
-      const processosFormatados: ProcessoFila[] = (processosData as ProcessoDB[]).map(
-        (p) => ({
-          ID: p.id,
-          CODIGO_PROCESSO: p.codigo_processo,
-          NUMERO_CNJ: p.numero_cnj,
-          POSSUI_ASSUNTO: p.possui_assunto || "",
-          ASSUNTO_PRINCIPAL: p.assunto_principal || "",
-          POSSUI_MOV_ARQUIVADO: p.possui_mov_arquivado || "",
-          DATA_DISTRIBUICAO: p.data_distribuicao || "",
-          DATA_ARQUIVAMENTO_DEF: p.data_arquivamento_def || "",
-          PRAZO_5_ANOS_COMPLETO: p.prazo_5_anos_completo || "",
-          STATUS_AVALIACAO: p.status_avaliacao,
-          RESPONSAVEL: p.responsavel_avaliacao || undefined,
-          DATA_INICIO_AVALIACAO: p.data_inicio_avaliacao || undefined,
-          DATA_FIM: p.data_fim_avaliacao || undefined,
-        })
-      );
-
-      setProcessos(processosFormatados);
     } catch (error) {
       logger.error("Erro ao buscar dados:", error);
     } finally {
@@ -106,9 +103,7 @@ export function useProcessos() {
     }
   }, []);
 
-  // ======================================================
-  // CARREGAR PLANILHA (ADMIN / SUPERVISOR)
-  // ======================================================
+  // Carregar nova planilha (apenas admin/supervisor)
   const carregarPlanilha = async (novosProcessos: ProcessoFila[]) => {
     if (!podeCarregarPlanilha || !profile) {
       toast.error("Você não tem permissão para carregar planilhas");
@@ -118,6 +113,7 @@ export function useProcessos() {
     try {
       setUploading(true);
 
+      // Desativar lotes anteriores
       if (loteAtivo) {
         await supabase
           .from("lotes_importacao")
@@ -125,6 +121,7 @@ export function useProcessos() {
           .eq("id", loteAtivo.id);
       }
 
+      // Criar novo lote
       const { data: novoLote, error: loteError } = await supabase
         .from("lotes_importacao")
         .insert({
@@ -138,10 +135,11 @@ export function useProcessos() {
 
       if (loteError || !novoLote) {
         logger.error("Erro ao criar lote:", loteError);
-        toast.error("Erro ao criar lote");
+        toast.error("Erro ao criar lote de importação");
         return;
       }
 
+      // Inserir processos
       const processosParaInserir = novosProcessos.map((p) => ({
         codigo_processo: p.CODIGO_PROCESSO,
         numero_cnj: p.NUMERO_CNJ,
@@ -151,8 +149,8 @@ export function useProcessos() {
         data_distribuicao: p.DATA_DISTRIBUICAO || null,
         data_arquivamento_def: p.DATA_ARQUIVAMENTO_DEF || null,
         prazo_5_anos_completo: p.PRAZO_5_ANOS_COMPLETO || null,
-        status_avaliacao: "PENDENTE",
-        lote_id: novoLote.id,
+        status_avaliacao: p.STATUS_AVALIACAO || "PENDENTE",
+        lote_id: (novoLote as LoteImportacao).id,
       }));
 
       const { error: insertError } = await supabase
@@ -165,80 +163,125 @@ export function useProcessos() {
         return;
       }
 
-      toast.success("Planilha carregada com sucesso");
+      toast.success(`${novosProcessos.length} processos carregados com sucesso!`);
       await fetchProcessos();
+    } catch (error) {
+      logger.error("Erro ao carregar planilha:", error);
+      toast.error("Erro ao carregar planilha");
     } finally {
       setUploading(false);
     }
   };
 
-  // ======================================================
-  // CAPTURAR PRÓXIMO PROCESSO (RPC — ATÔMICO)
-  // ======================================================
-  const capturarProximoProcesso = async () => {
+  // Liberar processos órfãos do usuário (EM_ANALISE sem conclusão) - usando função RPC
+  const liberarProcessosOrfaos = useCallback(async (responsavelId: string) => {
+    if (!loteAtivo?.id) return;
+    
     try {
-      const { data, error } = await supabase.rpc("capturar_proximo_processo" as any);
+      logger.log(`[useProcessos] Liberando processos órfãos do usuário ${responsavelId}`);
+      
+      const { data, error } = await supabase
+        .rpc('liberar_processos_usuario', {
+          p_profile_id: responsavelId,
+          p_lote_id: loteAtivo.id
+        });
 
       if (error) {
-        logger.error("Erro RPC capturar_proximo_processo:", error);
-        toast.error("Erro ao capturar processo");
-        return null;
+        logger.error("[useProcessos] Erro ao liberar processos órfãos:", error);
+      } else {
+        logger.log("[useProcessos] Processos órfãos liberados:", data);
+        await fetchProcessos();
       }
-
-      if (!data) {
-        toast.info("Não há processos pendentes disponíveis");
-        return null;
-      }
-
-      await fetchProcessos();
-      return data;
-    } catch {
-      toast.error("Erro inesperado ao capturar processo");
-      return null;
+    } catch (error) {
+      logger.error("[useProcessos] Erro ao liberar processos órfãos:", error);
     }
-  };
+  }, [loteAtivo?.id, fetchProcessos]);
 
-  // ======================================================
-  // CONCLUIR PROCESSO
-  // ======================================================
-  const atualizarStatusProcesso = async (codigoProcesso: string) => {
+  // Atualizar status de um processo
+  const atualizarStatusProcesso = async (
+    codigoProcesso: string,
+    status: "PENDENTE" | "EM_ANALISE" | "CONCLUIDO",
+    responsavelId?: string
+  ) => {
     try {
-      if (!loteAtivo?.id) return false;
+      logger.log(`[useProcessos] Atualizando processo ${codigoProcesso} para status ${status}`);
+      
+      if (!loteAtivo?.id) {
+        logger.error("[useProcessos] Lote ativo não encontrado");
+        return false;
+      }
 
+      // Se estamos capturando um novo processo (EM_ANALISE), primeiro liberar qualquer processo órfão
+      if (status === "EM_ANALISE" && responsavelId) {
+        await liberarProcessosOrfaos(responsavelId);
+      }
+      
       const { error } = await supabase
         .from("processos_fila")
         .update({
-          status_avaliacao: "CONCLUIDO",
-          data_fim_avaliacao: new Date().toISOString(),
+          status_avaliacao: status,
+          responsavel_avaliacao: responsavelId || null,
+          data_inicio_avaliacao: status === "EM_ANALISE" ? new Date().toISOString() : undefined,
+          data_fim_avaliacao: status === "CONCLUIDO" ? new Date().toISOString() : undefined,
         })
         .eq("codigo_processo", codigoProcesso)
         .eq("lote_id", loteAtivo.id);
 
       if (error) {
-        logger.error("Erro ao concluir processo:", error);
+        logger.error("[useProcessos] Erro ao atualizar processo:", error);
         return false;
       }
 
-      await fetchProcessos();
+      logger.log(`[useProcessos] Processo ${codigoProcesso} atualizado no banco com sucesso`);
+
+      // Atualizar estado local imediatamente
+      setProcessos((prev) => {
+        const updated = prev.map((p) =>
+          p.CODIGO_PROCESSO === codigoProcesso
+            ? {
+                ...p,
+                STATUS_AVALIACAO: status,
+                RESPONSAVEL: responsavelId,
+                DATA_INICIO_AVALIACAO:
+                  status === "EM_ANALISE" ? new Date().toISOString() : p.DATA_INICIO_AVALIACAO,
+                DATA_FIM: status === "CONCLUIDO" ? new Date().toISOString() : p.DATA_FIM,
+              }
+            : p
+        );
+        
+        const pendentes = updated.filter(p => p.STATUS_AVALIACAO === "PENDENTE").length;
+        const emAnalise = updated.filter(p => p.STATUS_AVALIACAO === "EM_ANALISE").length;
+        const concluidos = updated.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length;
+        logger.log(`[useProcessos] Estado local atualizado - Pendentes: ${pendentes}, Em Análise: ${emAnalise}, Concluídos: ${concluidos}`);
+        
+        return updated;
+      });
+
       return true;
     } catch (error) {
-      logger.error("Erro ao concluir processo:", error);
+      logger.error("[useProcessos] Erro ao atualizar processo:", error);
       return false;
     }
   };
 
-  // ======================================================
-  // REALTIME
-  // ======================================================
+  // Configurar realtime
   useEffect(() => {
     fetchProcessos();
 
+    // Subscrever a mudanças em processos_fila
     const channel = supabase
       .channel("processos-changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "processos_fila" },
-        () => fetchProcessos()
+        {
+          event: "*",
+          schema: "public",
+          table: "processos_fila",
+        },
+        (payload) => {
+          logger.log("Mudança em processos:", payload);
+          fetchProcessos();
+        }
       )
       .subscribe();
 
@@ -254,8 +297,8 @@ export function useProcessos() {
     uploading,
     podeCarregarPlanilha,
     carregarPlanilha,
-    capturarProximoProcesso,
     atualizarStatusProcesso,
+    liberarProcessosOrfaos,
     refetch: fetchProcessos,
   };
 }
