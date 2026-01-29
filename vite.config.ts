@@ -5,7 +5,10 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/process-compass/",
+  // In GitHub Pages the app lives under /process-compass/.
+  // In Lovable preview/dev it lives at /. Keeping /process-compass/ in dev
+  // can cause React Router basename mismatches and a white screen.
+  base: mode === "production" ? "/process-compass/" : "/",
   server: {
     host: "::",
     port: 8080,

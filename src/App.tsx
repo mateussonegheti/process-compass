@@ -14,6 +14,17 @@ import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
+function detectRouterBasename() {
+  // Vite build may be configured for GitHub Pages (e.g. /process-compass/),
+  // but the Lovable preview runs at /. If the current pathname does not start
+  // with the configured base, React Router would render nothing (white screen).
+  const configuredBase = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+  const path = window.location.pathname;
+
+  if (!configuredBase || configuredBase === "/") return "";
+  return path.startsWith(configuredBase) ? configuredBase : "";
+}
+
 // Componente para proteger rotas que exigem autenticação
 // Security Note: This provides defense-in-depth for UI access control.
 // Primary security is enforced via RLS policies on the database.
@@ -104,7 +115,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename="/process-compass">
+      <BrowserRouter basename={detectRouterBasename()}>
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>
