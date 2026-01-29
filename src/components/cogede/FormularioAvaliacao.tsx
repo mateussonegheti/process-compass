@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, ArrowRight, Lock, Plus, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Save, ArrowRight, Lock, Plus, Trash2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU, TIPOS_PECA } from "@/types/cogede";
 import { toast } from "sonner";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
@@ -16,8 +16,10 @@ interface FormularioAvaliacaoProps {
   processo: ProcessoFila;
   responsavel: string;
   onSalvarEProximo: (avaliacao: AvaliacaoDocumental) => void;
+  onFinalizarAvaliacao?: () => void;
   carregando: boolean;
   avaliacaoAnterior?: Record<string, unknown>; // Dados da avaliação anterior para edição
+  modoEdicao?: boolean; // Indica se estamos editando uma avaliação existente
 }
 
 // Interface para divergência de classificação
@@ -53,7 +55,7 @@ const initialFormData = {
   observacoesGerais: "",
 };
 
-export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, carregando, avaliacaoAnterior }: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
@@ -714,19 +716,41 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, c
         </CardContent>
       </Card>
 
-      {/* Botão de Ação */}
+      {/* Botões de Ação */}
       <div className="sticky bottom-4 bg-background/95 backdrop-blur p-4 rounded-lg border shadow-lg">
-        <Button onClick={handleSubmit} disabled={carregando} className="w-full" size="lg">
-          {carregando ? (
-            <>Salvando...</>
-          ) : (
-            <>
-              <Save className="h-5 w-5 mr-2" />
-              Salvar e ir para o próximo
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </>
+        <div className="flex gap-3">
+          {/* Botão Finalizar Avaliação - apenas se não estiver em modo edição */}
+          {!modoEdicao && onFinalizarAvaliacao && (
+            <Button 
+              onClick={onFinalizarAvaliacao} 
+              disabled={carregando} 
+              variant="outline"
+              size="lg"
+              className="flex-1"
+            >
+              <XCircle className="h-5 w-5 mr-2" />
+              Finalizar avaliação
+            </Button>
           )}
-        </Button>
+          
+          {/* Botão Salvar */}
+          <Button onClick={handleSubmit} disabled={carregando} className="flex-1" size="lg">
+            {carregando ? (
+              <>Salvando...</>
+            ) : modoEdicao ? (
+              <>
+                <Save className="h-5 w-5 mr-2" />
+                Salvar alterações
+              </>
+            ) : (
+              <>
+                <Save className="h-5 w-5 mr-2" />
+                Salvar e próximo
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
