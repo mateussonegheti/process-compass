@@ -173,28 +173,23 @@ export function useProcessos() {
     }
   };
 
-  // Liberar processos órfãos do usuário (EM_ANALISE sem conclusão)
+  // Liberar processos órfãos do usuário (EM_ANALISE sem conclusão) - usando função RPC
   const liberarProcessosOrfaos = useCallback(async (responsavelId: string) => {
     if (!loteAtivo?.id) return;
     
     try {
       logger.log(`[useProcessos] Liberando processos órfãos do usuário ${responsavelId}`);
       
-      const { error } = await supabase
-        .from("processos_fila")
-        .update({
-          status_avaliacao: "PENDENTE",
-          responsavel_avaliacao: null,
-          data_inicio_avaliacao: null,
-        })
-        .eq("status_avaliacao", "EM_ANALISE")
-        .eq("responsavel_avaliacao", responsavelId)
-        .eq("lote_id", loteAtivo.id);
+      const { data, error } = await supabase
+        .rpc('liberar_processos_usuario', {
+          p_profile_id: responsavelId,
+          p_lote_id: loteAtivo.id
+        });
 
       if (error) {
         logger.error("[useProcessos] Erro ao liberar processos órfãos:", error);
       } else {
-        logger.log("[useProcessos] Processos órfãos liberados com sucesso");
+        logger.log("[useProcessos] Processos órfãos liberados:", data);
         await fetchProcessos();
       }
     } catch (error) {
