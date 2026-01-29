@@ -320,7 +320,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
       .subscribe();
 
     // Atualizar a cada 30 segundos
-    const interval = setInterval(fetchDadosRealtime, 30000);
+    const interval = setInterval(fetchDadosRealtime, 10000);
 
     return () => {
       supabase.removeChannel(channel);
