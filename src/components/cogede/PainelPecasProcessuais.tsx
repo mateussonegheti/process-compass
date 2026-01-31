@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,8 +40,20 @@ export interface PecaPermanente {
   tipoRealIdentificado?: string;
 }
 
+// Interface para dados concatenados do CSV
+export interface DadosMovimentosConcatenados {
+  movimentoCodigo?: string;      // "101 | 102 | 103"
+  movimentoDescricao?: string;   // "Petição Inicial | Despacho | Sentença"
+  complemento?: string;          // "Distribuição | Cite-se | Procedente"
+  movimentoData?: string;        // "01/01/2020 | 05/01/2020 | 15/06/2020"
+  idsPecas: string;              // "506978 | 506979 | 539990"
+  tiposPecas: string;            // "Petição Inicial | Despacho | Sentença"
+}
+
 interface PainelPecasProcessuaisProps {
-  movimentos: MovimentoProcessual[];
+  // Pode receber movimentos já parseados OU dados concatenados do CSV
+  movimentos?: MovimentoProcessual[];
+  dadosConcatenados?: DadosMovimentosConcatenados;
   pecasPermanentes: PecaPermanente[];
   onAdicionarPecaPermanente: (peca: PecaPermanente) => void;
   onRemoverPecaPermanente: (movimentoId: string) => void;
@@ -64,102 +76,40 @@ interface PainelPecasProcessuaisProps {
 // URL base do Projudi para visualização de peças
 const PROJUDI_BASE_URL = "https://projudi.tjmg.jus.br/projudi/listagens/DownloadArquivo?arquivo=";
 
+// Função para fazer parse das listas concatenadas
+function parseMovimentosConcatenados(dados: DadosMovimentosConcatenados): MovimentoProcessual[] {
+  const ids = dados.idsPecas?.split(" | ").map(s => s.trim()).filter(Boolean) || [];
+  const tipos = dados.tiposPecas?.split(" | ").map(s => s.trim()).filter(Boolean) || [];
+  const codigos = dados.movimentoCodigo?.split(" | ").map(s => s.trim()) || [];
+  const descricoes = dados.movimentoDescricao?.split(" | ").map(s => s.trim()) || [];
+  const complementos = dados.complemento?.split(" | ").map(s => s.trim()) || [];
+  const datas = dados.movimentoData?.split(" | ").map(s => s.trim()) || [];
+
+  // O array de IDs é a referência principal
+  return ids.map((idPeca, index) => ({
+    id: `mov-${index}-${idPeca}`,
+    codigo: codigos[index] || String(index + 1),
+    descricao: descricoes[index] || tipos[index] || "Documento",
+    complemento: complementos[index] || undefined,
+    data: datas[index] || "",
+    tipoInformado: tipos[index] || "Outros",
+    idPeca: idPeca
+  }));
+}
+
 // Dados mockados para desenvolvimento visual
-const MOVIMENTOS_MOCK: MovimentoProcessual[] = [
-  {
-    id: "1",
-    codigo: "123",
-    descricao: "Petição Inicial",
-    complemento: "Distribuição automática",
-    data: "01/03/2018",
-    tipoInformado: "Petição Inicial",
-    idPeca: "641956"
-  },
-  {
-    id: "2",
-    codigo: "124",
-    descricao: "Certidão",
-    complemento: "Certidão de distribuição",
-    data: "01/03/2018",
-    tipoInformado: "Certidão",
-    idPeca: "641957"
-  },
-  {
-    id: "3",
-    codigo: "125",
-    descricao: "Despacho",
-    complemento: "Cite-se",
-    data: "05/03/2018",
-    tipoInformado: "Despacho",
-    idPeca: "641958"
-  },
-  {
-    id: "4",
-    codigo: "126",
-    descricao: "Citação",
-    complemento: "Citação por AR",
-    data: "10/03/2018",
-    tipoInformado: "Citação",
-    idPeca: "641959"
-  },
-  {
-    id: "5",
-    codigo: "456",
-    descricao: "Sentença",
-    complemento: "Sentença de mérito - procedência parcial",
-    data: "12/03/2020",
-    tipoInformado: "Sentença",
-    idPeca: "987456312"
-  },
-  {
-    id: "6",
-    codigo: "457",
-    descricao: "Intimação",
-    complemento: "Intimação das partes",
-    data: "15/03/2020",
-    tipoInformado: "Intimação",
-    idPeca: "987456313"
-  },
-  {
-    id: "7",
-    codigo: "458",
-    descricao: "Termo de Audiência",
-    complemento: "Audiência de instrução e julgamento",
-    data: "20/06/2019",
-    tipoInformado: "Termo de Audiência",
-    idPeca: "876543210"
-  },
-  {
-    id: "8",
-    codigo: "459",
-    descricao: "Decisão",
-    complemento: "Decisão interlocutória - antecipação de tutela",
-    data: "25/04/2018",
-    tipoInformado: "Decisão",
-    idPeca: "765432109"
-  },
-  {
-    id: "9",
-    codigo: "460",
-    descricao: "Certidão de Trânsito",
-    complemento: "Certidão de trânsito em julgado",
-    data: "01/06/2020",
-    tipoInformado: "Certidão",
-    idPeca: "654321098"
-  },
-  {
-    id: "10",
-    codigo: "461",
-    descricao: "Arquivamento",
-    complemento: "Arquivamento definitivo",
-    data: "15/06/2020",
-    tipoInformado: "Andamento Processual",
-    idPeca: "543210987"
-  }
-];
+const DADOS_MOCK: DadosMovimentosConcatenados = {
+  movimentoCodigo: "123 | 124 | 125 | 126 | 456 | 457 | 458 | 459 | 460 | 461",
+  movimentoDescricao: "Petição Inicial | Certidão | Despacho | Citação | Sentença | Intimação | Termo de Audiência | Decisão | Certidão de Trânsito | Arquivamento",
+  complemento: "Distribuição automática | Certidão de distribuição | Cite-se | Citação por AR | Sentença de mérito | Intimação das partes | Audiência de instrução | Decisão interlocutória | Trânsito em julgado | Arquivamento definitivo",
+  movimentoData: "01/03/2018 | 01/03/2018 | 05/03/2018 | 10/03/2018 | 12/03/2020 | 15/03/2020 | 20/06/2019 | 25/04/2018 | 01/06/2020 | 15/06/2020",
+  idsPecas: "641956 | 641957 | 641958 | 641959 | 987456312 | 987456313 | 876543210 | 765432109 | 654321098 | 543210987",
+  tiposPecas: "Petição Inicial | Certidão | Despacho | Citação | Sentença | Intimação | Termo de Audiência | Decisão | Certidão | Andamento Processual"
+};
 
 export function PainelPecasProcessuais({
-  movimentos = MOVIMENTOS_MOCK, // Usa mock se não receber dados
+  movimentos: movimentosProps,
+  dadosConcatenados,
   pecasPermanentes,
   onAdicionarPecaPermanente,
   onRemoverPecaPermanente,
@@ -175,6 +125,17 @@ export function PainelPecasProcessuais({
   const [temDivergencia, setTemDivergencia] = useState(false);
   const [tipoRealDivergencia, setTipoRealDivergencia] = useState("");
 
+  // Fazer parse dos movimentos: usa props direto, dados concatenados, ou mock
+  const movimentos = useMemo(() => {
+    if (movimentosProps && movimentosProps.length > 0) {
+      return movimentosProps;
+    }
+    if (dadosConcatenados && dadosConcatenados.idsPecas) {
+      return parseMovimentosConcatenados(dadosConcatenados);
+    }
+    // Fallback para dados mock para desenvolvimento
+    return parseMovimentosConcatenados(DADOS_MOCK);
+  }, [movimentosProps, dadosConcatenados]);
   // Verificar se um movimento já foi identificado como permanente
   const isPecaPermanente = useCallback((movimentoId: string) => {
     return pecasPermanentes.some(p => p.movimentoId === movimentoId);
