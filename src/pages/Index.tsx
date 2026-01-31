@@ -245,6 +245,12 @@ export default function Index() {
       data_distribuicao?: string;
       data_arquivamento_def?: string;
       prazo_5_anos_completo?: string;
+      mov_codigos?: string;
+      mov_descricoes?: string;
+      mov_complementos?: string;
+      mov_datas?: string;
+      pecas_tipos?: string;
+      pecas_ids?: string;
       error?: string;
       message?: string;
     } | null;
@@ -269,7 +275,14 @@ export default function Index() {
         PRAZO_5_ANOS_COMPLETO: capturaResult.prazo_5_anos_completo || "",
         STATUS_AVALIACAO: "EM_ANALISE",
         RESPONSAVEL: sessao.responsavel,
-        DATA_INICIO_AVALIACAO: new Date().toISOString()
+        DATA_INICIO_AVALIACAO: new Date().toISOString(),
+        // Campos de movimentos e peças
+        MOV_CODIGOS: capturaResult.mov_codigos || undefined,
+        MOV_DESCRICOES: capturaResult.mov_descricoes || undefined,
+        MOV_COMPLEMENTOS: capturaResult.mov_complementos || undefined,
+        MOV_DATAS: capturaResult.mov_datas || undefined,
+        PECAS_TIPOS: capturaResult.pecas_tipos || undefined,
+        PECAS_IDS: capturaResult.pecas_ids || undefined,
       };
       
       setSessao(prev => ({
@@ -400,6 +413,12 @@ export default function Index() {
         data_distribuicao?: string;
         data_arquivamento_def?: string;
         prazo_5_anos_completo?: string;
+        mov_codigos?: string;
+        mov_descricoes?: string;
+        mov_complementos?: string;
+        mov_datas?: string;
+        pecas_tipos?: string;
+        pecas_ids?: string;
         error?: string;
         message?: string;
       } | null;
@@ -421,7 +440,14 @@ export default function Index() {
           PRAZO_5_ANOS_COMPLETO: capturaResult.prazo_5_anos_completo || "",
           STATUS_AVALIACAO: "EM_ANALISE",
           RESPONSAVEL: sessao.responsavel,
-          DATA_INICIO_AVALIACAO: new Date().toISOString()
+          DATA_INICIO_AVALIACAO: new Date().toISOString(),
+          // Campos de movimentos e peças
+          MOV_CODIGOS: capturaResult.mov_codigos || undefined,
+          MOV_DESCRICOES: capturaResult.mov_descricoes || undefined,
+          MOV_COMPLEMENTOS: capturaResult.mov_complementos || undefined,
+          MOV_DATAS: capturaResult.mov_datas || undefined,
+          PECAS_TIPOS: capturaResult.pecas_tipos || undefined,
+          PECAS_IDS: capturaResult.pecas_ids || undefined,
         };
         
         setSessao(prev => ({
