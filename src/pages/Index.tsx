@@ -370,7 +370,9 @@ export default function Index() {
     
     if (dbError) {
       logger.error("Erro ao salvar avaliação:", dbError);
-      toast.error("Erro ao salvar avaliação no banco de dados");
+      logger.error("Detalhes do erro:", JSON.stringify(dbError, null, 2));
+      logger.error("Dados da avaliação:", JSON.stringify(dadosAvaliacao, null, 2));
+      toast.error(`Erro ao salvar avaliação: ${dbError.message || 'Erro desconhecido'}`);
       setCarregando(false);
       return;
     }

@@ -237,19 +237,29 @@ export function useProcessos() {
         await liberarProcessosOrfaos(responsavelId);
       }
       
+      // Preparar dados para update (removendo undefined)
+      const updateData: Record<string, unknown> = {
+        status_avaliacao: status,
+        responsavel_avaliacao: responsavelId || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (status === "EM_ANALISE") {
+        updateData.data_inicio_avaliacao = new Date().toISOString();
+      }
+      if (status === "CONCLUIDO") {
+        updateData.data_fim_avaliacao = new Date().toISOString();
+      }
+
       const { error } = await supabase
         .from("processos_fila")
-        .update({
-          status_avaliacao: status,
-          responsavel_avaliacao: responsavelId || null,
-          data_inicio_avaliacao: status === "EM_ANALISE" ? new Date().toISOString() : undefined,
-          data_fim_avaliacao: status === "CONCLUIDO" ? new Date().toISOString() : undefined,
-        })
+        .update(updateData)
         .eq("codigo_processo", codigoProcesso)
         .eq("lote_id", loteAtivo.id);
 
       if (error) {
         logger.error("[useProcessos] Erro ao atualizar processo:", error);
+        logger.error("[useProcessos] Detalhes do erro:", JSON.stringify(error, null, 2));
         return false;
       }
 

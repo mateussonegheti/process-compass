@@ -124,9 +124,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
-    setRole(null);
+    try {
+      await supabase.auth.signOut();
+      setProfile(null);
+      setRole(null);
+      // Forçar redirect para login
+      window.location.href = '/process-compass/login';
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      // Mesmo com erro, limpar estado e redirecionar
+      setProfile(null);
+      setRole(null);
+      window.location.href = '/process-compass/login';
+    }
   };
 
   const value = {
