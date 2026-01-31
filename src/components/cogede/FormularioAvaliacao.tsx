@@ -7,10 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, ArrowRight, Lock, Plus, Trash2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
-import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU, TIPOS_PECA } from "@/types/cogede";
+import { Save, ArrowRight, Lock, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU } from "@/types/cogede";
 import { toast } from "sonner";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
+import { PainelPecasProcessuais, PecaPermanente, MovimentoProcessual } from "./PainelPecasProcessuais";
 
 interface FormularioAvaliacaoProps {
   processo: ProcessoFila;
@@ -20,9 +21,10 @@ interface FormularioAvaliacaoProps {
   carregando: boolean;
   avaliacaoAnterior?: Record<string, unknown>; // Dados da avaliação anterior para edição
   modoEdicao?: boolean; // Indica se estamos editando uma avaliação existente
+  movimentos?: MovimentoProcessual[]; // Movimentos do processo (virão da importação)
 }
 
-// Interface para divergência de classificação
+// Interface para divergência de classificação (mantida para compatibilidade)
 interface DivergenciaClassificacao {
   id: string;
   tipoInformado: string;
@@ -55,13 +57,50 @@ const initialFormData = {
   observacoesGerais: "",
 };
 
-export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao }: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao, movimentos = [] }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
+  const [pecasPermanentes, setPecasPermanentes] = useState<PecaPermanente[]>([]);
 
   // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
   useInactivityTimeout(processo.ID, true);
+
+  // Handlers para peças permanentes (novo painel)
+  const handleAdicionarPecaPermanente = (peca: PecaPermanente) => {
+    setPecasPermanentes(prev => [...prev.filter(p => p.movimentoId !== peca.movimentoId), peca]);
+    
+    // Sincronizar com o formato antigo de peças para manter compatibilidade
+    const novaPeca: PecaProcessual = {
+      id: peca.movimentoId,
+      tipo: peca.tipoIdentificado,
+      idProjudi: peca.idPeca
+    };
+    setPecas(prev => [...prev.filter(p => p.id !== peca.movimentoId), novaPeca]);
+    
+    // Se há divergência, atualizar as divergências antigas também
+    if (peca.temDivergencia && peca.tipoInformadoSistema && peca.tipoRealIdentificado) {
+      const novaDivergencia: DivergenciaClassificacao = {
+        id: peca.movimentoId,
+        tipoInformado: peca.tipoInformadoSistema,
+        tipoReal: peca.tipoRealIdentificado,
+        idPeca: peca.idPeca
+      };
+      setDivergencias(prev => [...prev.filter(d => d.id !== peca.movimentoId), novaDivergencia]);
+      setFormData(prev => ({ ...prev, divergenciaClassificacao: "Sim" }));
+    }
+  };
+
+  const handleRemoverPecaPermanente = (movimentoId: string) => {
+    setPecasPermanentes(prev => prev.filter(p => p.movimentoId !== movimentoId));
+    setPecas(prev => prev.filter(p => p.id !== movimentoId));
+    setDivergencias(prev => prev.filter(d => d.id !== movimentoId));
+    
+    // Se não há mais divergências, limpar o campo
+    if (divergencias.length <= 1) {
+      setFormData(prev => ({ ...prev, divergenciaClassificacao: "" }));
+    }
+  };
 
   // Carregar dados da avaliação anterior ao montar ou quando avaliacaoAnterior mudar
   // Este efeito restaura dados salvos quando o avaliador está editando uma avaliação existente
@@ -473,214 +512,28 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         </CardContent>
       </Card>
 
-      {/* Seção 4 - Peças Processuais */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">
-              4
-            </span>
-            Peças Processuais
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            {pecas.map((peca, index) => (
-              <div key={peca.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm text-muted-foreground mt-2">{index + 1}.</span>
-                <div className="flex-1 grid grid-cols-2 gap-3">
-                  <Select value={peca.tipo} onValueChange={(v) => atualizarPeca(peca.id, "tipo", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tipo da peça..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIPOS_PECA.map((tipo) => (
-                        <SelectItem key={tipo} value={tipo}>
-                          {tipo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="ID PROJUDI"
-                    value={peca.idProjudi}
-                    onChange={(e) => atualizarPeca(peca.id, "idProjudi", e.target.value)}
-                  />
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removerPeca(peca.id)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          <Button variant="outline" onClick={adicionarPeca} className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Peça Processual
-          </Button>
-
-          {pecas.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 p-3 bg-muted rounded-lg">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">4.1 Tipos (concatenado)</Label>
-                <p className="text-sm font-mono">{gerarCamposConcatenados().tipos || "—"}</p>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">4.2 IDs (concatenado)</Label>
-                <p className="text-sm font-mono">{gerarCamposConcatenados().ids || "—"}</p>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Combinado</Label>
-                <p className="text-sm font-mono">{gerarCamposConcatenados().combinado || "—"}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Observações sobre peças */}
-          <div className="space-y-2">
-            <Label>4.3 Observações sobre peças</Label>
-            <Textarea
-              placeholder="Adicione observações sobre as peças processuais..."
-              value={formData.observacoesPecas}
-              onChange={(e) => setFormData({ ...formData, observacoesPecas: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-3 pt-3 border-t">
-            <Label className="text-sm font-medium">Ocorrências</Label>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="docNaoLoc"
-                  checked={formData.documentoNaoLocalizado}
-                  onCheckedChange={(c) => setFormData({ ...formData, documentoNaoLocalizado: c as boolean })}
-                />
-                <Label htmlFor="docNaoLoc" className="text-sm font-normal">
-                  Documento não localizado
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="docDup"
-                  checked={formData.documentoDuplicado}
-                  onCheckedChange={(c) => setFormData({ ...formData, documentoDuplicado: c as boolean })}
-                />
-                <Label htmlFor="docDup" className="text-sm font-normal">
-                  Documento duplicado
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="erroTec"
-                  checked={formData.erroTecnico}
-                  onCheckedChange={(c) => setFormData({ ...formData, erroTecnico: c as boolean })}
-                />
-                <Label htmlFor="erroTec" className="text-sm font-normal">
-                  Erro técnico
-                </Label>
-              </div>
-            </div>
-
-            {/* Campo para outro detalhe de ocorrência */}
-            <div className="space-y-2 mt-2">
-              <Label>Outro detalhe de ocorrência</Label>
-              <Input
-                placeholder="Descreva outra ocorrência se necessário..."
-                value={formData.ocorrenciasOutroDetalhe}
-                onChange={(e) => setFormData({ ...formData, ocorrenciasOutroDetalhe: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4 pt-3 border-t">
-            <div className="space-y-2">
-              <Label>Divergência de classificação</Label>
-              <Select
-                value={formData.divergenciaClassificacao}
-                onValueChange={(v) => setFormData({ ...formData, divergenciaClassificacao: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sim">Sim</SelectItem>
-                  <SelectItem value="Não">Não</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {temDivergenciaClassificacao && (
-              <div className="space-y-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                {/* Cabeçalho da tabela */}
-                <div className="grid grid-cols-[1fr_1fr_120px_40px] gap-2 text-sm font-medium text-amber-800">
-                  <span>Tipo Informado</span>
-                  <span>Tipo Real</span>
-                  <span>ID da Peça</span>
-                  <span></span>
-                </div>
-
-                {/* Lista de divergências */}
-                {divergencias.map((divergencia) => (
-                  <div key={divergencia.id} className="grid grid-cols-[1fr_1fr_120px_40px] gap-2 items-center">
-                    <Input
-                      placeholder="Ex: Petição Inicial"
-                      value={divergencia.tipoInformado}
-                      onChange={(e) => atualizarDivergencia(divergencia.id, "tipoInformado", e.target.value)}
-                      className="bg-white"
-                    />
-                    <Input
-                      placeholder="Ex: Contestação"
-                      value={divergencia.tipoReal}
-                      onChange={(e) => atualizarDivergencia(divergencia.id, "tipoReal", e.target.value)}
-                      className="bg-white"
-                    />
-                    <Input
-                      placeholder="ID"
-                      value={divergencia.idPeca}
-                      onChange={(e) => atualizarDivergencia(divergencia.id, "idPeca", e.target.value)}
-                      className="bg-white"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removerDivergencia(divergencia.id)}
-                      className="text-destructive hover:text-destructive h-9 w-9"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-
-                {/* Botão de adicionar */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={adicionarDivergencia}
-                  className="w-full bg-white hover:bg-amber-100"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Divergência
-                </Button>
-
-                {/* Resumo concatenado */}
-                {divergencias.length > 0 && (
-                  <div className="pt-2 border-t border-amber-200">
-                    <Label className="text-xs text-amber-700">Resumo das divergências:</Label>
-                    <p className="text-sm font-mono text-amber-900 mt-1">
-                      {gerarCamposDivergencias().combinado || "—"}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Seção 4 - Peças Processuais (Novo Painel) */}
+      <PainelPecasProcessuais
+        movimentos={movimentos || []}
+        pecasPermanentes={pecasPermanentes}
+        onAdicionarPecaPermanente={handleAdicionarPecaPermanente}
+        onRemoverPecaPermanente={handleRemoverPecaPermanente}
+        observacoesPecas={formData.observacoesPecas}
+        onObservacoesChange={(value) => setFormData({ ...formData, observacoesPecas: value })}
+        ocorrencias={{
+          documentoNaoLocalizado: formData.documentoNaoLocalizado,
+          documentoDuplicado: formData.documentoDuplicado,
+          erroTecnico: formData.erroTecnico,
+          outroDetalhe: formData.ocorrenciasOutroDetalhe
+        }}
+        onOcorrenciasChange={(ocorrencias) => setFormData({
+          ...formData,
+          documentoNaoLocalizado: ocorrencias.documentoNaoLocalizado,
+          documentoDuplicado: ocorrencias.documentoDuplicado,
+          erroTecnico: ocorrencias.erroTecnico,
+          ocorrenciasOutroDetalhe: ocorrencias.outroDetalhe
+        })}
+      />
 
       {/* Seção 5 - Inconsistências */}
       <Card>
