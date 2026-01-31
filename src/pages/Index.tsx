@@ -226,67 +226,62 @@ export default function Index() {
     
     setCarregando(true);
     
-    // Buscar próximo processo pendente diretamente do banco para ter dados completos
-    const { data: proximoProcessoDb, error } = await supabase
-      .from("processos_fila")
-      .select("*")
-      .eq("status_avaliacao", "PENDENTE")
-      .eq("lote_id", loteAtivo.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // Usar nova função RPC atômica que seleciona E captura em uma única operação
+    // Resolve race condition usando FOR UPDATE SKIP LOCKED
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: capturaData, error: capturaError } = await (supabase.rpc as any)('capturar_proximo_processo', {
+      p_lote_id: loteAtivo.id,
+      p_profile_id: profile.id
+    });
     
-    if (error) {
-      logger.error("Erro ao buscar processo:", error);
-      toast.error("Erro ao buscar processo");
+    const capturaResult = capturaData as { 
+      success: boolean; 
+      processo_id?: string;
+      codigo_processo?: string;
+      numero_cnj?: string;
+      possui_assunto?: string;
+      assunto_principal?: string;
+      possui_mov_arquivado?: string;
+      data_distribuicao?: string;
+      data_arquivamento_def?: string;
+      prazo_5_anos_completo?: string;
+      error?: string;
+      message?: string;
+    } | null;
+    
+    if (capturaError) {
+      logger.error("Erro ao capturar processo:", capturaError);
+      toast.error("Erro ao capturar processo");
       setCarregando(false);
       return;
     }
     
-    if (proximoProcessoDb) {
-      // Usar função RPC para capturar o processo atomicamente
-      const { data: capturaData, error: capturaError } = await supabase.rpc('capturar_processo', {
-        p_codigo_processo: proximoProcessoDb.codigo_processo,
-        p_lote_id: loteAtivo.id,
-        p_profile_id: profile.id
-      });
+    if (capturaResult?.success) {
+      const processoFormatado: ProcessoFila = {
+        ID: capturaResult.processo_id || "",
+        CODIGO_PROCESSO: capturaResult.codigo_processo || "",
+        NUMERO_CNJ: capturaResult.numero_cnj || "",
+        POSSUI_ASSUNTO: capturaResult.possui_assunto || "",
+        ASSUNTO_PRINCIPAL: capturaResult.assunto_principal || "",
+        POSSUI_MOV_ARQUIVADO: capturaResult.possui_mov_arquivado || "",
+        DATA_DISTRIBUICAO: capturaResult.data_distribuicao || "",
+        DATA_ARQUIVAMENTO_DEF: capturaResult.data_arquivamento_def || "",
+        PRAZO_5_ANOS_COMPLETO: capturaResult.prazo_5_anos_completo || "",
+        STATUS_AVALIACAO: "EM_ANALISE",
+        RESPONSAVEL: sessao.responsavel,
+        DATA_INICIO_AVALIACAO: new Date().toISOString()
+      };
       
-      const capturaResult = capturaData as { success: boolean; processo_id?: string; message?: string } | null;
+      setSessao(prev => ({
+        ...prev,
+        processoAtual: processoFormatado
+      }));
       
-      if (capturaError) {
-        logger.error("Erro ao capturar processo:", capturaError);
-        toast.error("Erro ao capturar processo");
-        setCarregando(false);
-        return;
-      }
-      
-      if (capturaResult?.success) {
-        const processoFormatado: ProcessoFila = {
-          ID: proximoProcessoDb.id,
-          CODIGO_PROCESSO: proximoProcessoDb.codigo_processo,
-          NUMERO_CNJ: proximoProcessoDb.numero_cnj,
-          POSSUI_ASSUNTO: proximoProcessoDb.possui_assunto || "",
-          ASSUNTO_PRINCIPAL: proximoProcessoDb.assunto_principal || "",
-          POSSUI_MOV_ARQUIVADO: proximoProcessoDb.possui_mov_arquivado || "",
-          DATA_DISTRIBUICAO: proximoProcessoDb.data_distribuicao || "",
-          DATA_ARQUIVAMENTO_DEF: proximoProcessoDb.data_arquivamento_def || "",
-          PRAZO_5_ANOS_COMPLETO: proximoProcessoDb.prazo_5_anos_completo || "",
-          STATUS_AVALIACAO: "EM_ANALISE",
-          RESPONSAVEL: sessao.responsavel,
-          DATA_INICIO_AVALIACAO: new Date().toISOString()
-        };
-        
-        setSessao(prev => ({
-          ...prev,
-          processoAtual: processoFormatado
-        }));
-        
-        toast.success(`Processo ${proximoProcessoDb.codigo_processo} capturado para avaliação`);
-      } else {
-        toast.error(capturaResult?.message || "Erro ao capturar processo");
-      }
-    } else {
+      toast.success(`Processo ${capturaResult.codigo_processo} capturado para avaliação`);
+    } else if (capturaResult?.error === 'SEM_PROCESSOS_PENDENTES') {
       toast.info("Não há mais processos pendentes na fila");
+    } else {
+      toast.error(capturaResult?.message || "Erro ao capturar processo");
     }
     
     setCarregando(false);
@@ -387,51 +382,54 @@ export default function Index() {
         return;
       }
       
-      // Buscar próximo processo diretamente do banco para ter dados completos
-      const { data: proximoProcessoDb, error: proximoError } = await supabase
-        .from("processos_fila")
-        .select("*")
-        .eq("status_avaliacao", "PENDENTE")
-        .eq("lote_id", loteAtivo?.id || "")
-        .neq("codigo_processo", avaliacao.codigoProcesso)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+      // Usar nova função RPC atômica para buscar próximo processo
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: capturaData, error: capturaError } = await (supabase.rpc as any)('capturar_proximo_processo', {
+        p_lote_id: loteAtivo?.id || "",
+        p_profile_id: profile.id
+      });
       
-      if (proximoError) {
-        logger.error("Erro ao buscar próximo processo:", proximoError);
+      const capturaResult = capturaData as { 
+        success: boolean; 
+        processo_id?: string;
+        codigo_processo?: string;
+        numero_cnj?: string;
+        possui_assunto?: string;
+        assunto_principal?: string;
+        possui_mov_arquivado?: string;
+        data_distribuicao?: string;
+        data_arquivamento_def?: string;
+        prazo_5_anos_completo?: string;
+        error?: string;
+        message?: string;
+      } | null;
+      
+      if (capturaError) {
+        logger.error("Erro ao buscar próximo processo:", capturaError);
       }
       
-      if (proximoProcessoDb) {
-        const sucessoProximo = await atualizarStatusProcesso(
-          proximoProcessoDb.codigo_processo,
-          "EM_ANALISE",
-          profile.id
-        );
+      if (capturaResult?.success) {
+        const processoFormatado: ProcessoFila = {
+          ID: capturaResult.processo_id || "",
+          CODIGO_PROCESSO: capturaResult.codigo_processo || "",
+          NUMERO_CNJ: capturaResult.numero_cnj || "",
+          POSSUI_ASSUNTO: capturaResult.possui_assunto || "",
+          ASSUNTO_PRINCIPAL: capturaResult.assunto_principal || "",
+          POSSUI_MOV_ARQUIVADO: capturaResult.possui_mov_arquivado || "",
+          DATA_DISTRIBUICAO: capturaResult.data_distribuicao || "",
+          DATA_ARQUIVAMENTO_DEF: capturaResult.data_arquivamento_def || "",
+          PRAZO_5_ANOS_COMPLETO: capturaResult.prazo_5_anos_completo || "",
+          STATUS_AVALIACAO: "EM_ANALISE",
+          RESPONSAVEL: sessao.responsavel,
+          DATA_INICIO_AVALIACAO: new Date().toISOString()
+        };
         
-        if (sucessoProximo) {
-          const processoFormatado: ProcessoFila = {
-            ID: proximoProcessoDb.id,
-            CODIGO_PROCESSO: proximoProcessoDb.codigo_processo,
-            NUMERO_CNJ: proximoProcessoDb.numero_cnj,
-            POSSUI_ASSUNTO: proximoProcessoDb.possui_assunto || "",
-            ASSUNTO_PRINCIPAL: proximoProcessoDb.assunto_principal || "",
-            POSSUI_MOV_ARQUIVADO: proximoProcessoDb.possui_mov_arquivado || "",
-            DATA_DISTRIBUICAO: proximoProcessoDb.data_distribuicao || "",
-            DATA_ARQUIVAMENTO_DEF: proximoProcessoDb.data_arquivamento_def || "",
-            PRAZO_5_ANOS_COMPLETO: proximoProcessoDb.prazo_5_anos_completo || "",
-            STATUS_AVALIACAO: "EM_ANALISE",
-            RESPONSAVEL: sessao.responsavel,
-            DATA_INICIO_AVALIACAO: new Date().toISOString()
-          };
-          
-          setSessao(prev => ({
-            ...prev,
-            processoAtual: processoFormatado
-          }));
-          
-          toast.info("Próximo processo carregado automaticamente");
-        }
+        setSessao(prev => ({
+          ...prev,
+          processoAtual: processoFormatado
+        }));
+        
+        toast.info("Próximo processo carregado automaticamente");
       } else {
         setSessao(prev => ({ ...prev, processoAtual: undefined }));
         toast.info("Todos os processos foram avaliados!");
