@@ -59,8 +59,23 @@ CREATE TABLE public.processos_fila (
   data_fim_avaliacao timestamp with time zone,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  lote_id uuid NOT NULL REFERENCES lotes_importacao(id)
+  lote_id uuid NOT NULL REFERENCES lotes_importacao(id),
+  -- Campos de movimentos e peças processuais (concatenados com pipe)
+  mov_codigos text,
+  mov_descricoes text,
+  mov_complementos text,
+  mov_datas text,
+  pecas_tipos text,
+  pecas_ids text
 );
+
+-- Comentários para documentação
+COMMENT ON COLUMN processos_fila.mov_codigos IS 'Códigos dos movimentos concatenados com pipe (ex: 101 | 102 | 103)';
+COMMENT ON COLUMN processos_fila.mov_descricoes IS 'Descrições dos movimentos concatenadas com pipe';
+COMMENT ON COLUMN processos_fila.mov_complementos IS 'Complementos dos movimentos concatenados com pipe';
+COMMENT ON COLUMN processos_fila.mov_datas IS 'Datas dos movimentos concatenadas com pipe';
+COMMENT ON COLUMN processos_fila.pecas_tipos IS 'Tipos das peças concatenados com pipe (ex: Petição Inicial | Sentença)';
+COMMENT ON COLUMN processos_fila.pecas_ids IS 'IDs das peças no Projudi concatenados com pipe (ex: 506978 | 506979)';
 
 -- 5. Tabela avaliacoes
 CREATE TABLE public.avaliacoes (
@@ -358,6 +373,133 @@ BEGIN
   );
 END;
 $$;
+
+-- Função para capturar próximo processo atômicamente (resolve race conditions)
+CREATE OR REPLACE FUNCTION public.capturar_proximo_processo(
+  p_lote_id uuid, 
+  p_profile_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_processo_id uuid;
+  v_codigo_processo text;
+  v_numero_cnj text;
+  v_possui_assunto text;
+  v_assunto_principal text;
+  v_possui_mov_arquivado text;
+  v_data_distribuicao text;
+  v_data_arquivamento_def text;
+  v_prazo_5_anos_completo text;
+  v_mov_codigos text;
+  v_mov_descricoes text;
+  v_mov_complementos text;
+  v_mov_datas text;
+  v_pecas_tipos text;
+  v_pecas_ids text;
+BEGIN
+  -- 1. Primeiro, liberar qualquer processo órfão deste usuário
+  UPDATE processos_fila
+  SET 
+    status_avaliacao = 'PENDENTE',
+    responsavel_avaliacao = NULL,
+    data_inicio_avaliacao = NULL,
+    updated_at = NOW()
+  WHERE 
+    responsavel_avaliacao = p_profile_id
+    AND status_avaliacao = 'EM_ANALISE'
+    AND lote_id = p_lote_id;
+
+  -- 2. Selecionar E capturar o próximo processo atomicamente
+  -- FOR UPDATE SKIP LOCKED garante que cada transação pega um registro diferente
+  UPDATE processos_fila
+  SET 
+    status_avaliacao = 'EM_ANALISE',
+    responsavel_avaliacao = p_profile_id,
+    data_inicio_avaliacao = NOW(),
+    updated_at = NOW()
+  WHERE id = (
+    SELECT id 
+    FROM processos_fila
+    WHERE lote_id = p_lote_id 
+      AND status_avaliacao = 'PENDENTE'
+    ORDER BY created_at ASC
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1
+  )
+  RETURNING 
+    id, 
+    codigo_processo,
+    numero_cnj,
+    possui_assunto,
+    assunto_principal,
+    possui_mov_arquivado,
+    data_distribuicao,
+    data_arquivamento_def,
+    prazo_5_anos_completo,
+    mov_codigos,
+    mov_descricoes,
+    mov_complementos,
+    mov_datas,
+    pecas_tipos,
+    pecas_ids
+  INTO 
+    v_processo_id,
+    v_codigo_processo,
+    v_numero_cnj,
+    v_possui_assunto,
+    v_assunto_principal,
+    v_possui_mov_arquivado,
+    v_data_distribuicao,
+    v_data_arquivamento_def,
+    v_prazo_5_anos_completo,
+    v_mov_codigos,
+    v_mov_descricoes,
+    v_mov_complementos,
+    v_mov_datas,
+    v_pecas_tipos,
+    v_pecas_ids;
+
+  -- 3. Verificar se encontrou algum processo
+  IF v_processo_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'SEM_PROCESSOS_PENDENTES',
+      'message', 'Não há mais processos pendentes na fila'
+    );
+  END IF;
+
+  -- 4. Retornar sucesso com dados completos do processo
+  RETURN jsonb_build_object(
+    'success', true,
+    'processo_id', v_processo_id,
+    'codigo_processo', v_codigo_processo,
+    'numero_cnj', v_numero_cnj,
+    'possui_assunto', COALESCE(v_possui_assunto, ''),
+    'assunto_principal', COALESCE(v_assunto_principal, ''),
+    'possui_mov_arquivado', COALESCE(v_possui_mov_arquivado, ''),
+    'data_distribuicao', COALESCE(v_data_distribuicao, ''),
+    'data_arquivamento_def', COALESCE(v_data_arquivamento_def, ''),
+    'prazo_5_anos_completo', COALESCE(v_prazo_5_anos_completo, ''),
+    'mov_codigos', v_mov_codigos,
+    'mov_descricoes', v_mov_descricoes,
+    'mov_complementos', v_mov_complementos,
+    'mov_datas', v_mov_datas,
+    'pecas_tipos', v_pecas_tipos,
+    'pecas_ids', v_pecas_ids,
+    'message', 'Processo capturado com sucesso'
+  );
+END;
+$$;
+
+-- Garantir permissões para funções RPC
+GRANT EXECUTE ON FUNCTION public.capturar_proximo_processo(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.capturar_processo(text, uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.liberar_processo(text, uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.liberar_processos_usuario(uuid, uuid) TO authenticated;
 
 -- =============================================
 -- PARTE 6: TRIGGERS
