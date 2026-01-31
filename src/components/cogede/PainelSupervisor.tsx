@@ -357,8 +357,15 @@ export function PainelSupervisor({
     { nome: "ASSUNTO_PRINCIPAL", descricao: "Assunto principal cadastrado no processo" },
   ];
 
-  // Colunas opcionais (para compatibilidade futura)
-  const COLUNAS_OPCIONAIS: { nome: string; descricao: string }[] = [];
+  // Colunas opcionais para movimentos e peças processuais
+  const COLUNAS_OPCIONAIS = [
+    { nome: "MOVIMENTO_CODIGO", descricao: "Códigos dos movimentos concatenados com pipe" },
+    { nome: "MOVIMENTO_DESCRICAO", descricao: "Descrições dos movimentos concatenadas com pipe" },
+    { nome: "COMPLEMENTO", descricao: "Complementos dos movimentos concatenados com pipe" },
+    { nome: "MOVIMENTO_DATA", descricao: "Datas dos movimentos concatenadas com pipe" },
+    { nome: "IDS_PECAS", descricao: "IDs das peças no Projudi concatenados com pipe" },
+    { nome: "TIPOS_PECAS", descricao: "Tipos das peças concatenados com pipe" },
+  ];
 
   const handleUploadProcessos = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -469,6 +476,13 @@ export function PainelSupervisor({
             RESPONSAVEL: colMap.RESPONSAVEL !== undefined ? values[colMap.RESPONSAVEL] || undefined : undefined,
             DATA_INICIO_AVALIACAO: colMap.DATA_INICIO !== undefined ? values[colMap.DATA_INICIO] || undefined : undefined,
             DATA_FIM: colMap.DATA_FIM !== undefined ? values[colMap.DATA_FIM] || undefined : undefined,
+            // Campos de movimentos e peças processuais (concatenados com pipe)
+            MOV_CODIGOS: colMap.MOVIMENTO_CODIGO !== undefined ? values[colMap.MOVIMENTO_CODIGO] || undefined : undefined,
+            MOV_DESCRICOES: colMap.MOVIMENTO_DESCRICAO !== undefined ? values[colMap.MOVIMENTO_DESCRICAO] || undefined : undefined,
+            MOV_COMPLEMENTOS: colMap.COMPLEMENTO !== undefined ? values[colMap.COMPLEMENTO] || undefined : undefined,
+            MOV_DATAS: colMap.MOVIMENTO_DATA !== undefined ? values[colMap.MOVIMENTO_DATA] || undefined : undefined,
+            PECAS_IDS: colMap.IDS_PECAS !== undefined ? values[colMap.IDS_PECAS] || undefined : undefined,
+            PECAS_TIPOS: colMap.TIPOS_PECAS !== undefined ? values[colMap.TIPOS_PECAS] || undefined : undefined,
           };
         }).filter((p) => p.CODIGO_PROCESSO && p.NUMERO_CNJ);
 

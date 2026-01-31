@@ -11,7 +11,7 @@ import { Save, ArrowRight, Lock, AlertTriangle, CheckCircle2, XCircle } from "lu
 import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU } from "@/types/cogede";
 import { toast } from "sonner";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
-import { PainelPecasProcessuais, PecaPermanente, MovimentoProcessual } from "./PainelPecasProcessuais";
+import { PainelPecasProcessuais, PecaPermanente, DadosMovimentosConcatenados } from "./PainelPecasProcessuais";
 
 interface FormularioAvaliacaoProps {
   processo: ProcessoFila;
@@ -21,7 +21,6 @@ interface FormularioAvaliacaoProps {
   carregando: boolean;
   avaliacaoAnterior?: Record<string, unknown>; // Dados da avaliação anterior para edição
   modoEdicao?: boolean; // Indica se estamos editando uma avaliação existente
-  movimentos?: MovimentoProcessual[]; // Movimentos do processo (virão da importação)
 }
 
 // Interface para divergência de classificação (mantida para compatibilidade)
@@ -57,7 +56,7 @@ const initialFormData = {
   observacoesGerais: "",
 };
 
-export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao, movimentos = [] }: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
@@ -512,9 +511,16 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         </CardContent>
       </Card>
 
-      {/* Seção 4 - Peças Processuais (Novo Painel) */}
+      {/* Seção 4 - Peças Processuais (usando dados reais do CSV) */}
       <PainelPecasProcessuais
-        movimentos={movimentos || []}
+        dadosConcatenados={{
+          movimentoCodigo: processo.MOV_CODIGOS || undefined,
+          movimentoDescricao: processo.MOV_DESCRICOES || undefined,
+          complemento: processo.MOV_COMPLEMENTOS || undefined,
+          movimentoData: processo.MOV_DATAS || undefined,
+          idsPecas: processo.PECAS_IDS || "",
+          tiposPecas: processo.PECAS_TIPOS || ""
+        }}
         pecasPermanentes={pecasPermanentes}
         onAdicionarPecaPermanente={handleAdicionarPecaPermanente}
         onRemoverPecaPermanente={handleRemoverPecaPermanente}

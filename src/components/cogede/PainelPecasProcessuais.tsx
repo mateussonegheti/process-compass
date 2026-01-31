@@ -97,16 +97,6 @@ function parseMovimentosConcatenados(dados: DadosMovimentosConcatenados): Movime
   }));
 }
 
-// Dados mockados para desenvolvimento visual
-const DADOS_MOCK: DadosMovimentosConcatenados = {
-  movimentoCodigo: "123 | 124 | 125 | 126 | 456 | 457 | 458 | 459 | 460 | 461",
-  movimentoDescricao: "Petição Inicial | Certidão | Despacho | Citação | Sentença | Intimação | Termo de Audiência | Decisão | Certidão de Trânsito | Arquivamento",
-  complemento: "Distribuição automática | Certidão de distribuição | Cite-se | Citação por AR | Sentença de mérito | Intimação das partes | Audiência de instrução | Decisão interlocutória | Trânsito em julgado | Arquivamento definitivo",
-  movimentoData: "01/03/2018 | 01/03/2018 | 05/03/2018 | 10/03/2018 | 12/03/2020 | 15/03/2020 | 20/06/2019 | 25/04/2018 | 01/06/2020 | 15/06/2020",
-  idsPecas: "641956 | 641957 | 641958 | 641959 | 987456312 | 987456313 | 876543210 | 765432109 | 654321098 | 543210987",
-  tiposPecas: "Petição Inicial | Certidão | Despacho | Citação | Sentença | Intimação | Termo de Audiência | Decisão | Certidão | Andamento Processual"
-};
-
 export function PainelPecasProcessuais({
   movimentos: movimentosProps,
   dadosConcatenados,
@@ -125,7 +115,7 @@ export function PainelPecasProcessuais({
   const [temDivergencia, setTemDivergencia] = useState(false);
   const [tipoRealDivergencia, setTipoRealDivergencia] = useState("");
 
-  // Fazer parse dos movimentos: usa props direto, dados concatenados, ou mock
+  // Fazer parse dos movimentos: usa props direto ou dados concatenados do CSV (SEM MOCK)
   const movimentos = useMemo(() => {
     if (movimentosProps && movimentosProps.length > 0) {
       return movimentosProps;
@@ -133,8 +123,8 @@ export function PainelPecasProcessuais({
     if (dadosConcatenados && dadosConcatenados.idsPecas) {
       return parseMovimentosConcatenados(dadosConcatenados);
     }
-    // Fallback para dados mock para desenvolvimento
-    return parseMovimentosConcatenados(DADOS_MOCK);
+    // Se não há dados, retornar lista vazia (sem mock)
+    return [];
   }, [movimentosProps, dadosConcatenados]);
   // Verificar se um movimento já foi identificado como permanente
   const isPecaPermanente = useCallback((movimentoId: string) => {
@@ -229,7 +219,17 @@ export function PainelPecasProcessuais({
             
             <ScrollArea className="h-[450px]">
               <div className="p-2 space-y-2">
-                {movimentos.map((movimento) => {
+                {movimentos.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-center text-muted-foreground py-12">
+                    <div>
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p className="text-sm">
+                        Nenhuma peça processual disponível.<br />
+                        <span className="text-xs">Os dados de peças serão carregados da planilha de importação.</span>
+                      </p>
+                    </div>
+                  </div>
+                ) : movimentos.map((movimento) => {
                   const isPermanente = isPecaPermanente(movimento.id);
                   const temDiverg = temDivergenciaRegistrada(movimento.id);
                   const isSelected = movimentoSelecionado?.id === movimento.id;
