@@ -182,6 +182,13 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
       RESPONSAVEL: processoCompleto.responsavel_avaliacao || undefined,
       DATA_INICIO_AVALIACAO: processoCompleto.data_inicio_avaliacao || undefined,
       DATA_FIM: processoCompleto.data_fim_avaliacao || undefined,
+      // Campos de movimentos e peças
+      MOV_CODIGOS: processoCompleto.mov_codigos || undefined,
+      MOV_DESCRICOES: processoCompleto.mov_descricoes || undefined,
+      MOV_COMPLEMENTOS: processoCompleto.mov_complementos || undefined,
+      MOV_DATAS: processoCompleto.mov_datas || undefined,
+      PECAS_IDS: processoCompleto.pecas_ids || undefined,
+      PECAS_TIPOS: processoCompleto.pecas_tipos || undefined,
     };
 
     // Buscar dados da avaliação anterior

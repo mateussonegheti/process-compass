@@ -132,26 +132,10 @@ export default function Index() {
 
   // Handler para editar avaliação existente
   const handleEditarAvaliacao = async (processo: ProcessoFila, avaliacaoAnteriorData?: Record<string, unknown>) => {
-    // Se há um processo em EM_ANALISE, liberar ele da fila antes de editar outro
-    if (sessao.processoAtual?.STATUS_AVALIACAO === "EM_ANALISE" && sessao.processoAtual.ID) {
-      try {
-        logger.log(`[Index] Liberando processo ${sessao.processoAtual.CODIGO_PROCESSO} ao editar anterior`);
-        
-        await supabase
-          .from("processos_fila")
-          .update({
-            status_avaliacao: "PENDENTE",
-            responsavel_avaliacao: null,
-            data_inicio_avaliacao: null,
-            ultima_interacao: null,
-            tempo_captura: null
-          })
-          .eq("id", sessao.processoAtual.ID);
-      } catch (error) {
-        logger.error("[Index] Erro ao liberar processo anterior:", error);
-        toast.error("Erro ao liberar processo anterior");
-        return;
-      }
+    // Avisar se há processo em análise (não liberar automaticamente)
+    if (sessao.processoAtual?.STATUS_AVALIACAO === "EM_ANALISE") {
+      toast.warning("Você possui uma avaliação em andamento. Salve ou finalize antes de editar outra.");
+      return;
     }
 
     // Agora editar o processo anterior
@@ -187,6 +171,7 @@ export default function Index() {
     
     try {
       logger.log(`[Index] Finalizando avaliação - liberando processo ${sessao.processoAtual.CODIGO_PROCESSO}`);
+      logger.log(`[Index] Dados: processo_id=${sessao.processoAtual.ID}, codigo=${sessao.processoAtual.CODIGO_PROCESSO}, lote=${loteAtivo.id}, profile=${profile.id}`);
       
       // Usar função RPC para liberar processo
       const { data, error } = await supabase.rpc('liberar_processo', {
@@ -195,18 +180,33 @@ export default function Index() {
         p_profile_id: profile.id
       });
       
-      const result = data as { success: boolean; message?: string } | null;
+      const result = data as { success: boolean; message?: string; error?: string; debug_info?: any } | null;
       
       if (error) {
         logger.error("[Index] Erro ao liberar processo:", error);
         toast.error("Erro ao finalizar avaliação");
       } else if (result?.success) {
-        toast.success("Avaliação finalizada. O processo foi devolvido para a fila.");
+        // Processo liberado com sucesso
+        toast.success("Avaliação finalizada.");
+        setSessao(prev => ({ ...prev, processoAtual: undefined }));
+        setAvaliacaoAnterior(null);
+        setModoEdicao(false);
+        setAvaliacaoIdEdicao(null);
+      } else if (result?.error === 'PROCESSO_NAO_EM_ANALISE') {
+        // Processo já estava liberado (timeout ou ao iniciar nova avaliação)
+        // Isso é OK - apenas fecha a tela sem erro
+        logger.info("[Index] Processo já estava liberado, fechando tela:", result);
         setSessao(prev => ({ ...prev, processoAtual: undefined }));
         setAvaliacaoAnterior(null);
         setModoEdicao(false);
         setAvaliacaoIdEdicao(null);
       } else {
+        // Outros erros (não esperados)
+        logger.error("[Index] Falha ao liberar processo:", {
+          error: result?.error,
+          message: result?.message,
+          debug_info: result?.debug_info
+        });
         toast.error(result?.message || "Erro ao finalizar avaliação");
       }
     } catch (error) {
