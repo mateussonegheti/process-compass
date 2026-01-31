@@ -348,6 +348,7 @@ export default function Index() {
     };
     
     let dbError = null;
+    let avaliacaoId = avaliacaoIdEdicao;
     
     // Se estiver em modo de edição, fazer UPDATE ao invés de INSERT
     if (modoEdicao && avaliacaoIdEdicao) {
@@ -358,14 +359,44 @@ export default function Index() {
         .eq("id", avaliacaoIdEdicao);
       dbError = updateError;
     } else {
-      // Nova avaliação - INSERT
-      const { error: insertError } = await supabase
+      // Verificar se já existe uma avaliação deste processo por este avaliador
+      logger.log(`[Index] Verificando se já existe avaliação para processo ${processoAtual.ID}`);
+      const { data: avaliacaoExistente, error: checkError } = await supabase
         .from("avaliacoes")
-        .insert({
-          ...dadosAvaliacao,
-          data_inicio: avaliacao.dataInicioAvaliacao,
-        });
-      dbError = insertError;
+        .select("id")
+        .eq("processo_id", processoAtual.ID)
+        .eq("avaliador_id", profile.id)
+        .maybeSingle();
+      
+      if (checkError) {
+        logger.error("[Index] Erro ao verificar avaliação existente:", checkError);
+        dbError = checkError;
+      } else if (avaliacaoExistente) {
+        // Já existe - fazer UPDATE
+        logger.log(`[Index] Avaliação já existe (${avaliacaoExistente.id}), fazendo UPDATE`);
+        avaliacaoId = avaliacaoExistente.id;
+        const { error: updateError } = await supabase
+          .from("avaliacoes")
+          .update(dadosAvaliacao)
+          .eq("id", avaliacaoExistente.id);
+        dbError = updateError;
+      } else {
+        // Não existe - fazer INSERT
+        logger.log(`[Index] Criando nova avaliação`);
+        const { data: novaAvaliacao, error: insertError } = await supabase
+          .from("avaliacoes")
+          .insert({
+            ...dadosAvaliacao,
+            data_inicio: avaliacao.dataInicioAvaliacao,
+          })
+          .select("id")
+          .single();
+        
+        if (novaAvaliacao) {
+          avaliacaoId = novaAvaliacao.id;
+        }
+        dbError = insertError;
+      }
     }
     
     if (dbError) {
