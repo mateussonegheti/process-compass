@@ -76,6 +76,16 @@ interface PainelPecasProcessuaisProps {
 // URL base do Projudi para visualização de peças
 const PROJUDI_BASE_URL = "https://projudi.tjmg.jus.br/projudi/listagens/DownloadArquivo?arquivo=";
 
+// Função para parsear data no formato dd/mm/aaaa para ordenação
+function parseDataBR(dataStr: string): Date | null {
+  if (!dataStr || dataStr.trim() === "") return null;
+  const partes = dataStr.trim().split("/");
+  if (partes.length !== 3) return null;
+  const [dia, mes, ano] = partes;
+  const anoCompleto = ano.length === 2 ? (parseInt(ano) > 50 ? `19${ano}` : `20${ano}`) : ano;
+  return new Date(parseInt(anoCompleto), parseInt(mes) - 1, parseInt(dia));
+}
+
 // Função para fazer parse das listas concatenadas
 function parseMovimentosConcatenados(dados: DadosMovimentosConcatenados): MovimentoProcessual[] {
   const ids = dados.idsPecas?.split(" | ").map(s => s.trim()).filter(Boolean) || [];
@@ -86,15 +96,32 @@ function parseMovimentosConcatenados(dados: DadosMovimentosConcatenados): Movime
   const datas = dados.movimentoData?.split(" | ").map(s => s.trim()) || [];
 
   // O array de IDs é a referência principal
-  return ids.map((idPeca, index) => ({
+  const movimentos = ids.map((idPeca, index) => ({
     id: `mov-${index}-${idPeca}`,
-    codigo: codigos[index] || String(index + 1),
+    // Concatenar código + descrição para o campo "Movimento"
+    codigo: codigos[index] && descricoes[index] 
+      ? `${codigos[index]} - ${descricoes[index]}` 
+      : codigos[index] || descricoes[index] || String(index + 1),
     descricao: descricoes[index] || tipos[index] || "Documento",
     complemento: complementos[index] || undefined,
     data: datas[index] || "",
     tipoInformado: tipos[index] || "Outros",
     idPeca: idPeca
   }));
+
+  // Ordenar por data (mais recente primeiro)
+  return movimentos.sort((a, b) => {
+    const dataA = parseDataBR(a.data);
+    const dataB = parseDataBR(b.data);
+    
+    // Se ambos têm data, ordenar mais recente primeiro
+    if (dataA && dataB) return dataB.getTime() - dataA.getTime();
+    // Se só um tem data, ele vem primeiro
+    if (dataA && !dataB) return -1;
+    if (!dataA && dataB) return 1;
+    // Se nenhum tem data, manter ordem original
+    return 0;
+  });
 }
 
 export function PainelPecasProcessuais({
@@ -325,26 +352,18 @@ export function PainelPecasProcessuais({
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       Movimento selecionado
                     </h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Código:</span>
-                        <span className="ml-1 font-medium">{movimentoSelecionado.codigo}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Data:</span>
-                        <span className="ml-1 font-medium">{movimentoSelecionado.data}</span>
-                      </div>
+                    <div>
+                      <span className="text-sm text-muted-foreground">Movimento:</span>
+                      <p className="text-sm font-medium">{movimentoSelecionado.codigo}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-muted-foreground">Descrição:</span>
-                      <p className="text-sm font-medium">{movimentoSelecionado.descricao}</p>
+                      <span className="text-sm text-muted-foreground">Data:</span>
+                      <span className="ml-1 font-medium text-sm">{movimentoSelecionado.data || "—"}</span>
                     </div>
-                    {movimentoSelecionado.complemento && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Complemento:</span>
-                        <p className="text-sm">{movimentoSelecionado.complemento}</p>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-sm text-muted-foreground">Complemento:</span>
+                      <p className="text-sm">{movimentoSelecionado.complemento || "—"}</p>
+                    </div>
                     <div>
                       <span className="text-sm text-muted-foreground">Tipo informado:</span>
                       <Badge variant="outline" className="ml-2">{movimentoSelecionado.tipoInformado}</Badge>

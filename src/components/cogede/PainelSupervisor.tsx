@@ -654,10 +654,19 @@ export function PainelSupervisor({
               <div>
                 <p className="font-medium text-destructive">Colunas obrigatórias (nesta ordem):</p>
                 <ol className="list-decimal list-inside ml-2">
-                  {COLUNAS_OBRIGATORIAS.map((col, index) => (
+                  {COLUNAS_OBRIGATORIAS.map((col) => (
                     <li key={col.nome}><code className="bg-muted px-1 rounded">{col.nome}</code> - {col.descricao}</li>
                   ))}
                 </ol>
+              </div>
+              
+              <div className="pt-2 border-t">
+                <p className="font-medium text-foreground">Colunas opcionais (movimentos/peças):</p>
+                <ul className="list-disc list-inside ml-2">
+                  {COLUNAS_OPCIONAIS.map((col) => (
+                    <li key={col.nome}><code className="bg-muted px-1 rounded">{col.nome}</code> - {col.descricao}</li>
+                  ))}
+                </ul>
               </div>
               
               <p className="pt-1 border-t">
