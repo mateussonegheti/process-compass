@@ -165,7 +165,13 @@ export type Database = {
           data_inicio_avaliacao: string | null
           id: string
           lote_id: string
+          mov_codigos: string | null
+          mov_complementos: string | null
+          mov_datas: string | null
+          mov_descricoes: string | null
           numero_cnj: string
+          pecas_ids: string | null
+          pecas_tipos: string | null
           possui_assunto: string | null
           possui_mov_arquivado: string | null
           prazo_5_anos_completo: string | null
@@ -183,7 +189,13 @@ export type Database = {
           data_inicio_avaliacao?: string | null
           id?: string
           lote_id: string
+          mov_codigos?: string | null
+          mov_complementos?: string | null
+          mov_datas?: string | null
+          mov_descricoes?: string | null
           numero_cnj: string
+          pecas_ids?: string | null
+          pecas_tipos?: string | null
           possui_assunto?: string | null
           possui_mov_arquivado?: string | null
           prazo_5_anos_completo?: string | null
@@ -201,7 +213,13 @@ export type Database = {
           data_inicio_avaliacao?: string | null
           id?: string
           lote_id?: string
+          mov_codigos?: string | null
+          mov_complementos?: string | null
+          mov_datas?: string | null
+          mov_descricoes?: string | null
           numero_cnj?: string
+          pecas_ids?: string | null
+          pecas_tipos?: string | null
           possui_assunto?: string | null
           possui_mov_arquivado?: string | null
           prazo_5_anos_completo?: string | null

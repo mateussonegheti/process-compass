@@ -17,6 +17,13 @@ export interface ProcessoFila {
   // Campos preenchidos pela avaliação
   GUARDA?: string;
   ARQUIVOS?: string;
+  // Campos de movimentos processuais (concatenados com pipe " | ")
+  MOV_CODIGOS?: string;        // Códigos dos movimentos
+  MOV_DESCRICOES?: string;     // Descrições dos movimentos
+  MOV_COMPLEMENTOS?: string;   // Complementos dos movimentos
+  MOV_DATAS?: string;          // Datas dos movimentos
+  PECAS_TIPOS?: string;        // Tipos das peças (Petição Inicial | Sentença...)
+  PECAS_IDS?: string;          // IDs das peças no Projudi (506978 | 506979...)
 }
 
 export interface PecaProcessual {

@@ -29,6 +29,13 @@ interface ProcessoDB {
   data_inicio_avaliacao: string | null;
   data_fim_avaliacao: string | null;
   lote_id: string;
+  // Campos de movimentos e peças
+  mov_codigos: string | null;
+  mov_descricoes: string | null;
+  mov_complementos: string | null;
+  mov_datas: string | null;
+  pecas_tipos: string | null;
+  pecas_ids: string | null;
 }
 
 export function useProcessos() {
@@ -89,6 +96,13 @@ export function useProcessos() {
             RESPONSAVEL: p.responsavel_avaliacao || undefined,
             DATA_INICIO_AVALIACAO: p.data_inicio_avaliacao || undefined,
             DATA_FIM: p.data_fim_avaliacao || undefined,
+            // Campos de movimentos e peças
+            MOV_CODIGOS: p.mov_codigos || undefined,
+            MOV_DESCRICOES: p.mov_descricoes || undefined,
+            MOV_COMPLEMENTOS: p.mov_complementos || undefined,
+            MOV_DATAS: p.mov_datas || undefined,
+            PECAS_TIPOS: p.pecas_tipos || undefined,
+            PECAS_IDS: p.pecas_ids || undefined,
           }));
           setProcessos(processosFormatados);
         }
@@ -151,6 +165,13 @@ export function useProcessos() {
         prazo_5_anos_completo: p.PRAZO_5_ANOS_COMPLETO || null,
         status_avaliacao: p.STATUS_AVALIACAO || "PENDENTE",
         lote_id: (novoLote as LoteImportacao).id,
+        // Campos de movimentos e peças
+        mov_codigos: p.MOV_CODIGOS || null,
+        mov_descricoes: p.MOV_DESCRICOES || null,
+        mov_complementos: p.MOV_COMPLEMENTOS || null,
+        mov_datas: p.MOV_DATAS || null,
+        pecas_tipos: p.PECAS_TIPOS || null,
+        pecas_ids: p.PECAS_IDS || null,
       }));
 
       const { error: insertError } = await supabase
