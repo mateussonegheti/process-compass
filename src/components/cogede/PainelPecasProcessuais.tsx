@@ -275,8 +275,8 @@ export function PainelPecasProcessuais({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">{movimento.tipoInformado}</span>
                             <span className="text-xs text-muted-foreground">Mov. {movimento.codigo}</span>
-                            <span className="font-medium text-sm">{movimento.descricao}</span>
                             {isPermanente && (
                               <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
                             )}
