@@ -10,3 +10,4 @@
 - **Autenticação Integrada** - Sistema de login seguro via Supabase
 
 
+# Deploy 20260203165815
