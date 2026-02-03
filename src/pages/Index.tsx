@@ -138,6 +138,25 @@ export default function Index() {
       return;
     }
 
+    // Se o processo não tem data_inicio_avaliacao, definir agora (cenário de admin editando processo sem data)
+    if (!processo.DATA_INICIO_AVALIACAO && loteAtivo?.id) {
+      logger.log(`[Index] Definindo data_inicio_avaliacao para processo ${processo.CODIGO_PROCESSO}`);
+      const { error: updateError } = await supabase
+        .from("processos_fila")
+        .update({
+          data_inicio_avaliacao: new Date().toISOString()
+        })
+        .eq("id", processo.ID)
+        .eq("lote_id", loteAtivo.id);
+      
+      if (updateError) {
+        logger.error("[Index] Erro ao definir data_inicio_avaliacao:", updateError);
+      } else {
+        // Atualizar o objeto processo com a nova data
+        processo.DATA_INICIO_AVALIACAO = new Date().toISOString();
+      }
+    }
+
     // Agora editar o processo anterior
     setSessao(prev => ({
       ...prev,
