@@ -630,99 +630,94 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Avaliações em Tempo Real */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-500" />
-              Avaliações em Andamento
-              {avaliacoesEmAndamento.length > 0 && (
-                <Badge variant="secondary" className="ml-2 animate-pulse">
-                  {avaliacoesEmAndamento.length} ativo(s)
-                </Badge>
-              )}
-            </CardTitle>
-            <CardDescription>Acompanhamento em tempo real das avaliações</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-4 text-muted-foreground">Carregando...</div>
-            ) : avaliacoesEmAndamento.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                Nenhuma avaliação em andamento
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {avaliacoesEmAndamento.map((av, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+      {/* Avaliações em Tempo Real - Layout Horizontal */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-blue-500" />
+            Avaliações em Andamento
+            {avaliacoesEmAndamento.length > 0 && (
+              <Badge variant="secondary" className="ml-2 animate-pulse">
+                {avaliacoesEmAndamento.length} ativo(s)
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription>Acompanhamento em tempo real das avaliações</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+          ) : avaliacoesEmAndamento.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Clock className="h-6 w-6 mx-auto mb-2 opacity-50" />
+              Nenhuma avaliação em andamento
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {avaliacoesEmAndamento.map((av, idx) => (
+                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border">
+                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="font-medium text-sm">{av.avaliador_nome}</span>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs font-mono text-muted-foreground">{av.processo_codigo}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 
+      ========================================================================
+      TABELA DE PRODUTIVIDADE POR AVALIADOR - DESATIVADA TEMPORARIAMENTE
+      Para reativar, descomente o bloco abaixo e remova esta seção comentada
+      ========================================================================
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Produtividade por Avaliador
+          </CardTitle>
+          <CardDescription>Quantidade de processos avaliados por cada membro</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+          ) : estatisticasPorAvaliador.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              Nenhuma estatística disponível
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {estatisticasPorAvaliador
+                .sort((a, b) => b.concluidos - a.concluidos)
+                .map((av, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                      <div>
-                        <p className="font-medium text-sm">{av.avaliador_nome}</p>
-                        <p className="text-xs text-muted-foreground">{av.processo_codigo}</p>
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-sm font-bold text-primary">{idx + 1}</span>
                       </div>
+                      <p className="font-medium text-sm">{av.nome}</p>
                     </div>
-                    {/*    <div className="text-right">
-                      <Badge variant="outline" className="text-xs">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {formatarTempo(av.inicio)}
+                    <div className="flex items-center gap-2">
+                      {av.em_analise > 0 && (
+                        <Badge variant="outline" className="text-blue-600">
+                          {av.em_analise} em análise
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-green-600">
+                        {av.concluidos} concluídos
                       </Badge>
-                    </div> */}
+                    </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Estatísticas por Avaliador */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Produtividade por Avaliador
-            </CardTitle>
-            <CardDescription>Quantidade de processos avaliados por cada membro</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-4 text-muted-foreground">Carregando...</div>
-            ) : estatisticasPorAvaliador.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                Nenhuma estatística disponível
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {estatisticasPorAvaliador
-                  .sort((a, b) => b.concluidos - a.concluidos)
-                  .map((av, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-sm font-bold text-primary">{idx + 1}</span>
-                        </div>
-                        <p className="font-medium text-sm">{av.nome}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {av.em_analise > 0 && (
-                          <Badge variant="outline" className="text-blue-600">
-                            {av.em_analise} em análise
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="text-green-600">
-                          {av.concluidos} concluídos
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      */}
 
       {/* Grid de Dados - Apenas processos concluídos */}
       <Card>
