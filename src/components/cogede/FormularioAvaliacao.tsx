@@ -105,6 +105,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   // Este efeito restaura dados salvos quando o avaliador está editando uma avaliação existente
   useEffect(() => {
     if (avaliacaoAnterior) {
+      setPecasPermanentes([]);
       // Carregar form data completa com todos os campos preenchidos anteriormente
       setFormData({
         descricaoAssuntoFaltante: (avaliacaoAnterior.descricao_assunto_faltante as string) || "",
@@ -170,6 +171,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
     } else {
       // Modo de nova avaliação: limpar formulário e inicializar com campos vazios
       setPecas([]);
+      setPecasPermanentes([]);
       setFormData(initialFormData);
       setDivergencias([]);
     }
