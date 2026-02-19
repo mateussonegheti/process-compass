@@ -33,10 +33,10 @@ export interface ColorMapping {
 
 export const DEFAULT_COLOR_MAPPINGS: ColorMapping[] = [
   { color: "000000", bold: true,  level: 0, label: "Raiz (Preto Negrito)" },
-  { color: "000080", bold: false, level: 1, label: "Nível 1 (Azul Marinho)" },
-  { color: "B22222", bold: false, level: 2, label: "Nível 2 (Vermelho Tijolo)" },
-  { color: "228B22", bold: false, level: 3, label: "Nível 3 (Verde Floresta)" },
-  { color: "B8860B", bold: false, level: 4, label: "Nível 4 (Dourado Escuro)" },
+  { color: "000080", bold: true,  level: 1, label: "Nível 1 (Azul Negrito)" },
+  { color: "B22222", bold: true,  level: 2, label: "Nível 2 (Vermelho Negrito)" },
+  { color: "228B22", bold: true,  level: 3, label: "Nível 3 (Verde Negrito)" },
+  { color: "B8860B", bold: true,  level: 4, label: "Nível 4 (Dourado Negrito)" },
   { color: "000000", bold: false, level: 5, label: "Nível 5 (Preto Normal)" },
 ];
 
