@@ -271,6 +271,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tabela_temporalidade: {
+        Row: {
+          codigo: number
+          created_at: string
+          id: string
+          nome: string
+          temporalidade: string
+          tipo_guarda: string
+        }
+        Insert: {
+          codigo: number
+          created_at?: string
+          id?: string
+          nome: string
+          temporalidade: string
+          tipo_guarda: string
+        }
+        Update: {
+          codigo?: number
+          created_at?: string
+          id?: string
+          nome?: string
+          temporalidade?: string
+          tipo_guarda?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
