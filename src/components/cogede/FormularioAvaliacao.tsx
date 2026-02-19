@@ -68,8 +68,9 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   useInactivityTimeout(processo.ID, true);
 
   // Consultar temporalidade CNJ
-  const { consultarTemporalidade, loading: loadingTemporalidade } = useTemporalidade();
+  const { consultarTemporalidade, consultarHierarquia, loading: loadingTemporalidade } = useTemporalidade();
   const temporalidadeInfo = consultarTemporalidade(processo.ASSUNTO_PRINCIPAL);
+  const hierarquiaCnj = consultarHierarquia(processo.ASSUNTO_PRINCIPAL);
 
   // Handlers para peças permanentes (novo painel)
   const handleAdicionarPecaPermanente = (peca: PecaPermanente) => {
@@ -387,30 +388,51 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
               {loadingTemporalidade ? (
                 <p className="text-sm text-muted-foreground">Carregando...</p>
               ) : temporalidadeInfo ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  {temporalidadeInfo.tipoGuarda === "Permanente" ? (
-                    <Badge className="bg-rose-700 hover:bg-rose-800 text-white gap-1">
-                      <ShieldCheck className="h-3 w-3" />
-                      Guarda Permanente
-                    </Badge>
-                  ) : temporalidadeInfo.tipoGuarda === "Temporal" ? (
-                    <Badge variant="secondary" className="gap-1">
-                      <Clock className="h-3 w-3" />
-                      Temporal: {temporalidadeInfo.temporalidade}
-                    </Badge>
-                  ) : temporalidadeInfo.tipoGuarda === "Vide Guia" ? (
-                    <Badge variant="outline" className="gap-1">
-                      <HelpCircle className="h-3 w-3" />
-                      Vide Guia de Aplicação
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="gap-1">
-                      {temporalidadeInfo.temporalidade}
-                    </Badge>
+                <div className="space-y-2">
+                  {/* Hierarchy breadcrumb */}
+                  {hierarquiaCnj.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 text-xs">
+                      {hierarquiaCnj.map((item, idx) => (
+                        <span key={item.codigo} className="flex items-center gap-1">
+                          {idx > 0 && <span className="text-muted-foreground">›</span>}
+                          <span
+                            className={`px-1.5 py-0.5 rounded ${
+                              idx === hierarquiaCnj.length - 1
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {item.nome}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  <span className="text-xs text-muted-foreground">
-                    Código {temporalidadeInfo.codigo} — {temporalidadeInfo.nome}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {temporalidadeInfo.tipoGuarda === "Permanente" ? (
+                      <Badge className="bg-rose-700 hover:bg-rose-800 text-white gap-1">
+                        <ShieldCheck className="h-3 w-3" />
+                        Guarda Permanente
+                      </Badge>
+                    ) : temporalidadeInfo.tipoGuarda === "Temporal" ? (
+                      <Badge variant="secondary" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        Temporal: {temporalidadeInfo.temporalidade}
+                      </Badge>
+                    ) : temporalidadeInfo.tipoGuarda === "Vide Guia" ? (
+                      <Badge variant="outline" className="gap-1">
+                        <HelpCircle className="h-3 w-3" />
+                        Vide Guia de Aplicação
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="gap-1">
+                        {temporalidadeInfo.temporalidade}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      Código {temporalidadeInfo.codigo} — {temporalidadeInfo.nome}
+                    </span>
+                  </div>
                 </div>
               ) : processo.ASSUNTO_PRINCIPAL ? (
                 <Badge variant="destructive" className="gap-1">
