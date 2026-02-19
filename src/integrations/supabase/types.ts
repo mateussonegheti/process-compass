@@ -281,6 +281,7 @@ export type Database = {
           hierarchy_level: number | null
           id: string
           nome: string
+          sort_order: number | null
           temporalidade: string
           tipo_guarda: string
         }
@@ -290,6 +291,7 @@ export type Database = {
           hierarchy_level?: number | null
           id?: string
           nome: string
+          sort_order?: number | null
           temporalidade: string
           tipo_guarda: string
         }
@@ -299,6 +301,7 @@ export type Database = {
           hierarchy_level?: number | null
           id?: string
           nome?: string
+          sort_order?: number | null
           temporalidade?: string
           tipo_guarda?: string
         }
