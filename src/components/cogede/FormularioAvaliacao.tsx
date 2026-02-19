@@ -287,9 +287,11 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
       assuntoPrincipal: processo.ASSUNTO_PRINCIPAL,
       descricaoAssuntoFaltante: formData.descricaoAssuntoFaltante,
       assuntoTpu: formData.assuntoTpu,
-      hierarquiaCorreta: formData.hierarquiaCorreta,
-      divergenciaHierarquia: formData.divergenciaHierarquia,
-      destinacaoPermanente: formData.destinacaoPermanente,
+      hierarquiaCorreta: "", // Campo desativado
+      divergenciaHierarquia: "", // Campo desativado
+      destinacaoPermanente: temporalidadeInfo
+        ? (temporalidadeInfo.tipoGuarda === "Permanente" ? "Sim" : "Não")
+        : "N/A",
       possuiMovArquivado: processo.POSSUI_MOV_ARQUIVADO,
       descricaoSituacaoArquivamento: formData.descricaoSituacaoArquivamento,
       dataDistribuicao: processo.DATA_DISTRIBUICAO,
@@ -443,6 +445,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
             </div>
           )}
 
+          {/* Campo 2.3 Hierarquia correta - DESATIVADO
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>2.3 Hierarquia correta?</Label>
@@ -460,24 +463,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>2.4 Destinação permanente?</Label>
-              <Select
-                value={formData.destinacaoPermanente}
-                onValueChange={(v) => setFormData({ ...formData, destinacaoPermanente: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sim">Sim</SelectItem>
-                  <SelectItem value="Não">Não</SelectItem>
-                  <SelectItem value="N/A">N/A</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-
           {formData.hierarquiaCorreta === "Não" && (
             <div className="space-y-2">
               <Label>2.3.1 Divergência na hierarquia</Label>
@@ -488,6 +474,37 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
               />
             </div>
           )}
+          FIM - Campo 2.3 Hierarquia correta - DESATIVADO */}
+
+          {/* Campo 2.4 Destinação permanente - AUTOMATIZADO com base na temporalidade CNJ */}
+          <div className="p-3 rounded-lg border bg-muted/30">
+            <Label className="flex items-center gap-2 text-sm mb-2">
+              2.4 Destinação permanente?
+              <Lock className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">(automático)</span>
+            </Label>
+            {loadingTemporalidade ? (
+              <p className="text-sm text-muted-foreground">Calculando...</p>
+            ) : temporalidadeInfo ? (
+              <div className="flex items-center gap-2">
+                {temporalidadeInfo.tipoGuarda === "Permanente" ? (
+                  <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Sim — Guarda Permanente
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Não — {temporalidadeInfo.temporalidade}
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <Badge variant="outline" className="gap-1">
+                N/A — Sem dados de temporalidade
+              </Badge>
+            )}
+          </div>
         </CardContent>
       </Card>
 
