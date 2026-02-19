@@ -1,0 +1,1 @@
+ALTER TABLE public.avaliacoes ADD COLUMN divergencias_detalhes text DEFAULT NULL;

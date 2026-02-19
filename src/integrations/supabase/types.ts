@@ -26,6 +26,7 @@ export type Database = {
           destinacao_permanente: string | null
           divergencia_classificacao: string | null
           divergencia_hierarquia: string | null
+          divergencias_detalhes: string | null
           documento_duplicado: boolean | null
           documento_nao_localizado: boolean | null
           erro_tecnico: boolean | null
@@ -55,6 +56,7 @@ export type Database = {
           destinacao_permanente?: string | null
           divergencia_classificacao?: string | null
           divergencia_hierarquia?: string | null
+          divergencias_detalhes?: string | null
           documento_duplicado?: boolean | null
           documento_nao_localizado?: boolean | null
           erro_tecnico?: boolean | null
@@ -84,6 +86,7 @@ export type Database = {
           destinacao_permanente?: string | null
           divergencia_classificacao?: string | null
           divergencia_hierarquia?: string | null
+          divergencias_detalhes?: string | null
           documento_duplicado?: boolean | null
           documento_nao_localizado?: boolean | null
           erro_tecnico?: boolean | null
