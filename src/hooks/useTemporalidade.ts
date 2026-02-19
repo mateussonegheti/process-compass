@@ -9,10 +9,19 @@ export interface TemporalidadeInfo {
   nome: string;
   temporalidade: string;
   tipoGuarda: string;
+  hierarchyLevel: number | null;
+}
+
+export interface HierarchyPathItem {
+  codigo: number;
+  nome: string;
+  level: number;
 }
 
 export function useTemporalidade() {
   const [tabela, setTabela] = useState<Map<number, TemporalidadeInfo>>(new Map());
+  // Ordered list to reconstruct hierarchy paths
+  const [orderedRecords, setOrderedRecords] = useState<TemporalidadeInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalRegistros, setTotalRegistros] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -22,7 +31,6 @@ export function useTemporalidade() {
     try {
       setLoading(true);
       
-      // Fetch all records (may need pagination if > 1000)
       let allData: TemporalidadeInfo[] = [];
       let from = 0;
       const pageSize = 1000;
@@ -31,7 +39,8 @@ export function useTemporalidade() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("tabela_temporalidade")
-          .select("codigo, nome, temporalidade, tipo_guarda")
+          .select("codigo, nome, temporalidade, tipo_guarda, hierarchy_level")
+          .order("created_at", { ascending: true })
           .range(from, from + pageSize - 1);
 
         if (error) {
@@ -45,6 +54,7 @@ export function useTemporalidade() {
             nome: d.nome,
             temporalidade: d.temporalidade,
             tipoGuarda: d.tipo_guarda,
+            hierarchyLevel: d.hierarchy_level,
           }))];
           from += pageSize;
           hasMore = data.length === pageSize;
@@ -56,6 +66,7 @@ export function useTemporalidade() {
       const map = new Map<number, TemporalidadeInfo>();
       allData.forEach(d => map.set(d.codigo, d));
       setTabela(map);
+      setOrderedRecords(allData);
       setTotalRegistros(map.size);
     } catch (error) {
       logger.error("Erro ao carregar temporalidade:", error);
@@ -79,11 +90,10 @@ export function useTemporalidade() {
         return false;
       }
 
-      // Deletar registros antigos
       const { error: deleteError } = await supabase
         .from("tabela_temporalidade")
         .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // delete all
+        .neq("id", "00000000-0000-0000-0000-000000000000");
 
       if (deleteError) {
         logger.error("Erro ao limpar tabela:", deleteError);
@@ -91,7 +101,6 @@ export function useTemporalidade() {
         return false;
       }
 
-      // Inserir em batches de 500
       const batchSize = 500;
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize).map(r => ({
@@ -124,6 +133,36 @@ export function useTemporalidade() {
     }
   };
 
+  // Build hierarchy path (ancestors) for a given codigo
+  const getHierarchyPath = useCallback((codigo: number): HierarchyPathItem[] => {
+    if (orderedRecords.length === 0) return [];
+
+    // Find index of this record in ordered list
+    const idx = orderedRecords.findIndex(r => r.codigo === codigo);
+    if (idx === -1) return [];
+
+    const target = orderedRecords[idx];
+    const targetLevel = target.hierarchyLevel ?? -1;
+    if (targetLevel < 0) return [{ codigo: target.codigo, nome: target.nome, level: targetLevel }];
+
+    // Walk backwards to find ancestors at each level
+    const path: HierarchyPathItem[] = [];
+    let nextLevelNeeded = targetLevel - 1;
+
+    for (let i = idx - 1; i >= 0 && nextLevelNeeded >= 0; i--) {
+      const r = orderedRecords[i];
+      const rLevel = r.hierarchyLevel ?? -1;
+      if (rLevel === nextLevelNeeded) {
+        path.unshift({ codigo: r.codigo, nome: r.nome, level: rLevel });
+        nextLevelNeeded--;
+      }
+    }
+
+    // Add the target itself
+    path.push({ codigo: target.codigo, nome: target.nome, level: targetLevel });
+    return path;
+  }, [orderedRecords]);
+
   // Consultar temporalidade por assunto principal
   const consultarTemporalidade = useCallback((assuntoPrincipal: string): TemporalidadeInfo | null => {
     if (!assuntoPrincipal || tabela.size === 0) return null;
@@ -132,6 +171,14 @@ export function useTemporalidade() {
     return tabela.get(codigo) || null;
   }, [tabela]);
 
+  // Get hierarchy path for an assunto principal string
+  const consultarHierarquia = useCallback((assuntoPrincipal: string): HierarchyPathItem[] => {
+    if (!assuntoPrincipal || orderedRecords.length === 0) return [];
+    const codigo = extrairCodigoAssunto(assuntoPrincipal);
+    if (codigo === null) return [];
+    return getHierarchyPath(codigo);
+  }, [orderedRecords, getHierarchyPath]);
+
   return {
     tabela,
     loading,
@@ -139,6 +186,7 @@ export function useTemporalidade() {
     uploading,
     uploadTemporalidade,
     consultarTemporalidade,
+    consultarHierarquia,
     refetch: fetchTemporalidade,
   };
 }
