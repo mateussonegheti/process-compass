@@ -536,14 +536,14 @@ export function PainelSupervisor({
     }
   };
 
+  // Separador CSV — ponto-e-vírgula é padrão para locale PT-BR (Excel)
+  const CSV_SEP = ";";
+
   // Função para escapar valor CSV corretamente (RFC 4180)
+  // SEMPRE envolve em aspas para garantir que separadores internos não quebrem colunas
   const escapeCSV = (value: string): string => {
-    if (!value) return "";
-    // Se contém aspas, vírgula, ponto-e-vírgula ou quebra de linha, envolver em aspas
-    if (value.includes('"') || value.includes(',') || value.includes(';') || value.includes('\n') || value.includes('\r')) {
-      return `"${value.replace(/"/g, '""')}"`;
-    }
-    return value;
+    if (!value) return '""';
+    return `"${value.replace(/"/g, '""')}"`;
   };
 
   const exportarAvaliacoes = () => {
@@ -553,7 +553,6 @@ export function PainelSupervisor({
     }
 
     // SEMPRE exportar TODAS as colunas do template fixo, na ordem definida
-    // A seleção de colunas controla visibilidade, mas o template é fixo
     const colunasParaExportar = colunasExportacao.length > 0
       ? COLUNAS_EXPORTACAO.filter(c => colunasExportacao.includes(c.key))
       : COLUNAS_EXPORTACAO;
@@ -564,7 +563,7 @@ export function PainelSupervisor({
     }
 
     // Criar cabeçalho fixo
-    const headers = colunasParaExportar.map(c => c.label).join(",");
+    const headers = colunasParaExportar.map(c => escapeCSV(c.label)).join(CSV_SEP);
 
     // Criar linhas com valores escapados
     const rows = avaliacoesConsolidadas.map((av) => {
@@ -607,7 +606,7 @@ export function PainelSupervisor({
 
           return escapeCSV(value);
         })
-        .join(",");
+        .join(CSV_SEP);
     });
 
     const csvContent = [headers, ...rows].join("\n");
