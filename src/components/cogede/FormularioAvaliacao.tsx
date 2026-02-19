@@ -12,6 +12,8 @@ import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU } from 
 import { toast } from "sonner";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { PainelPecasProcessuais, PecaPermanente, DadosMovimentosConcatenados } from "./PainelPecasProcessuais";
+import { useTemporalidade } from "@/hooks/useTemporalidade";
+import { Clock, ShieldCheck, HelpCircle, BookOpen } from "lucide-react";
 
 interface FormularioAvaliacaoProps {
   processo: ProcessoFila;
@@ -64,6 +66,10 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
 
   // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
   useInactivityTimeout(processo.ID, true);
+
+  // Consultar temporalidade CNJ
+  const { consultarTemporalidade, loading: loadingTemporalidade } = useTemporalidade();
+  const temporalidadeInfo = consultarTemporalidade(processo.ASSUNTO_PRINCIPAL);
 
   // Handlers para peças permanentes (novo painel)
   const handleAdicionarPecaPermanente = (peca: PecaPermanente) => {
@@ -366,6 +372,61 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
               </Label>
               <Input value={processo.ASSUNTO_PRINCIPAL || "N/A"} disabled className="bg-muted" />
             </div>
+          </div>
+
+          {/* Temporalidade CNJ - Classificação automática */}
+          <div className="p-3 rounded-lg border bg-muted/30">
+            <Label className="flex items-center gap-2 text-sm mb-2">
+              <BookOpen className="h-4 w-4" />
+              2.2.1 Temporalidade CNJ
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            </Label>
+            {loadingTemporalidade ? (
+              <p className="text-sm text-muted-foreground">Carregando tabela de temporalidade...</p>
+            ) : temporalidadeInfo ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {temporalidadeInfo.tipoGuarda === "Permanente" ? (
+                  <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Guarda Permanente
+                  </Badge>
+                ) : temporalidadeInfo.tipoGuarda === "Temporal" ? (
+                  <Badge variant="secondary" className="gap-1">
+                    <Clock className="h-3 w-3" />
+                    Temporal: {temporalidadeInfo.temporalidade}
+                  </Badge>
+                ) : temporalidadeInfo.tipoGuarda === "Vide Guia" ? (
+                  <Badge variant="outline" className="gap-1">
+                    <HelpCircle className="h-3 w-3" />
+                    Vide Guia de Aplicação
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="gap-1">
+                    {temporalidadeInfo.temporalidade}
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  Código {temporalidadeInfo.codigo} — {temporalidadeInfo.nome}
+                </span>
+              </div>
+            ) : processo.ASSUNTO_PRINCIPAL ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Temporalidade não definida
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Assunto não encontrado na tabela CNJ
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Processo sem assunto
+                </Badge>
+              </div>
+            )}
           </div>
 
           {naoTemAssunto && (

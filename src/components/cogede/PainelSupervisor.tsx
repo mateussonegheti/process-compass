@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen, BookOpen, CheckCircle2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProcessoFila } from "@/types/cogede";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 import { useAuth } from "@/hooks/useAuth";
 import { validateCSVFile, validateRowCount, sanitizeCellValue, hasSuspiciousContent, MAX_ROW_COUNT } from "@/lib/csvValidation";
 import { supabase } from "@/integrations/supabase/client";
+import { useTemporalidade } from "@/hooks/useTemporalidade";
 
 interface AvaliacaoConsolidada {
   // Dados do processo
@@ -166,7 +167,8 @@ export function PainelSupervisor({
   const [avaliacoesConsolidadas, setAvaliacoesConsolidadas] = useState<AvaliacaoConsolidada[]>([]);
   const [loadingExport, setLoadingExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+  const temporalidadeInputRef = useRef<HTMLInputElement>(null);
+  const { totalRegistros: totalTemporalidade, uploading: uploadingTemporalidade, uploadTemporalidade } = useTemporalidade();
   // Estado para seletor de lote de exportação
   const [lotes, setLotes] = useState<{ id: string; nome: string | null; created_at: string; total_processos: number; ativo: boolean }[]>([]);
   const [loteExportacao, setLoteExportacao] = useState<string | undefined>(loteId);
@@ -513,9 +515,24 @@ export function PainelSupervisor({
     };
     reader.readAsText(file);
 
-    // Limpar input para permitir reupload do mesmo arquivo
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const handleUploadTemporalidade = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target?.result as string;
+      await uploadTemporalidade(text);
+    };
+    reader.readAsText(file);
+
+    if (temporalidadeInputRef.current) {
+      temporalidadeInputRef.current.value = "";
     }
   };
 
@@ -676,6 +693,51 @@ export function PainelSupervisor({
             </div>
           )}
         </div>
+        {/* Upload de Tabela de Temporalidade CNJ */}
+        {temPermissao && (
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Tabela de Temporalidade CNJ
+            </Label>
+            
+            <div className="flex items-center gap-3">
+              <input
+                ref={temporalidadeInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleUploadTemporalidade}
+                className="hidden"
+                id="upload-temporalidade"
+                disabled={uploadingTemporalidade}
+              />
+              <Button variant="outline" asChild disabled={uploadingTemporalidade}>
+                <label htmlFor="upload-temporalidade" className="cursor-pointer flex items-center gap-2">
+                  {uploadingTemporalidade ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {uploadingTemporalidade ? "Carregando..." : "Carregar Tabela de Temporalidade"}
+                </label>
+              </Button>
+
+              {totalTemporalidade > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {totalTemporalidade} assuntos carregados
+                </Badge>
+              )}
+            </div>
+
+            <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
+              <p>Planilha CSV da tabela de temporalidade do CNJ (Justiça Estadual).</p>
+              <p>Formato esperado: <code className="bg-muted px-1 rounded">Nome, 90 dias, 2 anos, ..., Permanente, ...</code></p>
+              <p>O sistema extrairá o código numérico de cada assunto e sua temporalidade correspondente.</p>
+              <p>⚠️ Carregar uma nova tabela substituirá a anterior.</p>
+            </div>
+          </div>
+        )}
 
         {/* Exportar Avaliações */}
         <div className="space-y-3 pt-4 border-t">
