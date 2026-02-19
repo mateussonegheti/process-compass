@@ -376,7 +376,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
             </div>
           </div>
 
-          {/* 2.2.1 Temporalidade CNJ + 2.4 Destinação permanente - lado a lado */}
+          {/* 2.2.1 Temporalidade CNJ + 2.3 Destinação permanente - lado a lado */}
           <div className="grid grid-cols-2 gap-4">
             <div className="p-3 rounded-lg border bg-muted/30">
               <Label className="flex items-center gap-2 text-sm mb-2">
@@ -425,10 +425,10 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
               )}
             </div>
 
-            {/* 2.4 Destinação permanente - AUTOMATIZADO */}
+            {/* 2.3 Destinação permanente - AUTOMATIZADO */}
             <div className="p-3 rounded-lg border bg-muted/30">
               <Label className="flex items-center gap-2 text-sm mb-2">
-                2.4 Destinação permanente?
+                2.3 Destinação permanente?
                 <Lock className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">(automático)</span>
               </Label>
