@@ -536,58 +536,76 @@ export function PainelSupervisor({
     }
   };
 
+  // Função para escapar valor CSV corretamente (RFC 4180)
+  const escapeCSV = (value: string): string => {
+    if (!value) return "";
+    // Se contém aspas, vírgula, ponto-e-vírgula ou quebra de linha, envolver em aspas
+    if (value.includes('"') || value.includes(',') || value.includes(';') || value.includes('\n') || value.includes('\r')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
   const exportarAvaliacoes = () => {
     if (avaliacoesConsolidadas.length === 0) {
       toast.error("Nenhuma avaliação concluída para exportar");
       return;
     }
 
-    if (colunasExportacao.length === 0) {
+    // SEMPRE exportar TODAS as colunas do template fixo, na ordem definida
+    // A seleção de colunas controla visibilidade, mas o template é fixo
+    const colunasParaExportar = colunasExportacao.length > 0
+      ? COLUNAS_EXPORTACAO.filter(c => colunasExportacao.includes(c.key))
+      : COLUNAS_EXPORTACAO;
+
+    if (colunasParaExportar.length === 0) {
       toast.error("Selecione ao menos uma coluna para exportar");
       return;
     }
 
-    // Criar cabeçalho usando os labels das colunas (nomes da aba AVALIAÇÃO_DOCUMENTAL)
-    const headers = colunasExportacao
-      .map((key) => COLUNAS_EXPORTACAO.find((c) => c.key === key)?.label || key)
-      .join(",");
+    // Criar cabeçalho fixo
+    const headers = colunasParaExportar.map(c => c.label).join(",");
 
-    // Criar linhas
+    // Criar linhas com valores escapados
     const rows = avaliacoesConsolidadas.map((av) => {
-      return colunasExportacao
-        .map((key) => {
-          // Campo especial: anoDistribuicao (extrair ano da data de distribuição)
+      return colunasParaExportar
+        .map((col) => {
+          const key = col.key;
+          let value = "";
+
+          // Campo especial: anoDistribuicao
           if (key === "anoDistribuicao") {
-            return extrairAno(av.dataDistribuicao);
+            value = extrairAno(av.dataDistribuicao);
           }
-          
-          // Campo especial: ocorrenciasPecas (concatenar checkboxes)
-          if (key === "ocorrenciasPecas") {
+          // Campo especial: ocorrenciasPecas
+          else if (key === "ocorrenciasPecas") {
             const ocorrencias: string[] = [];
             if (av.documentoNaoLocalizado) ocorrencias.push("Documento não localizado");
             if (av.documentoDuplicado) ocorrencias.push("Documento duplicado");
             if (av.erroTecnico) ocorrencias.push("Erro técnico");
-            return ocorrencias.join("; ");
+            value = ocorrencias.join("; ");
           }
-
-          // Campo especial: destinacaoPermanente -> GUARDA (I = Integral/Permanente, P = Parcial)
-          if (key === "destinacaoPermanente") {
+          // Campo especial: destinacaoPermanente -> GUARDA
+          else if (key === "destinacaoPermanente") {
             const val = av.destinacaoPermanente;
-            if (val === "Sim") return "I"; // Guarda Permanente (Integral)
-            if (val === "Não") return "P"; // Guarda Parcial
-            return val || "";
+            if (val === "Sim") value = "I";
+            else if (val === "Não") value = "P";
+            else value = val || "";
+          }
+          // Campos de data
+          else if (key === "dataDistribuicao" || key === "dataArquivamentoDef") {
+            const raw = (av as unknown as Record<string, unknown>)[key];
+            value = formatarData(String(raw || ""));
+          }
+          // Demais campos
+          else {
+            const raw = (av as unknown as Record<string, unknown>)[key];
+            if (typeof raw === "boolean") value = raw ? "Sim" : "Não";
+            else if (raw === undefined || raw === null) value = "";
+            else value = String(raw);
           }
 
-          // Campos de data: formatar para dd/mm/aaaa
-          if (key === "dataDistribuicao" || key === "dataArquivamentoDef") {
-            const value = (av as unknown as Record<string, unknown>)[key];
-            return formatarData(String(value || ""));
-          }
-          
-          const value = (av as unknown as Record<string, unknown>)[key];
-          if (typeof value === "boolean") return value ? "Sim" : "Não";
-          if (value === undefined || value === null) return "";
-          return String(value).replace(/;/g, ",").replace(/\n/g, " ");
+          return escapeCSV(value);
         })
         .join(",");
     });
@@ -601,7 +619,7 @@ export function PainelSupervisor({
     link.click();
     URL.revokeObjectURL(url);
 
-    toast.success(`${avaliacoesConsolidadas.length} avaliações exportadas!`);
+    toast.success(`${avaliacoesConsolidadas.length} avaliações exportadas com ${colunasParaExportar.length} colunas!`);
   };
 
   // Agrupar colunas
