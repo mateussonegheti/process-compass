@@ -392,17 +392,17 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
                   {/* Hierarchy breadcrumb */}
                   {hierarquiaCnj.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1 text-xs">
-                      {hierarquiaCnj.map((item, idx) => (
+                      {[...hierarquiaCnj].reverse().map((item, idx) => (
                         <span key={item.codigo} className="flex items-center gap-1">
-                          {idx > 0 && <span className="text-muted-foreground">›</span>}
+                          {idx > 0 && <span className="text-muted-foreground">&lt;</span>}
                           <span
                             className={`px-1.5 py-0.5 rounded ${
-                              idx === hierarquiaCnj.length - 1
+                              idx === 0
                                 ? "bg-primary/10 text-primary font-medium"
                                 : "text-muted-foreground"
                             }`}
                           >
-                            {item.nome}
+                            {item.codigo} - {item.nome}
                           </span>
                         </span>
                       ))}
