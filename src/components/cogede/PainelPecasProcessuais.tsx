@@ -140,7 +140,6 @@ export function PainelPecasProcessuais({
   const [tipoIdentificado, setTipoIdentificado] = useState("");
   const [idPecaEditavel, setIdPecaEditavel] = useState("");
   const [temDivergencia, setTemDivergencia] = useState(false);
-  const [tipoRealDivergencia, setTipoRealDivergencia] = useState("");
 
   // Fazer parse dos movimentos: usa props direto ou dados concatenados do CSV (SEM MOCK)
   const movimentos = useMemo(() => {
@@ -153,14 +152,14 @@ export function PainelPecasProcessuais({
     // Se não há dados, retornar lista vazia (sem mock)
     return [];
   }, [movimentosProps, dadosConcatenados]);
-  // Verificar se um movimento já foi identificado como permanente
-  const isPecaPermanente = useCallback((movimentoId: string) => {
-    return pecasPermanentes.some(p => p.movimentoId === movimentoId);
+  // Verificar se um movimento já foi identificado como permanente (por movimentoId ou idPeca)
+  const isPecaPermanente = useCallback((movimentoId: string, idPeca?: string) => {
+    return pecasPermanentes.some(p => p.movimentoId === movimentoId || (idPeca && p.idPeca === idPeca));
   }, [pecasPermanentes]);
 
   // Verificar se um movimento tem divergência registrada
-  const temDivergenciaRegistrada = useCallback((movimentoId: string) => {
-    const peca = pecasPermanentes.find(p => p.movimentoId === movimentoId);
+  const temDivergenciaRegistrada = useCallback((movimentoId: string, idPeca?: string) => {
+    const peca = pecasPermanentes.find(p => p.movimentoId === movimentoId || (idPeca && p.idPeca === idPeca));
     return peca?.temDivergencia || false;
   }, [pecasPermanentes]);
 
@@ -171,7 +170,6 @@ export function PainelPecasProcessuais({
     setTipoIdentificado(movimento.tipoInformado);
     setIdPecaEditavel(movimento.idPeca);
     setTemDivergencia(false);
-    setTipoRealDivergencia("");
   };
 
   // Iniciar identificação de peça permanente
@@ -189,7 +187,8 @@ export function PainelPecasProcessuais({
       idPeca: idPecaEditavel,
       temDivergencia,
       tipoInformadoSistema: temDivergencia ? movimentoSelecionado.tipoInformado : undefined,
-      tipoRealIdentificado: temDivergencia ? tipoRealDivergencia : undefined
+      // O tipo real identificado na divergência é sempre o tipo já selecionado pelo avaliador
+      tipoRealIdentificado: temDivergencia ? tipoIdentificado : undefined
     };
 
     onAdicionarPecaPermanente(novaPeca);
@@ -200,13 +199,13 @@ export function PainelPecasProcessuais({
     setTipoIdentificado("");
     setIdPecaEditavel("");
     setTemDivergencia(false);
-    setTipoRealDivergencia("");
   };
 
   // Remover identificação
   const handleRemoverIdentificacao = () => {
     if (!movimentoSelecionado) return;
-    onRemoverPecaPermanente(movimentoSelecionado.id);
+    // Remove by idPeca to handle both fresh and restored entries
+    onRemoverPecaPermanente(movimentoSelecionado.idPeca);
     setMovimentoSelecionado(null);
     setModoIdentificacao(false);
   };
@@ -257,8 +256,8 @@ export function PainelPecasProcessuais({
                     </div>
                   </div>
                 ) : movimentos.map((movimento) => {
-                  const isPermanente = isPecaPermanente(movimento.id);
-                  const temDiverg = temDivergenciaRegistrada(movimento.id);
+                  const isPermanente = isPecaPermanente(movimento.id, movimento.idPeca);
+                  const temDiverg = temDivergenciaRegistrada(movimento.id, movimento.idPeca);
                   const isSelected = movimentoSelecionado?.id === movimento.id;
                   
                   return (
@@ -384,7 +383,7 @@ export function PainelPecasProcessuais({
                   </div>
 
                   {/* Verificar se já foi identificado */}
-                  {isPecaPermanente(movimentoSelecionado.id) ? (
+                  {isPecaPermanente(movimentoSelecionado.id, movimentoSelecionado.idPeca) ? (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <div className="flex items-center gap-2 text-green-800 mb-3">
                         <CheckCircle2 className="h-5 w-5" />
@@ -481,18 +480,11 @@ export function PainelPecasProcessuais({
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs text-amber-800">Tipo identificado pelo avaliador</Label>
-                              <Select value={tipoRealDivergencia} onValueChange={setTipoRealDivergencia}>
-                                <SelectTrigger className="bg-white">
-                                  <SelectValue placeholder="Selecione o tipo real..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {TIPOS_PECA.map((tipo) => (
-                                    <SelectItem key={tipo} value={tipo}>
-                                      {tipo}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Input
+                                value={tipoIdentificado || "(selecione o tipo acima)"}
+                                disabled
+                                className="bg-white"
+                              />
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs text-amber-800">ID da peça usada para verificação</Label>

@@ -97,22 +97,22 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
     }
   };
 
-  const handleRemoverPecaPermanente = (movimentoId: string) => {
-    setPecasPermanentes(prev => prev.filter(p => p.movimentoId !== movimentoId));
-    setPecas(prev => prev.filter(p => p.id !== movimentoId));
-    setDivergencias(prev => prev.filter(d => d.id !== movimentoId));
-    
-    // Se não há mais divergências, limpar o campo
-    if (divergencias.length <= 1) {
-      setFormData(prev => ({ ...prev, divergenciaClassificacao: "" }));
-    }
+  const handleRemoverPecaPermanente = (idPeca: string) => {
+    setPecasPermanentes(prev => prev.filter(p => p.idPeca !== idPeca));
+    setPecas(prev => prev.filter(p => p.idProjudi !== idPeca));
+    setDivergencias(prev => {
+      const novas = prev.filter(d => d.idPeca !== idPeca);
+      if (novas.length === 0) {
+        setFormData(f => ({ ...f, divergenciaClassificacao: "" }));
+      }
+      return novas;
+    });
   };
 
   // Carregar dados da avaliação anterior ao montar ou quando avaliacaoAnterior mudar
   // Este efeito restaura dados salvos quando o avaliador está editando uma avaliação existente
   useEffect(() => {
     if (avaliacaoAnterior) {
-      setPecasPermanentes([]);
       // Carregar form data completa com todos os campos preenchidos anteriormente
       setFormData({
         descricaoAssuntoFaltante: (avaliacaoAnterior.descricao_assunto_faltante as string) || "",
@@ -132,47 +132,67 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         observacoesGerais: (avaliacaoAnterior.observacoes_gerais as string) || "",
       });
 
-      // Carregar peças se existirem (processos documentados anteriormente)
-      if (avaliacaoAnterior.pecas_combinado) {
-        // Parse das peças do formato concatenado
-        // Esperamos que seja "Tipo1: ID1 | Tipo2: ID2"
-        const pecasString = avaliacaoAnterior.pecas_combinado as string;
-        const pecasArray = pecasString.split(" | ").filter((p: string) => p.trim());
-        const novasPecas: PecaProcessual[] = pecasArray.map((p: string) => {
-          const [tipo, idProjudi] = p.split(": ");
-          return {
-            id: crypto.randomUUID(),
-            tipo: tipo?.trim() || "",
-            idProjudi: idProjudi?.trim() || "",
-          };
-        });
-        setPecas(novasPecas);
-      } else {
-        // Se não há peças anteriores, iniciar com lista vazia para novo preenchimento
-        setPecas([]);
-      }
+      // Reconstruir peças e pecasPermanentes a partir dos dados salvos
+      const pecasCombinadoStr = (avaliacaoAnterior.pecas_combinado as string) || "";
+      const divergenciasDetalhesStr = (avaliacaoAnterior.divergencias_detalhes as string) || "";
+      const temDivergencia = (avaliacaoAnterior.divergencia_classificacao as string) === "Sim";
 
-      // Carregar divergências de classificação se existirem
-      if (avaliacaoAnterior.divergencia_classificacao === "Sim" && avaliacaoAnterior.divergencias_detalhes) {
-        // Parse das divergências do formato concatenado
-        // Esperamos que seja "Tipo1 → Real1 (ID: id1) | Tipo2 → Real2 (ID: id2)"
-        const divergenciasString = avaliacaoAnterior.divergencias_detalhes as string;
-        const divergenciasArray = divergenciasString.split(" | ").filter((d: string) => d.trim());
-        const novasDivergencias: DivergenciaClassificacao[] = divergenciasArray.map((d: string) => {
+      // Parse das divergências para lookup rápido por idPeca
+      const divergenciasMap = new Map<string, { tipoInformado: string; tipoReal: string }>();
+      if (temDivergencia && divergenciasDetalhesStr) {
+        divergenciasDetalhesStr.split(" | ").filter((d: string) => d.trim()).forEach((d: string) => {
           const match = d.match(/(.+?)\s*→\s*(.+?)\s*\(ID:\s*(.+?)\)/);
           if (match) {
-            return {
-              id: crypto.randomUUID(),
-              tipoInformado: match[1]?.trim() || "",
-              tipoReal: match[2]?.trim() || "",
-              idPeca: match[3]?.trim() || "",
-            };
+            divergenciasMap.set(match[3].trim(), {
+              tipoInformado: match[1].trim(),
+              tipoReal: match[2].trim(),
+            });
           }
-          return { id: crypto.randomUUID(), tipoInformado: "", tipoReal: "", idPeca: "" };
         });
+      }
+
+      // Reconstruir peças a partir de pecas_combinado ("Tipo1: ID1 | Tipo2: ID2")
+      if (pecasCombinadoStr) {
+        const pecasArray = pecasCombinadoStr.split(" | ").filter((p: string) => p.trim());
+        const novasPecas: PecaProcessual[] = [];
+        const novasPecasPermanentes: PecaPermanente[] = [];
+        const novasDivergencias: DivergenciaClassificacao[] = [];
+
+        pecasArray.forEach((p: string) => {
+          const [tipo, idProjudi] = p.split(": ");
+          const tipoTrimmed = tipo?.trim() || "";
+          const idTrimmed = idProjudi?.trim() || "";
+          const pecaId = `restored-${idTrimmed}`;
+
+          novasPecas.push({ id: pecaId, tipo: tipoTrimmed, idProjudi: idTrimmed });
+
+          // Reconstruir pecaPermanente para o painel
+          const divInfo = divergenciasMap.get(idTrimmed);
+          novasPecasPermanentes.push({
+            movimentoId: `mov-restored-${idTrimmed}`,
+            tipoIdentificado: tipoTrimmed,
+            idPeca: idTrimmed,
+            temDivergencia: !!divInfo,
+            tipoInformadoSistema: divInfo?.tipoInformado,
+            tipoRealIdentificado: divInfo?.tipoReal,
+          });
+
+          if (divInfo) {
+            novasDivergencias.push({
+              id: pecaId,
+              tipoInformado: divInfo.tipoInformado,
+              tipoReal: divInfo.tipoReal,
+              idPeca: idTrimmed,
+            });
+          }
+        });
+
+        setPecas(novasPecas);
+        setPecasPermanentes(novasPecasPermanentes);
         setDivergencias(novasDivergencias);
       } else {
-        // Se não há divergências anteriores, iniciar lista vazia
+        setPecas([]);
+        setPecasPermanentes([]);
         setDivergencias([]);
       }
     } else {
