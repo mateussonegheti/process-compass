@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen, BookOpen, CheckCircle2, GitBranch, Palette } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen, BookOpen, CheckCircle2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProcessoFila } from "@/types/cogede";
 import { toast } from "sonner";
@@ -167,9 +167,8 @@ export function PainelSupervisor({
   const [avaliacoesConsolidadas, setAvaliacoesConsolidadas] = useState<AvaliacaoConsolidada[]>([]);
   const [loadingExport, setLoadingExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const temporalidadeInputRef = useRef<HTMLInputElement>(null);
   const hierarquiaInputRef = useRef<HTMLInputElement>(null);
-  const { totalRegistros: totalTemporalidade, uploading: uploadingTemporalidade, uploadTemporalidade } = useTemporalidade();
+  const { totalRegistros: totalTemporalidade } = useTemporalidade();
   const hierarchy = useHierarchyUpload();
   // Estado para seletor de lote de exportação
   const [lotes, setLotes] = useState<{ id: string; nome: string | null; created_at: string; total_processos: number; ativo: boolean }[]>([]);
@@ -521,21 +520,6 @@ export function PainelSupervisor({
     }
   };
 
-  const handleUploadTemporalidade = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      await uploadTemporalidade(text);
-    };
-    reader.readAsText(file);
-
-    if (temporalidadeInputRef.current) {
-      temporalidadeInputRef.current.value = "";
-    }
-  };
 
   const handleUploadHierarquia = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -751,58 +735,14 @@ export function PainelSupervisor({
             </div>
           )}
         </div>
-        {/* Upload de Tabela de Temporalidade CNJ */}
+        {/* Seção de Temporalidade CSV removida — agora unificada no upload XLSX abaixo */}
+
+        {/* Upload de Temporalidade + Hierarquia de Assuntos (XLSX unificado) */}
         {temPermissao && (
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-sm font-medium flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
-              Tabela de Temporalidade CNJ
-            </Label>
-            
-            <div className="flex items-center gap-3">
-              <input
-                ref={temporalidadeInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleUploadTemporalidade}
-                className="hidden"
-                id="upload-temporalidade"
-                disabled={uploadingTemporalidade}
-              />
-              <Button variant="outline" asChild disabled={uploadingTemporalidade}>
-                <label htmlFor="upload-temporalidade" className="cursor-pointer flex items-center gap-2">
-                  {uploadingTemporalidade ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  {uploadingTemporalidade ? "Carregando..." : "Carregar Tabela de Temporalidade"}
-                </label>
-              </Button>
-
-              {totalTemporalidade > 0 && (
-                <Badge variant="secondary" className="gap-1">
-                  <CheckCircle2 className="h-3 w-3" />
-                  {totalTemporalidade} assuntos carregados
-                </Badge>
-              )}
-            </div>
-
-            <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
-              <p>Planilha CSV da tabela de temporalidade do CNJ (Justiça Estadual).</p>
-              <p>Formato esperado: <code className="bg-muted px-1 rounded">Nome, 90 dias, 2 anos, ..., Permanente, ...</code></p>
-              <p>O sistema extrairá o código numérico de cada assunto e sua temporalidade correspondente.</p>
-              <p>⚠️ Carregar uma nova tabela substituirá a anterior.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Upload de Hierarquia de Assuntos (XLSX) */}
-        {temPermissao && (
-          <div className="space-y-3 pt-4 border-t">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <GitBranch className="h-4 w-4" />
-              Hierarquia de Assuntos CNJ
+              Tabela de Temporalidade e Hierarquia CNJ
             </Label>
             
             <div className="flex items-center gap-3">
@@ -822,15 +762,22 @@ export function PainelSupervisor({
                   ) : (
                     <Upload className="h-4 w-4" />
                   )}
-                  {hierarchy.uploading ? "Salvando..." : "Carregar Hierarquia (.xlsx)"}
+                  {hierarchy.uploading ? "Salvando..." : "Carregar Tabela (.xlsx)"}
                 </label>
               </Button>
+
+              {totalTemporalidade > 0 && !hierarchy.hasFile && (
+                <Badge variant="secondary" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {totalTemporalidade} assuntos carregados
+                </Badge>
+              )}
             </div>
 
-            {/* Preview de cores detectadas */}
+            {/* Preview após carregar arquivo */}
             {hierarchy.previewColors.length > 0 && (
               <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium">Cores detectadas no arquivo:</p>
+                <p className="text-sm font-medium">Cores de fonte detectadas:</p>
                 <div className="space-y-2">
                   {hierarchy.previewColors.map((c, idx) => {
                     const mapping = hierarchy.colorMappings.find(
@@ -845,18 +792,13 @@ export function PainelSupervisor({
                         <span className={`font-mono text-xs ${c.bold ? "font-bold" : ""}`}>
                           #{c.color} {c.bold ? "(Negrito)" : ""}
                         </span>
-                        <Badge variant="outline" className="text-xs">
-                          {c.count} células
-                        </Badge>
-                        {mapping && (
+                        <Badge variant="outline" className="text-xs">{c.count} células</Badge>
+                        {mapping ? (
                           <Badge variant="secondary" className="text-xs">
                             Nível {mapping.level}: {mapping.label}
                           </Badge>
-                        )}
-                        {!mapping && (
-                          <Badge variant="destructive" className="text-xs">
-                            Não mapeado
-                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="text-xs">Não mapeado</Badge>
                         )}
                         <span className="text-xs text-muted-foreground truncate max-w-[200px]">
                           Ex: {c.sample}
@@ -869,63 +811,57 @@ export function PainelSupervisor({
                 {hierarchy.previewRecords.length > 0 && (
                   <div className="pt-3 border-t">
                     <p className="text-sm text-muted-foreground mb-2">
-                      {hierarchy.previewRecords.length} assuntos com hierarquia detectada
+                      {hierarchy.previewRecords.length} assuntos detectados
+                      {" "}({hierarchy.previewRecords.filter(r => r.temporalidade).length} com temporalidade,
+                      {" "}{hierarchy.previewRecords.filter(r => r.hierarchyLevel >= 0).length} com hierarquia)
                     </p>
                     <div className="max-h-40 overflow-y-auto text-xs space-y-1">
                       {hierarchy.previewRecords.slice(0, 20).map((r, idx) => (
                         <div key={idx} className="flex gap-2">
-                          <Badge variant="outline" className="text-xs flex-shrink-0">
-                            N{r.hierarchyLevel}
-                          </Badge>
-                          <span className="font-mono">{r.subjectCode}</span>
-                          <span className="text-muted-foreground truncate">{r.subjectName}</span>
+                          <Badge variant="outline" className="text-xs flex-shrink-0">N{r.hierarchyLevel}</Badge>
+                          <span className="font-mono">{r.codigo}</span>
+                          <span className="text-muted-foreground truncate">{r.nome}</span>
+                          {r.temporalidade && (
+                            <Badge variant="secondary" className="text-xs flex-shrink-0">{r.temporalidade}</Badge>
+                          )}
                         </div>
                       ))}
                       {hierarchy.previewRecords.length > 20 && (
-                        <p className="text-muted-foreground">
-                          ... e mais {hierarchy.previewRecords.length - 20} registros
-                        </p>
+                        <p className="text-muted-foreground">... e mais {hierarchy.previewRecords.length - 20} registros</p>
                       )}
                     </div>
                   </div>
                 )}
 
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    onClick={hierarchy.saveHierarchy}
-                    disabled={hierarchy.uploading || hierarchy.previewRecords.length === 0}
-                  >
-                    {hierarchy.uploading ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                    )}
-                    Salvar Hierarquia ({hierarchy.previewRecords.length} registros)
+                  <Button size="sm" onClick={hierarchy.saveToDatabase} disabled={hierarchy.uploading || hierarchy.previewRecords.length === 0}>
+                    {hierarchy.uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                    Salvar ({hierarchy.previewRecords.length} registros)
                   </Button>
-                  <Button size="sm" variant="outline" onClick={hierarchy.reset}>
-                    Cancelar
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={hierarchy.reset}>Cancelar</Button>
                 </div>
               </div>
             )}
 
             <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
-              <p>Arquivo XLSX original da tabela de temporalidade do CNJ.</p>
-              <p>O sistema detecta automaticamente a hierarquia dos assuntos baseado na <strong>cor da fonte</strong> e <strong>negrito</strong>:</p>
-              <div className="mt-1 space-y-0.5">
+              <p>Arquivo <strong>.xlsx</strong> original da tabela de temporalidade do CNJ (Justiça Estadual).</p>
+              <p>O sistema extrai automaticamente:</p>
+              <ul className="list-disc list-inside ml-2 mt-1">
+                <li><strong>Temporalidade:</strong> prazo de guarda (marcações "X" nas colunas)</li>
+                <li><strong>Hierarquia:</strong> nível do assunto (cor da fonte + negrito)</li>
+              </ul>
+              <div className="mt-2 space-y-0.5">
+                <p className="font-medium">Mapeamento de cores:</p>
                 {DEFAULT_COLOR_MAPPINGS.map((m, idx) => (
                   <p key={idx} className="flex items-center gap-1">
-                    <span
-                      className="inline-block w-3 h-3 rounded-sm border border-border"
-                      style={{ backgroundColor: `#${m.color}` }}
-                    />
+                    <span className="inline-block w-3 h-3 rounded-sm border border-border" style={{ backgroundColor: `#${m.color}` }} />
                     <code className="bg-muted px-1 rounded">#{m.color}</code>
                     {m.bold && <strong>(Negrito)</strong>}
                     → Nível {m.level}
                   </p>
                 ))}
               </div>
+              <p className="mt-1">⚠️ Carregar uma nova tabela substituirá a anterior.</p>
             </div>
           </div>
         )}
