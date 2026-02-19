@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, GitMerge, LayoutDashboard, ClipboardList } from "lucide-react";
+import { FileText, GitMerge, LayoutDashboard, ClipboardList, Settings } from "lucide-react";
 import { Header } from "@/components/cogede/Header";
 import { SessaoCard } from "@/components/cogede/SessaoCard";
 import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
@@ -537,7 +537,7 @@ export default function Index() {
       
       <main className="container mx-auto px-4 py-6">
         <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada} className="space-y-6">
-          <TabsList className={`grid w-full max-w-2xl ${podeVerDashboard ? "grid-cols-4" : "grid-cols-2"}`}>
+          <TabsList className={`grid w-full max-w-3xl ${podeVerDashboard ? "grid-cols-5" : "grid-cols-2"}`}>
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
               Avaliação
@@ -546,6 +546,12 @@ export default function Index() {
               <ClipboardList className="h-4 w-4" />
               Minhas Avaliações
             </TabsTrigger>
+            {podeVerDashboard && (
+              <TabsTrigger value="configuracoes" className="gap-2">
+                <Settings className="h-4 w-4" />
+                Configurações
+              </TabsTrigger>
+            )}
             {podeVerDashboard && (
               <TabsTrigger value="dashboard" className="gap-2">
                 <LayoutDashboard className="h-4 w-4" />
@@ -561,16 +567,6 @@ export default function Index() {
           </TabsList>
 
           <TabsContent value="avaliacao" className="space-y-6">
-            {podeVerDashboard && (
-              <PainelSupervisor
-                onProcessosCarregados={handleProcessosCarregados}
-                processosCount={processos.length}
-                uploading={uploading}
-                podeCarregarPlanilha={podeCarregarPlanilha}
-                loteId={loteAtivo?.id}
-              />
-            )}
-            
             <SessaoCard
               sessao={sessao}
               onIniciarSessao={handleIniciarSessao}
@@ -606,6 +602,18 @@ export default function Index() {
               </div>
             )}
           </TabsContent>
+
+          {podeVerDashboard && (
+            <TabsContent value="configuracoes" className="space-y-6">
+              <PainelSupervisor
+                onProcessosCarregados={handleProcessosCarregados}
+                processosCount={processos.length}
+                uploading={uploading}
+                podeCarregarPlanilha={podeCarregarPlanilha}
+                loteId={loteAtivo?.id}
+              />
+            </TabsContent>
+          )}
 
           {podeVerDashboard && (
             <TabsContent value="dashboard" className="space-y-6">
