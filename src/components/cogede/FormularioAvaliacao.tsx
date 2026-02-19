@@ -376,134 +376,84 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
             </div>
           </div>
 
-          {/* Temporalidade CNJ - Classificação automática */}
-          <div className="p-3 rounded-lg border bg-muted/30">
-            <Label className="flex items-center gap-2 text-sm mb-2">
-              <BookOpen className="h-4 w-4" />
-              2.2.1 Temporalidade CNJ
-              <Lock className="h-3 w-3 text-muted-foreground" />
-            </Label>
-            {loadingTemporalidade ? (
-              <p className="text-sm text-muted-foreground">Carregando tabela de temporalidade...</p>
-            ) : temporalidadeInfo ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {temporalidadeInfo.tipoGuarda === "Permanente" ? (
-                  <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
-                    <ShieldCheck className="h-3 w-3" />
-                    Guarda Permanente
-                  </Badge>
-                ) : temporalidadeInfo.tipoGuarda === "Temporal" ? (
-                  <Badge variant="secondary" className="gap-1">
-                    <Clock className="h-3 w-3" />
-                    Temporal: {temporalidadeInfo.temporalidade}
-                  </Badge>
-                ) : temporalidadeInfo.tipoGuarda === "Vide Guia" ? (
-                  <Badge variant="outline" className="gap-1">
-                    <HelpCircle className="h-3 w-3" />
-                    Vide Guia de Aplicação
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="gap-1">
-                    {temporalidadeInfo.temporalidade}
-                  </Badge>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  Código {temporalidadeInfo.codigo} — {temporalidadeInfo.nome}
-                </span>
-              </div>
-            ) : processo.ASSUNTO_PRINCIPAL ? (
-              <div className="flex items-center gap-2">
+          {/* 2.2.1 Temporalidade CNJ + 2.4 Destinação permanente - lado a lado */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 rounded-lg border bg-muted/30">
+              <Label className="flex items-center gap-2 text-sm mb-2">
+                <BookOpen className="h-4 w-4" />
+                2.2.1 Temporalidade CNJ
+                <Lock className="h-3 w-3 text-muted-foreground" />
+              </Label>
+              {loadingTemporalidade ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : temporalidadeInfo ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {temporalidadeInfo.tipoGuarda === "Permanente" ? (
+                    <Badge className="bg-rose-700 hover:bg-rose-800 text-white gap-1">
+                      <ShieldCheck className="h-3 w-3" />
+                      Guarda Permanente
+                    </Badge>
+                  ) : temporalidadeInfo.tipoGuarda === "Temporal" ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <Clock className="h-3 w-3" />
+                      Temporal: {temporalidadeInfo.temporalidade}
+                    </Badge>
+                  ) : temporalidadeInfo.tipoGuarda === "Vide Guia" ? (
+                    <Badge variant="outline" className="gap-1">
+                      <HelpCircle className="h-3 w-3" />
+                      Vide Guia de Aplicação
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="gap-1">
+                      {temporalidadeInfo.temporalidade}
+                    </Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    Código {temporalidadeInfo.codigo} — {temporalidadeInfo.nome}
+                  </span>
+                </div>
+              ) : processo.ASSUNTO_PRINCIPAL ? (
                 <Badge variant="destructive" className="gap-1">
                   <AlertTriangle className="h-3 w-3" />
-                  Temporalidade não definida
+                  Não encontrado na tabela CNJ
                 </Badge>
-                <span className="text-xs text-muted-foreground">
-                  Assunto não encontrado na tabela CNJ
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
+              ) : (
                 <Badge variant="destructive" className="gap-1">
                   <AlertTriangle className="h-3 w-3" />
                   Processo sem assunto
                 </Badge>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {naoTemAssunto && (
-            <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <Label className="text-amber-800">
-                2.1.1 Descrição do assunto faltante <span className="text-destructive">*</span>
+            {/* 2.4 Destinação permanente - AUTOMATIZADO */}
+            <div className="p-3 rounded-lg border bg-muted/30">
+              <Label className="flex items-center gap-2 text-sm mb-2">
+                2.4 Destinação permanente?
+                <Lock className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">(automático)</span>
               </Label>
-              <Textarea
-                placeholder="Descreva o assunto que deveria estar cadastrado..."
-                value={formData.descricaoAssuntoFaltante}
-                onChange={(e) => setFormData({ ...formData, descricaoAssuntoFaltante: e.target.value })}
-                className="bg-white"
-              />
+              {loadingTemporalidade ? (
+                <p className="text-sm text-muted-foreground">Calculando...</p>
+              ) : temporalidadeInfo ? (
+                <div className="flex items-center gap-2">
+                  {temporalidadeInfo.tipoGuarda === "Permanente" ? (
+                    <Badge className="bg-rose-700 hover:bg-rose-800 text-white gap-1">
+                      <ShieldCheck className="h-3 w-3" />
+                      Sim — Guarda Permanente
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Não — {temporalidadeInfo.temporalidade}
+                    </Badge>
+                  )}
+                </div>
+              ) : (
+                <Badge variant="outline" className="gap-1">
+                  N/A — Sem dados de temporalidade
+                </Badge>
+              )}
             </div>
-          )}
-
-          {/* Campo 2.3 Hierarquia correta - DESATIVADO
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>2.3 Hierarquia correta?</Label>
-              <Select
-                value={formData.hierarquiaCorreta}
-                onValueChange={(v) => setFormData({ ...formData, hierarquiaCorreta: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sim">Sim</SelectItem>
-                  <SelectItem value="Não">Não</SelectItem>
-                  <SelectItem value="N/A">N/A</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          {formData.hierarquiaCorreta === "Não" && (
-            <div className="space-y-2">
-              <Label>2.3.1 Divergência na hierarquia</Label>
-              <Textarea
-                placeholder="Descreva a divergência encontrada..."
-                value={formData.divergenciaHierarquia}
-                onChange={(e) => setFormData({ ...formData, divergenciaHierarquia: e.target.value })}
-              />
-            </div>
-          )}
-          FIM - Campo 2.3 Hierarquia correta - DESATIVADO */}
-
-          {/* Campo 2.4 Destinação permanente - AUTOMATIZADO com base na temporalidade CNJ */}
-          <div className="p-3 rounded-lg border bg-muted/30">
-            <Label className="flex items-center gap-2 text-sm mb-2">
-              2.4 Destinação permanente?
-              <Lock className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">(automático)</span>
-            </Label>
-            {loadingTemporalidade ? (
-              <p className="text-sm text-muted-foreground">Calculando...</p>
-            ) : temporalidadeInfo ? (
-              <div className="flex items-center gap-2">
-                {temporalidadeInfo.tipoGuarda === "Permanente" ? (
-                  <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
-                    <ShieldCheck className="h-3 w-3" />
-                    Sim — Guarda Permanente
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="gap-1">
-                    <XCircle className="h-3 w-3" />
-                    Não — {temporalidadeInfo.temporalidade}
-                  </Badge>
-                )}
-              </div>
-            ) : (
-              <Badge variant="outline" className="gap-1">
-                N/A — Sem dados de temporalidade
-              </Badge>
-            )}
           </div>
         </CardContent>
       </Card>
