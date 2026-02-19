@@ -39,7 +39,8 @@ export function useTemporalidade() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("tabela_temporalidade")
-          .select("codigo, nome, temporalidade, tipo_guarda, hierarchy_level")
+          .select("codigo, nome, temporalidade, tipo_guarda, hierarchy_level, sort_order")
+          .order("sort_order", { ascending: true, nullsFirst: false })
           .order("created_at", { ascending: true })
           .range(from, from + pageSize - 1);
 

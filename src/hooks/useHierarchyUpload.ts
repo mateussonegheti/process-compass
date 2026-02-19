@@ -61,12 +61,13 @@ export function useHierarchyUpload() {
       // Insert in batches of 500
       const batchSize = 500;
       for (let i = 0; i < previewRecords.length; i += batchSize) {
-        const batch = previewRecords.slice(i, i + batchSize).map(r => ({
+        const batch = previewRecords.slice(i, i + batchSize).map((r, batchIdx) => ({
           codigo: r.codigo,
           nome: r.nome,
           temporalidade: r.temporalidade || "Não definido",
           tipo_guarda: r.tipoGuarda || "Não definido",
           hierarchy_level: r.hierarchyLevel >= 0 ? r.hierarchyLevel : null,
+          sort_order: i + batchIdx,
         }));
 
         const { error: insertError } = await supabase
