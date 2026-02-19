@@ -43,8 +43,7 @@ interface AvaliacaoConsolidada {
   erroTecnico?: boolean;
   ocorrenciasOutroDetalhe?: string;
   divergenciaClassificacao?: string;
-  tipoInformadoSistema?: string;
-  tipoRealIdentificado?: string;
+  divergenciasDetalhes?: string;
   processoVazio?: boolean;
   observacoesGerais?: string;
   dataInicioAvaliacao?: string;
@@ -112,8 +111,7 @@ const COLUNAS_EXPORTACAO = [
   { key: "ocorrenciasPecas", label: "OCORRENCIAS_PECAS", grupo: "Ocorrências" },
   { key: "ocorrenciasOutroDetalhe", label: "OCORRENCIAS_OUTRO_DETALHE", grupo: "Ocorrências" },
   { key: "divergenciaClassificacao", label: "CLASSIFICACAO_DIVERGENTE", grupo: "Ocorrências" },
-  { key: "tipoInformadoSistema", label: "TIPO_INFORMADO_SISTEMA", grupo: "Ocorrências" },
-  { key: "tipoRealIdentificado", label: "TIPO_REAL_IDENTIFICADO", grupo: "Ocorrências" },
+  { key: "divergenciaConsolidada", label: "DIVERGENCIA_TIPO_INFORMADO_X_REAL", grupo: "Ocorrências" },
   { key: "processoVazio", label: "INCONSISTENCIA_PROCESSO_VAZIO", grupo: "Inconsistências" },
 ];
 
@@ -280,8 +278,7 @@ export function PainelSupervisor({
           erroTecnico: av?.erro_tecnico || false,
           ocorrenciasOutroDetalhe: av?.ocorrencias_outro_detalhe || undefined,
           divergenciaClassificacao: av?.divergencia_classificacao || undefined,
-          tipoInformadoSistema: av?.tipo_informado_sistema || undefined,
-          tipoRealIdentificado: av?.tipo_real_identificado || undefined,
+          divergenciasDetalhes: av?.divergencias_detalhes || undefined,
           processoVazio: av?.processo_vazio || false,
           observacoesGerais: av?.observacoes_gerais || undefined,
           dataInicioAvaliacao: av?.data_inicio || undefined,
@@ -575,6 +572,28 @@ export function PainelSupervisor({
           // Campo especial: anoDistribuicao
           if (key === "anoDistribuicao") {
             value = extrairAno(av.dataDistribuicao);
+          }
+          // Campo especial: divergenciaConsolidada
+          else if (key === "divergenciaConsolidada") {
+            if (av.divergenciaClassificacao === "Sim" && av.divergenciasDetalhes) {
+              try {
+                // Parse: "Tipo1 → Real1 (ID: id1) | Tipo2 → Real2 (ID: id2)"
+                // Output: "Tipo1 x Real1 - id1 | Tipo2 x Real2 - id2"
+                value = av.divergenciasDetalhes
+                  .split(" | ")
+                  .filter(d => d.trim())
+                  .map(d => {
+                    const match = d.match(/^(.+?)\s*→\s*(.+?)\s*\(ID:\s*(.+?)\)$/);
+                    if (match) {
+                      return `${match[1].trim()} x ${match[2].trim()} - ${match[3].trim()}`;
+                    }
+                    return d;
+                  })
+                  .join(" | ");
+              } catch {
+                value = av.divergenciasDetalhes;
+              }
+            }
           }
           // Campo especial: ocorrenciasPecas
           else if (key === "ocorrenciasPecas") {
