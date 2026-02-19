@@ -361,6 +361,7 @@ export default function Index() {
       divergencia_classificacao: avaliacao.divergenciaClassificacao || null,
       tipo_informado_sistema: avaliacao.tipoInformadoSistema || null,
       tipo_real_identificado: avaliacao.tipoRealIdentificado || null,
+      divergencias_detalhes: avaliacao.divergenciasDetalhes || null,
       processo_vazio: avaliacao.processoVazio || false,
       observacoes_gerais: avaliacao.observacoesGerais || null,
       data_fim: new Date().toISOString(),
