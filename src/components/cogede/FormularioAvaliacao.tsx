@@ -288,8 +288,8 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
       assuntoPrincipal: processo.ASSUNTO_PRINCIPAL,
       descricaoAssuntoFaltante: formData.descricaoAssuntoFaltante,
       assuntoTpu: formData.assuntoTpu,
-      hierarquiaCorreta: "", // Campo desativado
-      divergenciaHierarquia: "", // Campo desativado
+      hierarquiaCorreta: formData.hierarquiaCorreta,
+      divergenciaHierarquia: formData.divergenciaHierarquia,
       destinacaoPermanente: temporalidadeInfo
         ? (temporalidadeInfo.tipoGuarda === "Permanente" ? "Sim" : "Não")
         : "N/A",
@@ -402,7 +402,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
                                 : "text-muted-foreground"
                             }`}
                           >
-                            {item.codigo} - {item.nome}
+                            {idx === 0 ? `${item.codigo} - ${item.nome}` : item.nome}
                           </span>
                         </span>
                       ))}
@@ -447,10 +447,43 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
               )}
             </div>
 
-            {/* 2.3 Destinação permanente - AUTOMATIZADO */}
+            {/* 2.3 Hierarquia correta? */}
+            <div className="p-3 rounded-lg border bg-muted/30 space-y-3">
+              <Label className="flex items-center gap-2 text-sm">
+                2.3 Hierarquia correta?
+              </Label>
+              <Select
+                value={formData.hierarquiaCorreta}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, hierarquiaCorreta: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sim">Sim</SelectItem>
+                  <SelectItem value="Não">Não</SelectItem>
+                  <SelectItem value="N/A">N/A</SelectItem>
+                </SelectContent>
+              </Select>
+              {formData.hierarquiaCorreta === "Não" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Descreva a divergência na hierarquia:</Label>
+                  <Textarea
+                    value={formData.divergenciaHierarquia}
+                    onChange={(e) => setFormData(prev => ({ ...prev, divergenciaHierarquia: e.target.value }))}
+                    placeholder="Descreva a divergência encontrada na hierarquia..."
+                    rows={2}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 2.4 Destinação permanente - AUTOMATIZADO */}
+          <div className="grid grid-cols-1 gap-4">
             <div className="p-3 rounded-lg border bg-muted/30">
               <Label className="flex items-center gap-2 text-sm mb-2">
-                2.3 Destinação permanente?
+                2.4 Destinação permanente?
                 <Lock className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">(automático)</span>
               </Label>
