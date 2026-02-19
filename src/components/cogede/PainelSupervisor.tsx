@@ -15,7 +15,8 @@ import { validateCSVFile, validateRowCount, sanitizeCellValue, hasSuspiciousCont
 import { supabase } from "@/integrations/supabase/client";
 import { useTemporalidade } from "@/hooks/useTemporalidade";
 import { useHierarchyUpload } from "@/hooks/useHierarchyUpload";
-import { DEFAULT_COLOR_MAPPINGS, ColorMapping } from "@/lib/hierarchyParser";
+import { DEFAULT_COLOR_MAPPINGS } from "@/lib/hierarchyParser";
+import { HierarchyTreeView } from "@/components/cogede/HierarchyTreeView";
 
 interface AvaliacaoConsolidada {
   // Dados do processo
@@ -810,26 +811,7 @@ export function PainelSupervisor({
 
                 {hierarchy.previewRecords.length > 0 && (
                   <div className="pt-3 border-t">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {hierarchy.previewRecords.length} assuntos detectados
-                      {" "}({hierarchy.previewRecords.filter(r => r.temporalidade).length} com temporalidade,
-                      {" "}{hierarchy.previewRecords.filter(r => r.hierarchyLevel >= 0).length} com hierarquia)
-                    </p>
-                    <div className="max-h-40 overflow-y-auto text-xs space-y-1">
-                      {hierarchy.previewRecords.slice(0, 20).map((r, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <Badge variant="outline" className="text-xs flex-shrink-0">N{r.hierarchyLevel}</Badge>
-                          <span className="font-mono">{r.codigo}</span>
-                          <span className="text-muted-foreground truncate">{r.nome}</span>
-                          {r.temporalidade && (
-                            <Badge variant="secondary" className="text-xs flex-shrink-0">{r.temporalidade}</Badge>
-                          )}
-                        </div>
-                      ))}
-                      {hierarchy.previewRecords.length > 20 && (
-                        <p className="text-muted-foreground">... e mais {hierarchy.previewRecords.length - 20} registros</p>
-                      )}
-                    </div>
+                    <HierarchyTreeView records={hierarchy.previewRecords} />
                   </div>
                 )}
 
