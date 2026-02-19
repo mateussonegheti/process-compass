@@ -1,24 +1,22 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { parseHierarchyXLSX, extractUniqueColors, ColorMapping, DEFAULT_COLOR_MAPPINGS, HierarchyRecord } from "@/lib/hierarchyParser";
+import { parseTemporalidadeXLSX, extractUniqueColors, ColorMapping, DEFAULT_COLOR_MAPPINGS, TemporalidadeHierarchyRecord } from "@/lib/hierarchyParser";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 
 export function useHierarchyUpload() {
   const [uploading, setUploading] = useState(false);
   const [previewColors, setPreviewColors] = useState<Array<{ color: string; bold: boolean; count: number; sample: string }>>([]);
-  const [previewRecords, setPreviewRecords] = useState<HierarchyRecord[]>([]);
+  const [previewRecords, setPreviewRecords] = useState<TemporalidadeHierarchyRecord[]>([]);
   const [fileBuffer, setFileBuffer] = useState<ArrayBuffer | null>(null);
   const [colorMappings, setColorMappings] = useState<ColorMapping[]>(DEFAULT_COLOR_MAPPINGS);
 
-  // Step 1: Load file and extract colors for preview
   const loadFile = useCallback(async (buffer: ArrayBuffer) => {
     try {
       setFileBuffer(buffer);
       const colors = await extractUniqueColors(buffer);
       setPreviewColors(colors);
-      // Also do a preview parse with default mappings
-      const records = await parseHierarchyXLSX(buffer, colorMappings);
+      const records = await parseTemporalidadeXLSX(buffer, colorMappings);
       setPreviewRecords(records);
       return colors;
     } catch (error) {
@@ -28,20 +26,19 @@ export function useHierarchyUpload() {
     }
   }, [colorMappings]);
 
-  // Step 2: Re-parse with updated mappings
   const reparseWithMappings = useCallback(async (mappings: ColorMapping[]) => {
     if (!fileBuffer) return;
     setColorMappings(mappings);
     try {
-      const records = await parseHierarchyXLSX(fileBuffer, mappings);
+      const records = await parseTemporalidadeXLSX(fileBuffer, mappings);
       setPreviewRecords(records);
     } catch (error) {
       logger.error("Erro ao re-parsear:", error);
     }
   }, [fileBuffer]);
 
-  // Step 3: Save to database (update hierarchy_level on existing records)
-  const saveHierarchy = useCallback(async () => {
+  // Save both temporalidade AND hierarchy to database
+  const saveToDatabase = useCallback(async () => {
     if (previewRecords.length === 0) {
       toast.error("Nenhum registro para salvar");
       return false;
@@ -49,38 +46,51 @@ export function useHierarchyUpload() {
 
     setUploading(true);
     try {
-      // Update hierarchy_level in batches
-      const batchSize = 100;
-      let updated = 0;
-      let notFound = 0;
+      // Delete existing records
+      const { error: deleteError } = await supabase
+        .from("tabela_temporalidade")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
 
+      if (deleteError) {
+        logger.error("Erro ao limpar tabela:", deleteError);
+        toast.error("Erro ao limpar tabela anterior");
+        return false;
+      }
+
+      // Insert in batches of 500
+      const batchSize = 500;
       for (let i = 0; i < previewRecords.length; i += batchSize) {
-        const batch = previewRecords.slice(i, i + batchSize);
-        
-        for (const record of batch) {
-          const { error, count } = await supabase
-            .from("tabela_temporalidade")
-            .update({ hierarchy_level: record.hierarchyLevel })
-            .eq("codigo", record.subjectCode);
+        const batch = previewRecords.slice(i, i + batchSize).map(r => ({
+          codigo: r.codigo,
+          nome: r.nome,
+          temporalidade: r.temporalidade || "Não definido",
+          tipo_guarda: r.tipoGuarda || "Não definido",
+          hierarchy_level: r.hierarchyLevel >= 0 ? r.hierarchyLevel : null,
+        }));
 
-          if (error) {
-            logger.error(`Erro ao atualizar código ${record.subjectCode}:`, error);
-          } else if (count && count > 0) {
-            updated++;
-          } else {
-            notFound++;
-          }
+        const { error: insertError } = await supabase
+          .from("tabela_temporalidade")
+          .insert(batch);
+
+        if (insertError) {
+          logger.error("Erro ao inserir batch:", insertError);
+          toast.error(`Erro ao inserir registros (batch ${Math.floor(i / batchSize) + 1})`);
+          return false;
         }
       }
 
-      toast.success(`Hierarquia salva: ${updated} registros atualizados${notFound > 0 ? `, ${notFound} códigos não encontrados na tabela` : ""}`);
+      const comTemporalidade = previewRecords.filter(r => r.temporalidade).length;
+      const comHierarquia = previewRecords.filter(r => r.hierarchyLevel >= 0).length;
+      toast.success(`${previewRecords.length} assuntos carregados (${comTemporalidade} com temporalidade, ${comHierarquia} com hierarquia)`);
+      
       setFileBuffer(null);
       setPreviewColors([]);
       setPreviewRecords([]);
       return true;
     } catch (error) {
-      logger.error("Erro ao salvar hierarquia:", error);
-      toast.error("Erro ao salvar hierarquia no banco");
+      logger.error("Erro ao salvar:", error);
+      toast.error("Erro ao processar planilha");
       return false;
     } finally {
       setUploading(false);
@@ -102,7 +112,7 @@ export function useHierarchyUpload() {
     hasFile: fileBuffer !== null,
     loadFile,
     reparseWithMappings,
-    saveHierarchy,
+    saveToDatabase,
     setColorMappings,
     reset,
   };

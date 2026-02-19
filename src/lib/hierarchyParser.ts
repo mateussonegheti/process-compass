@@ -1,12 +1,15 @@
-// Parser para hierarquia de assuntos CNJ baseado em cores de fonte e negrito do XLSX
+// Parser unificado para a planilha CNJ de Temporalidade + Hierarquia
+// Extrai: temporalidade (marcações X nas colunas) + hierarquia (cor da fonte + negrito)
 // Usa exceljs para ler metadados de formatação das células
 
 import ExcelJS from "exceljs";
 
-export interface HierarchyRecord {
-  subjectCode: number;
-  subjectName: string;
-  hierarchyLevel: number;
+export interface TemporalidadeHierarchyRecord {
+  codigo: number;
+  nome: string;
+  temporalidade: string;   // "Permanente", "5 anos", "90 dias", etc.
+  tipoGuarda: string;      // "Permanente", "Temporal", "Não se aplica", "Vide Guia"
+  hierarchyLevel: number;  // 0=Raiz, 1-5=profundidade
 }
 
 // Mapeamento padrão de cores de fonte para níveis hierárquicos
@@ -26,29 +29,36 @@ export const DEFAULT_COLOR_MAPPINGS: ColorMapping[] = [
   { color: "000000", bold: false, level: 5, label: "Nível 5 (Preto Normal)" },
 ];
 
-/**
- * Normaliza cor hex para comparação (remove prefixos, uppercase, 6 chars)
- */
+// Colunas de temporalidade (índices 1-based no XLSX, colunas B até M)
+const COLUNAS_TEMPORALIDADE = [
+  { colIndex: 2,  label: "90 dias" },
+  { colIndex: 3,  label: "2 anos" },
+  { colIndex: 4,  label: "3 anos" },
+  { colIndex: 5,  label: "5 anos" },
+  { colIndex: 6,  label: "10 anos" },
+  { colIndex: 7,  label: "20 anos" },
+  { colIndex: 8,  label: "30 anos" },
+  { colIndex: 9,  label: "40 anos" },
+  { colIndex: 10, label: "100 anos" },
+  { colIndex: 11, label: "Permanente" },
+  { colIndex: 12, label: "Não se aplica" },
+  { colIndex: 13, label: "Vide Guia de Aplicação" },
+];
+
 function normalizeColor(color: string | undefined): string {
   if (!color) return "000000";
-  // Remove prefixos como "FF" (ARGB) se tiver 8 chars
   let hex = color.replace(/^#/, "").toUpperCase();
   if (hex.length === 8) {
-    hex = hex.substring(2); // Remove alpha prefix
+    hex = hex.substring(2);
   }
   return hex.padStart(6, "0");
 }
 
-/**
- * Compara duas cores hex com tolerância
- */
 function colorsMatch(actual: string, expected: string, tolerance = 20): boolean {
   const a = normalizeColor(actual);
   const e = normalizeColor(expected).toUpperCase();
-
   if (a === e) return true;
 
-  // Parse RGB e comparar com tolerância
   const ar = parseInt(a.substring(0, 2), 16);
   const ag = parseInt(a.substring(2, 4), 16);
   const ab = parseInt(a.substring(4, 6), 16);
@@ -63,16 +73,12 @@ function colorsMatch(actual: string, expected: string, tolerance = 20): boolean 
   );
 }
 
-/**
- * Determina o nível hierárquico baseado na cor da fonte e estilo negrito
- */
 function determineHierarchyLevel(
   fontColor: string | undefined,
   isBold: boolean,
   mappings: ColorMapping[]
 ): number | null {
   const normalized = normalizeColor(fontColor);
-
   for (const mapping of mappings) {
     if (mapping.bold === isBold && colorsMatch(normalized, mapping.color)) {
       return mapping.level;
@@ -81,32 +87,47 @@ function determineHierarchyLevel(
   return null;
 }
 
-/**
- * Extrai código numérico de uma string no formato "CODIGO - Nome" ou apenas número
- */
 function extractSubjectCode(text: string): number | null {
   if (!text) return null;
   const match = text.trim().match(/^(\d+)\s*[-–]/);
   if (match) return parseInt(match[1], 10);
-  // Tentar número puro
   const numMatch = text.trim().match(/^(\d+)$/);
   return numMatch ? parseInt(numMatch[1], 10) : null;
 }
 
-/**
- * Extrai o nome do assunto removendo o código numérico
- */
 function extractSubjectName(text: string): string {
   return text.replace(/^\d+\s*[-–]\s*/, "").trim();
 }
 
 /**
- * Parseia um arquivo XLSX e extrai a hierarquia baseada em cores de fonte e negrito
+ * Extrai temporalidade de uma linha (marcação "X" nas colunas de retenção)
  */
-export async function parseHierarchyXLSX(
+function extractTemporalidade(row: ExcelJS.Row): { temporalidade: string; tipoGuarda: string } {
+  for (const col of COLUNAS_TEMPORALIDADE) {
+    const cell = row.getCell(col.colIndex);
+    const value = cell.text?.trim().toUpperCase();
+    if (value === "X") {
+      if (col.label === "Permanente") {
+        return { temporalidade: "Permanente", tipoGuarda: "Permanente" };
+      } else if (col.label === "Não se aplica") {
+        return { temporalidade: "Não se aplica", tipoGuarda: "Não se aplica" };
+      } else if (col.label === "Vide Guia de Aplicação") {
+        return { temporalidade: "Vide Guia de Aplicação", tipoGuarda: "Vide Guia" };
+      } else {
+        return { temporalidade: col.label, tipoGuarda: "Temporal" };
+      }
+    }
+  }
+  return { temporalidade: "", tipoGuarda: "" };
+}
+
+/**
+ * Parseia um arquivo XLSX e extrai temporalidade + hierarquia
+ */
+export async function parseTemporalidadeXLSX(
   fileBuffer: ArrayBuffer,
   mappings: ColorMapping[] = DEFAULT_COLOR_MAPPINGS
-): Promise<HierarchyRecord[]> {
+): Promise<TemporalidadeHierarchyRecord[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(fileBuffer);
 
@@ -115,41 +136,42 @@ export async function parseHierarchyXLSX(
     throw new Error("Nenhuma planilha encontrada no arquivo");
   }
 
-  const records: HierarchyRecord[] = [];
+  const records: TemporalidadeHierarchyRecord[] = [];
 
   worksheet.eachRow((row, rowNumber) => {
-    // Pular cabeçalhos (primeiras 2 linhas)
     if (rowNumber <= 2) return;
 
-    const cell = row.getCell(1); // Coluna A (nome do assunto)
+    const cell = row.getCell(1);
     const cellValue = cell.text?.trim();
     if (!cellValue) return;
 
     const code = extractSubjectCode(cellValue);
     if (code === null) return;
 
-    // Extrair formatação da fonte
+    // --- Hierarquia (cor da fonte + negrito) ---
     const font = cell.font || {};
     const isBold = font.bold === true;
-
-    // Extrair cor da fonte
     let fontColorHex: string | undefined;
     if (font.color) {
       if (font.color.argb) {
         fontColorHex = font.color.argb;
       } else if (font.color.theme !== undefined) {
-        // Cores de tema — tratar como preto por padrão
         fontColorHex = "000000";
       }
     }
-
     const level = determineHierarchyLevel(fontColorHex, isBold, mappings);
-    if (level === null) return; // Cor não mapeada, ignorar
+    // Se cor não mapeada, atribuir nível -1 (desconhecido) mas ainda incluir
+    const hierarchyLevel = level ?? -1;
+
+    // --- Temporalidade (marcações X) ---
+    const { temporalidade, tipoGuarda } = extractTemporalidade(row);
 
     records.push({
-      subjectCode: code,
-      subjectName: extractSubjectName(cellValue),
-      hierarchyLevel: level,
+      codigo: code,
+      nome: extractSubjectName(cellValue),
+      temporalidade,
+      tipoGuarda,
+      hierarchyLevel,
     });
   });
 
@@ -180,7 +202,6 @@ export async function extractUniqueColors(
     const font = cell.font || {};
     const isBold = font.bold === true;
     let fontColorHex = "000000";
-
     if (font.color?.argb) {
       fontColorHex = normalizeColor(font.color.argb);
     }
