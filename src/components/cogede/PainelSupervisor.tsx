@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen, BookOpen, CheckCircle2 } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen, BookOpen, CheckCircle2, GitBranch, Palette } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProcessoFila } from "@/types/cogede";
 import { toast } from "sonner";
@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { validateCSVFile, validateRowCount, sanitizeCellValue, hasSuspiciousContent, MAX_ROW_COUNT } from "@/lib/csvValidation";
 import { supabase } from "@/integrations/supabase/client";
 import { useTemporalidade } from "@/hooks/useTemporalidade";
+import { useHierarchyUpload } from "@/hooks/useHierarchyUpload";
+import { DEFAULT_COLOR_MAPPINGS, ColorMapping } from "@/lib/hierarchyParser";
 
 interface AvaliacaoConsolidada {
   // Dados do processo
@@ -166,7 +168,9 @@ export function PainelSupervisor({
   const [loadingExport, setLoadingExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const temporalidadeInputRef = useRef<HTMLInputElement>(null);
+  const hierarquiaInputRef = useRef<HTMLInputElement>(null);
   const { totalRegistros: totalTemporalidade, uploading: uploadingTemporalidade, uploadTemporalidade } = useTemporalidade();
+  const hierarchy = useHierarchyUpload();
   // Estado para seletor de lote de exportação
   const [lotes, setLotes] = useState<{ id: string; nome: string | null; created_at: string; total_processos: number; ativo: boolean }[]>([]);
   const [loteExportacao, setLoteExportacao] = useState<string | undefined>(loteId);
@@ -533,6 +537,24 @@ export function PainelSupervisor({
     }
   };
 
+  const handleUploadHierarquia = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".xlsx")) {
+      toast.error("Apenas arquivos .xlsx são aceitos para hierarquia de assuntos");
+      return;
+    }
+
+    const buffer = await file.arrayBuffer();
+    await hierarchy.loadFile(buffer);
+    toast.success("Arquivo carregado! Verifique as cores detectadas abaixo.");
+
+    if (hierarquiaInputRef.current) {
+      hierarquiaInputRef.current.value = "";
+    }
+  };
+
   // Separador CSV — ponto-e-vírgula é padrão para locale PT-BR (Excel)
   const CSV_SEP = ";";
 
@@ -771,6 +793,139 @@ export function PainelSupervisor({
               <p>Formato esperado: <code className="bg-muted px-1 rounded">Nome, 90 dias, 2 anos, ..., Permanente, ...</code></p>
               <p>O sistema extrairá o código numérico de cada assunto e sua temporalidade correspondente.</p>
               <p>⚠️ Carregar uma nova tabela substituirá a anterior.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Upload de Hierarquia de Assuntos (XLSX) */}
+        {temPermissao && (
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              Hierarquia de Assuntos CNJ
+            </Label>
+            
+            <div className="flex items-center gap-3">
+              <input
+                ref={hierarquiaInputRef}
+                type="file"
+                accept=".xlsx"
+                onChange={handleUploadHierarquia}
+                className="hidden"
+                id="upload-hierarquia"
+                disabled={hierarchy.uploading}
+              />
+              <Button variant="outline" asChild disabled={hierarchy.uploading}>
+                <label htmlFor="upload-hierarquia" className="cursor-pointer flex items-center gap-2">
+                  {hierarchy.uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {hierarchy.uploading ? "Salvando..." : "Carregar Hierarquia (.xlsx)"}
+                </label>
+              </Button>
+            </div>
+
+            {/* Preview de cores detectadas */}
+            {hierarchy.previewColors.length > 0 && (
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium">Cores detectadas no arquivo:</p>
+                <div className="space-y-2">
+                  {hierarchy.previewColors.map((c, idx) => {
+                    const mapping = hierarchy.colorMappings.find(
+                      m => m.color.toUpperCase() === c.color.toUpperCase() && m.bold === c.bold
+                    );
+                    return (
+                      <div key={idx} className="flex items-center gap-3 text-sm">
+                        <div
+                          className="w-6 h-6 rounded border border-border flex-shrink-0"
+                          style={{ backgroundColor: `#${c.color}` }}
+                        />
+                        <span className={`font-mono text-xs ${c.bold ? "font-bold" : ""}`}>
+                          #{c.color} {c.bold ? "(Negrito)" : ""}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {c.count} células
+                        </Badge>
+                        {mapping && (
+                          <Badge variant="secondary" className="text-xs">
+                            Nível {mapping.level}: {mapping.label}
+                          </Badge>
+                        )}
+                        {!mapping && (
+                          <Badge variant="destructive" className="text-xs">
+                            Não mapeado
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          Ex: {c.sample}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {hierarchy.previewRecords.length > 0 && (
+                  <div className="pt-3 border-t">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {hierarchy.previewRecords.length} assuntos com hierarquia detectada
+                    </p>
+                    <div className="max-h-40 overflow-y-auto text-xs space-y-1">
+                      {hierarchy.previewRecords.slice(0, 20).map((r, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <Badge variant="outline" className="text-xs flex-shrink-0">
+                            N{r.hierarchyLevel}
+                          </Badge>
+                          <span className="font-mono">{r.subjectCode}</span>
+                          <span className="text-muted-foreground truncate">{r.subjectName}</span>
+                        </div>
+                      ))}
+                      {hierarchy.previewRecords.length > 20 && (
+                        <p className="text-muted-foreground">
+                          ... e mais {hierarchy.previewRecords.length - 20} registros
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    onClick={hierarchy.saveHierarchy}
+                    disabled={hierarchy.uploading || hierarchy.previewRecords.length === 0}
+                  >
+                    {hierarchy.uploading ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                    )}
+                    Salvar Hierarquia ({hierarchy.previewRecords.length} registros)
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={hierarchy.reset}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
+              <p>Arquivo XLSX original da tabela de temporalidade do CNJ.</p>
+              <p>O sistema detecta automaticamente a hierarquia dos assuntos baseado na <strong>cor da fonte</strong> e <strong>negrito</strong>:</p>
+              <div className="mt-1 space-y-0.5">
+                {DEFAULT_COLOR_MAPPINGS.map((m, idx) => (
+                  <p key={idx} className="flex items-center gap-1">
+                    <span
+                      className="inline-block w-3 h-3 rounded-sm border border-border"
+                      style={{ backgroundColor: `#${m.color}` }}
+                    />
+                    <code className="bg-muted px-1 rounded">#{m.color}</code>
+                    {m.bold && <strong>(Negrito)</strong>}
+                    → Nível {m.level}
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
         )}

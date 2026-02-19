@@ -278,6 +278,7 @@ export type Database = {
         Row: {
           codigo: number
           created_at: string
+          hierarchy_level: number | null
           id: string
           nome: string
           temporalidade: string
@@ -286,6 +287,7 @@ export type Database = {
         Insert: {
           codigo: number
           created_at?: string
+          hierarchy_level?: number | null
           id?: string
           nome: string
           temporalidade: string
@@ -294,6 +296,7 @@ export type Database = {
         Update: {
           codigo?: number
           created_at?: string
+          hierarchy_level?: number | null
           id?: string
           nome?: string
           temporalidade?: string
