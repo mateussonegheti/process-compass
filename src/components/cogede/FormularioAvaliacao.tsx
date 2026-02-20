@@ -278,11 +278,10 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   };
 
   const handleSubmit = () => {
-    // Validações básicas
-    if (naoTemAssunto && !formData.descricaoAssuntoFaltante.trim()) {
-      toast.error("Campo obrigatório: Descreva o assunto faltante");
-      return;
-    }
+    // Auto-preencher descrição de assunto faltante quando processo não tem assunto
+    const descricaoAssuntoFaltanteFinal = naoTemAssunto && !formData.descricaoAssuntoFaltante.trim()
+      ? "Processo sem assunto"
+      : formData.descricaoAssuntoFaltante;
 
     if (naoTemMovArquivado && !formData.descricaoSituacaoArquivamento.trim()) {
       toast.error("Campo obrigatório: Descreva a situação do arquivamento");
@@ -306,7 +305,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
       numeroCnj: processo.NUMERO_CNJ,
       possuiAssunto: processo.POSSUI_ASSUNTO,
       assuntoPrincipal: processo.ASSUNTO_PRINCIPAL,
-      descricaoAssuntoFaltante: formData.descricaoAssuntoFaltante,
+      descricaoAssuntoFaltante: descricaoAssuntoFaltanteFinal,
       assuntoTpu: formData.assuntoTpu,
       hierarquiaCorreta: formData.hierarquiaCorreta,
       divergenciaHierarquia: formData.divergenciaHierarquia,
