@@ -106,13 +106,11 @@ export function Header() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-foreground/10 rounded-lg">
-              <FileText className="h-8 w-8" />
-            </div>
+            <img src="/sinval-logo-white.png" alt="SINVAL" className="h-10 w-10" />
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">COGEDE</h1>
+              <h1 className="text-2xl font-bold tracking-tight">SINVAL</h1>
               <p className="text-sm text-primary-foreground/80">
-                Coordenação de Gestão de Documentos Eletrônicos - Avaliação e Merge
+                Sistema Integrado de Avaliação
               </p>
             </div>
           </div>
