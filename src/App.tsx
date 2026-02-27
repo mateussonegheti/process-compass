@@ -82,6 +82,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 const AppRoutes = () => (
   <Routes>
+    <Route path="/inicio" element={<Landing />} />
     <Route
       path="/login"
       element={
