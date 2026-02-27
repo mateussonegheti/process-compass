@@ -158,13 +158,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <FileText className="h-8 w-8 text-primary" />
-          </div>
+          <img src={sinvalLogo} alt="SINVAL" className="mx-auto h-20 w-auto" />
           <div>
-            <CardTitle className="text-2xl font-bold">COGEDE</CardTitle>
+            <CardTitle className="text-2xl font-bold">SINVAL</CardTitle>
             <CardDescription>
-              Sistema de Avaliação Documental
+              Sistema Integrado de Avaliação
             </CardDescription>
           </div>
         </CardHeader>
