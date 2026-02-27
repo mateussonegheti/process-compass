@@ -1,4 +1,4 @@
-// Tipos do Sistema COGEDE
+// Tipos do Sistema SINVAL - Sistema Integrado de Avaliação
 
 export interface ProcessoFila {
   ID?: string; // ID do banco de dados
