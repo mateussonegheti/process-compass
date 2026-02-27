@@ -50,7 +50,7 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/inicio" replace />;
   }
 
   // Block non-admin users from admin routes

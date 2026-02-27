@@ -105,15 +105,18 @@ export function Header() {
     <header className="bg-primary text-primary-foreground shadow-lg">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/sinval-logo-white.png" alt="SINVAL" className="h-10 w-10" />
-            <div>
+          <button
+            onClick={() => navigate("/inicio")}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <img src="/sinval-icon.png" alt="SINVAL" className="h-10 w-10" />
+            <div className="text-left">
               <h1 className="text-2xl font-bold tracking-tight">SINVAL</h1>
               <p className="text-sm text-primary-foreground/80">
                 Sistema Integrado de Avaliação
               </p>
             </div>
-          </div>
+          </button>
 
           {profile && (
             <div className="flex items-center gap-3">

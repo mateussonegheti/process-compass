@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import sinvalLogo from "@/assets/sinval-logo.png";
+import sinvalIcon from "@/assets/sinval-icon.png";
 import {
   FileSearch,
   CheckCircle2,
@@ -21,7 +22,7 @@ export default function Landing() {
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={sinvalLogo} alt="SINVAL" className="h-10 w-auto" />
+            <img src={sinvalIcon} alt="SINVAL" className="h-10 w-10" />
             <span className="text-xl font-bold font-display tracking-tight text-foreground">
               SINVAL
             </span>
@@ -41,7 +42,7 @@ export default function Landing() {
           <img
             src={sinvalLogo}
             alt="SINVAL"
-            className="mx-auto h-24 w-auto mb-8 drop-shadow-lg brightness-0 invert"
+            className="mx-auto h-20 w-auto mb-8 drop-shadow-lg"
           />
           <h1 className="text-4xl lg:text-5xl font-bold font-display mb-4 leading-tight">
             Sistema Integrado de Avaliação
