@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import sinvalLogo from "@/assets/sinval-logo.png";
+import sinvalIcon from "@/assets/sinval-icon.png";
 import {
   FileSearch,
   CheckCircle2,
