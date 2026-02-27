@@ -10,8 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuTrigger } from
+"@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
@@ -21,21 +21,21 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from
+"@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const roleLabels: Record<AppRole, string> = {
   admin: "Administrador",
   supervisor: "Supervisor",
-  avaliador: "Avaliador",
+  avaliador: "Avaliador"
 };
 
 const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline"> = {
   admin: "default",
   supervisor: "secondary",
-  avaliador: "outline",
+  avaliador: "outline"
 };
 
 export function Header() {
@@ -51,11 +51,11 @@ export function Header() {
 
   const handleChangePassword = async () => {
     if (!profile?.email) return;
-    
+
     const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}/login`
     });
-    
+
     if (error) {
       toast.error("Erro ao enviar email de alteração de senha");
     } else {
@@ -65,16 +65,16 @@ export function Header() {
 
   const handleDeleteAccount = async () => {
     if (!user?.id) return;
-    
+
     setIsDeleting(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      
+
       const response = await supabase.functions.invoke('delete-user', {
         body: { userId: user.id, selfDelete: true },
         headers: {
-          Authorization: `Bearer ${sessionData.session?.access_token}`,
-        },
+          Authorization: `Bearer ${sessionData.session?.access_token}`
+        }
       });
 
       if (response.error) {
@@ -93,12 +93,12 @@ export function Header() {
   };
 
   const getInitials = (nome: string) => {
-    return nome
-      .split(" ")
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase();
+    return nome.
+    split(" ").
+    map((n) => n[0]).
+    slice(0, 2).
+    join("").
+    toUpperCase();
   };
 
   return (
@@ -107,9 +107,9 @@ export function Header() {
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate("/inicio")}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          >
-            <img src="/sinval-icon.png" alt="SINVAL" className="h-10 w-10" />
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+
+            <img alt="SINVAL" className="h-10 w-10 shadow" src="/lovable-uploads/97745647-b58e-4196-ab84-d5ef53592d60.png" />
             <div className="text-left">
               <h1 className="text-2xl font-bold tracking-tight">SINVAL</h1>
               <p className="text-sm text-primary-foreground/80">
@@ -118,23 +118,23 @@ export function Header() {
             </div>
           </button>
 
-          {profile && (
-            <div className="flex items-center gap-3">
-              {role && (
-                <Badge
-                  variant={roleBadgeVariants[role]}
-                  className="hidden sm:flex bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30"
-                >
+          {profile &&
+          <div className="flex items-center gap-3">
+              {role &&
+            <Badge
+              variant={roleBadgeVariants[role]}
+              className="hidden sm:flex bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
+
                   {roleLabels[role]}
                 </Badge>
-              )}
+            }
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
-                    className="relative h-10 w-10 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/20"
-                  >
+                  variant="ghost"
+                  className="relative h-10 w-10 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/20">
+
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-transparent text-primary-foreground">
                         {getInitials(profile.nome)}
@@ -147,31 +147,31 @@ export function Header() {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{profile.nome}</p>
                       <p className="text-xs leading-none text-muted-foreground">{profile.email}</p>
-                      {role && (
-                        <Badge variant={roleBadgeVariants[role]} className="w-fit mt-2">
+                      {role &&
+                    <Badge variant={roleBadgeVariants[role]} className="w-fit mt-2">
                           {roleLabels[role]}
                         </Badge>
-                      )}
+                    }
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {isAdmin && (
-                    <>
+                  {isAdmin &&
+                <>
                       <DropdownMenuItem onClick={() => navigate("/admin")}>
                         <Shield className="mr-2 h-4 w-4" />
                         Administração
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
-                  )}
+                }
                   <DropdownMenuItem onClick={handleChangePassword}>
                     <KeyRound className="mr-2 h-4 w-4" />
                     Alterar Senha
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
+                  <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-destructive focus:text-destructive">
+
                     <Trash2 className="mr-2 h-4 w-4" />
                     Excluir Conta
                   </DropdownMenuItem>
@@ -183,7 +183,7 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          )}
+          }
         </div>
       </div>
 
@@ -198,16 +198,16 @@ export function Header() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteAccount}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+
               {isDeleting ? "Excluindo..." : "Confirmar Exclusão"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </header>
-  );
+    </header>);
+
 }
