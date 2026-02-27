@@ -42,7 +42,7 @@ export default function Landing() {
           <img
             src={sinvalLogo}
             alt="SINVAL"
-            className="mx-auto h-24 w-auto mb-8 drop-shadow-lg brightness-0 invert"
+            className="mx-auto h-20 w-auto mb-8 drop-shadow-lg"
           />
           <h1 className="text-4xl lg:text-5xl font-bold font-display mb-4 leading-tight">
             Sistema Integrado de Avaliação
