@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen, BookOpen, CheckCircle2 } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, Settings, Eye, EyeOff, ShieldAlert, Loader2, Database, FolderOpen, BookOpen, CheckCircle2, PlayCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProcessoFila } from "@/types/cogede";
 import { toast } from "sonner";
@@ -167,6 +167,7 @@ export function PainelSupervisor({
   const [mostrarColunas, setMostrarColunas] = useState(false);
   const [avaliacoesConsolidadas, setAvaliacoesConsolidadas] = useState<AvaliacaoConsolidada[]>([]);
   const [loadingExport, setLoadingExport] = useState(false);
+  const [ativandoLote, setAtivandoLote] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hierarquiaInputRef = useRef<HTMLInputElement>(null);
   const { totalRegistros: totalTemporalidade } = useTemporalidade();
@@ -201,6 +202,67 @@ export function PainelSupervisor({
       setLoteExportacao(loteId);
     }
   }, [loteId, loteExportacao]);
+
+  // Função para ativar/desativar lote para avaliação
+  const handleAtivarLote = async (loteIdParaAtivar: string) => {
+    try {
+      setAtivandoLote(true);
+      
+      // Buscar informações do lote
+      const lote = lotes.find(l => l.id === loteIdParaAtivar);
+      if (!lote) {
+        toast.error("Lote não encontrado");
+        return;
+      }
+
+      // Se já está ativo, não faz nada
+      if (lote.ativo) {
+        toast.info("Este lote já está ativo para avaliação");
+        return;
+      }
+
+      // Desativar todos os outros lotes
+      const { error: desativarError } = await supabase
+        .from("lotes_importacao")
+        .update({ ativo: false })
+        .neq("id", loteIdParaAtivar);
+
+      if (desativarError) {
+        logger.error("Erro ao desativar lotes:", desativarError);
+        toast.error("Erro ao desativar lotes anteriores");
+        return;
+      }
+
+      // Ativar o lote selecionado
+      const { error: ativarError } = await supabase
+        .from("lotes_importacao")
+        .update({ ativo: true })
+        .eq("id", loteIdParaAtivar);
+
+      if (ativarError) {
+        logger.error("Erro ao ativar lote:", ativarError);
+        toast.error("Erro ao ativar lote");
+        return;
+      }
+
+      toast.success(
+        `Lote "${lote.nome || 'Lote ' + new Date(lote.created_at).toLocaleDateString("pt-BR")}" ativado para avaliação!`
+      );
+      
+      // Atualizar lista de lotes
+      await fetchLotes();
+      
+      // Notificar componente pai se houver callback
+      if (onProcessosCarregados) {
+        onProcessosCarregados();
+      }
+    } catch (error) {
+      logger.error("Erro ao ativar lote:", error);
+      toast.error("Erro ao ativar lote para avaliação");
+    } finally {
+      setAtivandoLote(false);
+    }
+  };
 
   // Buscar avaliações consolidadas do banco
   const fetchAvaliacoesConsolidadas = useCallback(async () => {
@@ -863,7 +925,7 @@ export function PainelSupervisor({
             </Button>
           </div>
 
-          {/* Seletor de Lote para Exportação */}
+          {/* Seletor de Lote para Exportação e Ativação */}
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
             <Label className="text-sm text-muted-foreground">Lote:</Label>
@@ -872,7 +934,7 @@ export function PainelSupervisor({
               onValueChange={(value) => setLoteExportacao(value || undefined)}
             >
               <SelectTrigger className="w-[300px]">
-                <SelectValue placeholder="Selecione um lote para exportar" />
+                <SelectValue placeholder="Selecione um lote" />
               </SelectTrigger>
               <SelectContent>
                 {lotes.map((lote) => (
@@ -892,6 +954,41 @@ export function PainelSupervisor({
             >
               {loadingExport ? <Loader2 className="h-4 w-4 animate-spin" /> : "Carregar"}
             </Button>
+            {loteExportacao && (() => {
+              const loteSelecionado = lotes.find(l => l.id === loteExportacao);
+              if (!loteSelecionado) return null;
+              
+              if (loteSelecionado.ativo) {
+                return (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    disabled
+                    className="gap-1"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Ativo
+                  </Button>
+                );
+              }
+              
+              return (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleAtivarLote(loteExportacao)}
+                  disabled={ativandoLote}
+                  className="gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                >
+                  {ativandoLote ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <PlayCircle className="h-4 w-4" />
+                  )}
+                  {ativandoLote ? "Ativando..." : "Ativar para Avaliação"}
+                </Button>
+              );
+            })()}
           </div>
 
           {mostrarColunas && (
