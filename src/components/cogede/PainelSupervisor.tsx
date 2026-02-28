@@ -155,7 +155,8 @@ const detectSeparator = (line: string): string => {
 };
 
 export function PainelSupervisor({ 
-  onProcessosCarregados, 
+  onProcessosCarregados,
+  onLoteAtivado,
   processosCount,
   uploading = false,
   podeCarregarPlanilha = false,
