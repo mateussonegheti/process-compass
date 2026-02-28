@@ -127,13 +127,11 @@ export function useProcessos() {
     try {
       setUploading(true);
 
-      // Desativar lotes anteriores
-      if (loteAtivo) {
-        await supabase
-          .from("lotes_importacao")
-          .update({ ativo: false })
-          .eq("id", loteAtivo.id);
-      }
+      // Desativar TODOS os lotes anteriores (garantir apenas 1 ativo)
+      await supabase
+        .from("lotes_importacao")
+        .update({ ativo: false })
+        .eq("ativo", true);
 
       // Criar novo lote
       const { data: novoLote, error: loteError } = await supabase
