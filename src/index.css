@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 165 8% 8%;
 
-    /* Onyx - Primary Dark */
-    --primary: 165 8% 8%;
+    /* Graphite - Primary (lighter than Onyx) */
+    --primary: 165 8% 22%;
     --primary-foreground: 330 100% 99%;
 
     /* Light Gray */

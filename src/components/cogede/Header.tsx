@@ -110,7 +110,7 @@ export function Header() {
             onClick={() => navigate("/inicio")}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity">
 
-            <img alt="SINVAL" className="h-10 w-10 shadow" src="/lovable-uploads/97745647-b58e-4196-ab84-d5ef53592d60.png" />
+            <img alt="SINVAL" className="h-10 w-10 shadow" src={sinvalIcon} />
             <div className="text-left">
               <h1 className="text-2xl font-bold tracking-tight">SINVAL</h1>
               <p className="text-sm text-primary-foreground/80">
