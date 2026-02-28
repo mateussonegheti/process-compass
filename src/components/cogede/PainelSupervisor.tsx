@@ -55,6 +55,7 @@ interface AvaliacaoConsolidada {
 
 interface PainelSupervisorProps {
   onProcessosCarregados: (processos: ProcessoFila[]) => void;
+  onLoteAtivado?: () => void;
   processosCount: number;
   uploading?: boolean;
   podeCarregarPlanilha?: boolean;
@@ -252,9 +253,9 @@ export function PainelSupervisor({
       // Atualizar lista de lotes
       await fetchLotes();
       
-      // Notificar componente pai se houver callback
-      if (onProcessosCarregados) {
-        onProcessosCarregados();
+      // Notificar componente pai para recarregar processos do lote ativado
+      if (onLoteAtivado) {
+        onLoteAtivado();
       }
     } catch (error) {
       logger.error("Erro ao ativar lote:", error);

@@ -300,7 +300,7 @@ export function useProcessos() {
     fetchProcessos();
 
     // Subscrever a mudanças em processos_fila
-    const channel = supabase
+    const processosChannel = supabase
       .channel("processos-changes")
       .on(
         "postgres_changes",
@@ -316,8 +316,27 @@ export function useProcessos() {
       )
       .subscribe();
 
+    // Subscrever a mudanças em lotes_importacao (detectar ativação/desativação)
+    const lotesChannel = supabase
+      .channel("lotes-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "lotes_importacao",
+          filter: "ativo=eq.true",
+        },
+        (payload) => {
+          logger.log("Lote ativado:", payload);
+          fetchProcessos();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(processosChannel);
+      supabase.removeChannel(lotesChannel);
     };
   }, [fetchProcessos]);
 

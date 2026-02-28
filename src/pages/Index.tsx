@@ -607,6 +607,7 @@ export default function Index() {
             <TabsContent value="configuracoes" className="space-y-6">
               <PainelSupervisor
                 onProcessosCarregados={handleProcessosCarregados}
+                onLoteAtivado={refetch}
                 processosCount={processos.length}
                 uploading={uploading}
                 podeCarregarPlanilha={podeCarregarPlanilha}
