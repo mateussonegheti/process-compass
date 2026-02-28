@@ -104,13 +104,13 @@ export function Header() {
 
   return (
     <header className="bg-primary text-primary-foreground shadow-lg">
-      <div className="container mx-auto px-4 py-4">
+      <div className="container mx-auto px-4 py-4 bg-[#10473d]">
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate("/inicio")}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity">
 
-            <img alt="SINVAL" className="h-10 w-10 shadow" src={sinvalIcon} />
+            <img alt="SINVAL" className="h-10 w-10 border-0 shadow-none" src={sinvalIcon} />
             <div className="text-left">
               <h1 className="text-2xl font-bold tracking-tight">SINVAL</h1>
               <p className="text-sm text-primary-foreground/80">
