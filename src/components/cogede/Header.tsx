@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FileText, LogOut, Shield, KeyRound, Trash2 } from "lucide-react";
+import sinvalIcon from "@/assets/sinval-icon.png";
 import { useNavigate } from "react-router-dom";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
