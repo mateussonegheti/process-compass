@@ -924,7 +924,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
             <AlertDialogDescription>
               {liberacaoSelecionada?.tipo === 'processo' ? (
                 <>
-                  Tem certeza que deseja liberar o processo <strong>{liberacaoSelecionada.label}</strong>?
+                  Tem certeza que deseja liberar o processo <strong>{liberacaoSelecionada.descricao}</strong>?
                   <br /><br />
                   Esta ação irá:
                   <ul className="list-disc list-inside mt-2 space-y-1">
@@ -935,7 +935,7 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
                 </>
               ) : (
                 <>
-                  Tem certeza que deseja liberar <strong>todos os processos</strong> do avaliador <strong>{liberacaoSelecionada?.label}</strong>?
+                  Tem certeza que deseja liberar <strong>todos os processos</strong> do avaliador <strong>{liberacaoSelecionada?.descricao}</strong>?
                   <br /><br />
                   Esta ação irá:
                   <ul className="list-disc list-inside mt-2 space-y-1">
