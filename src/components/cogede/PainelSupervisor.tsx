@@ -223,17 +223,11 @@ export function PainelSupervisor({
         return;
       }
 
-      // Desativar todos os outros lotes
+      // Desativar TODOS os lotes (garantir apenas 1 ativo)
       const { error: desativarError } = await supabase
         .from("lotes_importacao")
         .update({ ativo: false })
-        .neq("id", loteIdParaAtivar);
-
-      if (desativarError) {
-        logger.error("Erro ao desativar lotes:", desativarError);
-        toast.error("Erro ao desativar lotes anteriores");
-        return;
-      }
+        .eq("ativo", true);
 
       // Ativar o lote selecionado
       const { error: ativarError } = await supabase
