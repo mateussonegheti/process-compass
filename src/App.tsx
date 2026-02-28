@@ -15,6 +15,7 @@ import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
+// Force rebuild to clear GitHub Pages cache - v2026.02.28.2
 function detectRouterBasename() {
   // Vite build may be configured for GitHub Pages (e.g. /process-compass/),
   // but the Lovable preview runs at /. If the current pathname does not start
