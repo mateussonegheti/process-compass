@@ -229,6 +229,12 @@ export function PainelSupervisor({
         .update({ ativo: false })
         .eq("ativo", true);
 
+      if (desativarError) {
+        logger.error("Erro ao desativar lotes:", desativarError);
+        toast.error("Erro ao desativar lotes anteriores");
+        return;
+      }
+
       // Ativar o lote selecionado
       const { error: ativarError } = await supabase
         .from("lotes_importacao")
