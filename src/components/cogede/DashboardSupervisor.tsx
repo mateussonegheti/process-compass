@@ -18,17 +18,25 @@ import {
   List,
   RefreshCw,
   Filter,
+  Unlock,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ProcessoFila } from "@/types/cogede";
 import { logger } from "@/lib/logger";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface AvaliacaoEmAndamento {
   avaliador_nome: string;
+  avaliador_id: string;
   processo_codigo: string;
   processo_cnj: string;
+  processo_id: string;
   inicio: string;
+  lote_nome: string;
+  lote_id: string;
 }
 
 interface EstatisticasAvaliador {
@@ -91,6 +99,17 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
   const [avaliadorSelecionado, setAvaliadorSelecionado] = useState<string>("todos");
   const [processosDoLote, setProcessosDoLote] = useState<ProcessoFila[]>(processosProps);
 
+  // Estados para liberação de processos travados
+  const [liberandoProcessos, setLiberandoProcessos] = useState(false);
+  const [mostrarDialogLiberar, setMostrarDialogLiberar] = useState(false);
+  const [liberacaoSelecionada, setLiberacaoSelecionada] = useState<{
+    tipo: 'processo' | 'usuario';
+    processoId?: string;
+    usuarioId?: string;
+    loteId?: string;
+    descricao: string;
+  } | null>(null);
+
   // Usar lote selecionado ou prop
   const loteId = loteSelecionado || loteIdProp;
 
@@ -129,7 +148,8 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           codigo_processo,
           numero_cnj,
           data_inicio_avaliacao,
-          responsavel_avaliacao
+          responsavel_avaliacao,
+          lote_id
         `,
         )
         .eq("status_avaliacao", "EM_ANALISE")
@@ -146,13 +166,29 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
       if (processosError) {
         logger.error("Erro ao buscar processos em análise:", processosError);
       } else if (processosEmAnalise) {
+        // Buscar informações dos lotes
+        const lotesIds = [...new Set(processosEmAnalise.map(p => p.lote_id))];
+        const { data: lotesInfo } = await supabase
+          .from("lotes_importacao")
+          .select("id, nome, created_at")
+          .in("id", lotesIds);
+        
+        const lotesMap = new Map<string, string>();
+        lotesInfo?.forEach(l => {
+          lotesMap.set(l.id, l.nome || `Lote ${new Date(l.created_at).toLocaleDateString("pt-BR")}`);
+        });
+
         const emAndamento: AvaliacaoEmAndamento[] = processosEmAnalise.map((p) => ({
           avaliador_nome: p.responsavel_avaliacao
             ? newProfilesMap.get(p.responsavel_avaliacao) || "Desconhecido"
             : "Desconhecido",
+          avaliador_id: p.responsavel_avaliacao || '',
           processo_codigo: p.codigo_processo,
           processo_cnj: p.numero_cnj,
+          processo_id: p.id,
           inicio: p.data_inicio_avaliacao || "",
+          lote_nome: lotesMap.get(p.lote_id) || 'Lote desconhecido',
+          lote_id: p.lote_id,
         }));
         setAvaliacoesEmAndamento(emAndamento);
       }
@@ -363,6 +399,87 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
       setSortColumn(column);
       setSortDirection("desc");
     }
+  };
+
+  // Função para liberar processos travados
+  const handleLiberarProcessos = async () => {
+    if (!liberacaoSelecionada) return;
+
+    setLiberandoProcessos(true);
+    try {
+      if (liberacaoSelecionada.tipo === 'usuario' && liberacaoSelecionada.usuarioId && liberacaoSelecionada.loteId) {
+        // Liberar todos os processos do usuário no lote
+        const { data, error } = await supabase.rpc('liberar_processos_usuario', {
+          p_profile_id: liberacaoSelecionada.usuarioId,
+          p_lote_id: liberacaoSelecionada.loteId
+        });
+
+        if (error) {
+          logger.error("Erro ao liberar processos do usuário:", error);
+          toast.error("Erro ao liberar processos");
+        } else {
+          const result = data as { success: boolean; processos_liberados: number } | null;
+          toast.success(`${result?.processos_liberados || 0} processo(s) liberado(s) com sucesso!`);
+          fetchDadosRealtime();
+          fetchProcessosDoLote();
+        }
+      } else if (liberacaoSelecionada.tipo === 'processo') {
+        // Liberar processo específico
+        const processo = avaliacoesEmAndamento.find(p => p.processo_id === liberacaoSelecionada.processoId);
+        if (!processo) {
+          toast.error("Processo não encontrado");
+          return;
+        }
+
+        const { data, error } = await supabase.rpc('liberar_processo', {
+          p_codigo_processo: processo.processo_codigo,
+          p_lote_id: processo.lote_id,
+          p_profile_id: processo.avaliador_id
+        });
+
+        if (error) {
+          logger.error("Erro ao liberar processo:", error);
+          toast.error("Erro ao liberar processo");
+        } else {
+          const result = data as { success: boolean; message?: string } | null;
+          if (result?.success) {
+            toast.success("Processo liberado com sucesso!");
+            fetchDadosRealtime();
+            fetchProcessosDoLote();
+          } else {
+            toast.error(result?.message || "Erro ao liberar processo");
+          }
+        }
+      }
+    } catch (error) {
+      logger.error("Erro ao liberar processos:", error);
+      toast.error("Erro ao liberar processos");
+    } finally {
+      setLiberandoProcessos(false);
+      setMostrarDialogLiberar(false);
+      setLiberacaoSelecionada(null);
+    }
+  };
+
+  const confirmarLiberacaoProcesso = (processoId: string, descricao: string, avaliadorId: string, loteId: string) => {
+    setLiberacaoSelecionada({
+      tipo: 'processo',
+      processoId,
+      descricao,
+      usuarioId: avaliadorId,
+      loteId
+    });
+    setMostrarDialogLiberar(true);
+  };
+
+  const confirmarLiberacaoUsuario = (usuarioId: string, usuarioNome: string, loteId: string, loteNome: string) => {
+    setLiberacaoSelecionada({
+      tipo: 'usuario',
+      usuarioId,
+      loteId,
+      descricao: `todos os processos de ${usuarioNome} no ${loteNome}`
+    });
+    setMostrarDialogLiberar(true);
   };
 
   // Preparar dados para o grid
@@ -653,13 +770,31 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
               Nenhuma avaliação em andamento
             </div>
           ) : (
-            <div className="flex flex-wrap gap-3">
+            <div className="space-y-2">
               {avaliacoesEmAndamento.map((av, idx) => (
-                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border">
-                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="font-medium text-sm">{av.avaliador_nome}</span>
-                  <span className="text-xs text-muted-foreground">•</span>
-                  <span className="text-xs font-mono text-muted-foreground">{av.processo_codigo}</span>
+                <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{av.avaliador_nome}</span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs font-mono text-muted-foreground">{av.processo_codigo}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{av.lote_nome}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => confirmarLiberacaoProcesso(av.processo_id, `${av.processo_codigo} (${av.avaliador_nome})`, av.avaliador_id, av.lote_id)}
+                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                  >
+                    <Unlock className="h-4 w-4 mr-1" />
+                    Liberar
+                  </Button>
                 </div>
               ))}
             </div>
@@ -777,6 +912,53 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           )}
         </CardContent>
       </Card>
+
+      {/* AlertDialog para confirmação de liberação */}
+      <AlertDialog open={mostrarDialogLiberar} onOpenChange={setMostrarDialogLiberar}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Confirmar Liberação de Processo
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {liberacaoSelecionada?.tipo === 'processo' ? (
+                <>
+                  Tem certeza que deseja liberar o processo <strong>{liberacaoSelecionada.label}</strong>?
+                  <br /><br />
+                  Esta ação irá:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Retornar o processo para o status PENDENTE</li>
+                    <li>Remover a vinculação com o avaliador atual</li>
+                    <li>Permitir que qualquer avaliador capture novamente</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  Tem certeza que deseja liberar <strong>todos os processos</strong> do avaliador <strong>{liberacaoSelecionada?.label}</strong>?
+                  <br /><br />
+                  Esta ação irá:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Liberar todos os processos EM_ANALISE deste avaliador</li>
+                    <li>Retornar todos para o status PENDENTE</li>
+                    <li>Permitir que qualquer avaliador os capture novamente</li>
+                  </ul>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={liberandoProcessos}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLiberarProcessos}
+              disabled={liberandoProcessos}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {liberandoProcessos ? "Liberando..." : "Confirmar Liberação"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
