@@ -25,7 +25,8 @@ export default function Index() {
     podeCarregarPlanilha,
     carregarPlanilha,
     atualizarStatusProcesso,
-    liberarProcessosOrfaos
+    liberarProcessosOrfaos,
+    refetch
   } = useProcessos();
   
   const [sessao, setSessao] = useState<SessaoAvaliacao>({
