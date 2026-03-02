@@ -186,6 +186,30 @@ BEGIN
   END IF;
 END $$;
 
+-- Corrigir dados legados: manter apenas o lote ativo mais recente
+WITH lotes_ativos_ranked AS (
+  SELECT
+    id,
+    ROW_NUMBER() OVER (ORDER BY created_at DESC, id DESC) AS rn
+  FROM lotes_importacao
+  WHERE ativo = true
+)
+UPDATE lotes_importacao
+SET ativo = false
+WHERE id IN (
+  SELECT id
+  FROM lotes_ativos_ranked
+  WHERE rn > 1
+);
+
+-- Segurança adicional: novos lotes não devem nascer ativos por padrão
+ALTER TABLE lotes_importacao ALTER COLUMN ativo SET DEFAULT false;
+
+-- Garantir no banco que só exista 1 lote ativo por vez
+CREATE UNIQUE INDEX IF NOT EXISTS idx_lotes_importacao_single_active
+  ON lotes_importacao ((ativo))
+  WHERE ativo = true;
+
 -- Garantir que apenas um lote esteja ativo por vez
 CREATE OR REPLACE FUNCTION ensure_single_active_lote()
 RETURNS TRIGGER AS $$

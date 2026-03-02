@@ -217,8 +217,8 @@ export function PainelSupervisor({
         return;
       }
 
-      // Se já está ativo, não faz nada
-      if (lote.ativo) {
+      // Se já é o lote efetivamente ativo no sistema, não faz nada
+      if (lote.id === loteId) {
         toast.info("Este lote já está ativo para avaliação");
         return;
       }
@@ -941,7 +941,7 @@ export function PainelSupervisor({
               <SelectContent>
                 {lotes.map((lote) => (
                   <SelectItem key={lote.id} value={lote.id}>
-                    {lote.ativo && "(Ativo) "}
+                    {lote.id === loteId && "(Ativo) "}
                     {lote.nome || `Lote ${new Date(lote.created_at).toLocaleDateString("pt-BR")}`}
                     {` (${lote.total_processos} processos)`}
                   </SelectItem>
@@ -960,7 +960,7 @@ export function PainelSupervisor({
               const loteSelecionado = lotes.find(l => l.id === loteExportacao);
               if (!loteSelecionado) return null;
               
-              if (loteSelecionado.ativo) {
+              if (loteSelecionado.id === loteId) {
                 return (
                   <Button 
                     variant="default" 

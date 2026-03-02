@@ -127,7 +127,7 @@ export function useProcessos() {
     try {
       setUploading(true);
 
-      // Desativar TODOS os lotes anteriores (garantir apenas 1 ativo)
+  // Desativar todos os lotes ativos anteriores
       await supabase
         .from("lotes_importacao")
         .update({ ativo: false })
