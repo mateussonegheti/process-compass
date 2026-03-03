@@ -74,11 +74,9 @@ interface ProcessoComDados extends ProcessoFila {
 type SortColumn =
   | "CODIGO"
   | "NUMERO_CNJ"
-  | "ASSUNTO"
   | "DATA_DISTRIBUICAO"
   | "ANO"
   | "DATA_ARQUIVAMENTO"
-  | "PRAZO"
   | "GUARDA"
   | "ARQUIVOS"
   | "RESPONSAVEL"
@@ -523,10 +521,6 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
           valorA = a.NUMERO_CNJ || "";
           valorB = b.NUMERO_CNJ || "";
           break;
-        case "ASSUNTO":
-          valorA = a.ASSUNTO_PRINCIPAL || "";
-          valorB = b.ASSUNTO_PRINCIPAL || "";
-          break;
         case "DATA_DISTRIBUICAO":
           valorA = a.DATA_DISTRIBUICAO || "";
           valorB = b.DATA_DISTRIBUICAO || "";
@@ -538,10 +532,6 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
         case "DATA_ARQUIVAMENTO":
           valorA = a.DATA_ARQUIVAMENTO_DEF || "";
           valorB = b.DATA_ARQUIVAMENTO_DEF || "";
-          break;
-        case "PRAZO":
-          valorA = a.PRAZO_5_ANOS_COMPLETO || "";
-          valorB = b.PRAZO_5_ANOS_COMPLETO || "";
           break;
         case "GUARDA":
           valorA = a.guarda || "";
@@ -593,22 +583,6 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
         render: (value) => <span className="font-mono">{String(value)}</span>,
       },
       {
-        id: "ASSUNTO",
-        header: "ASSUNTO_PRINCIPAL",
-        accessor: (row) => row.ASSUNTO_PRINCIPAL || "",
-        defaultWidth: 260,
-        minWidth: 180,
-        render: (value) => {
-          const assunto = String(value || "");
-          const assuntoCompleto = assunto
-            .split("|")
-            .map((item) => item.trim())
-            .filter(Boolean)
-            .join(" > ") || assunto || "—";
-          return <span title={assuntoCompleto}>{assuntoCompleto}</span>;
-        },
-      },
-      {
         id: "DATA_DISTRIBUICAO",
         header: "DATA_DISTRIBUICAO",
         accessor: (row) => row.DATA_DISTRIBUICAO || "",
@@ -627,13 +601,6 @@ export function DashboardSupervisor({ processos: processosProps, loteId: loteIdP
         header: "DATA_ARQUIVAMENTO",
         accessor: (row) => row.DATA_ARQUIVAMENTO_DEF || "",
         defaultWidth: 150,
-        minWidth: 100,
-      },
-      {
-        id: "PRAZO",
-        header: "PRAZO_5_ANOS",
-        accessor: (row) => row.PRAZO_5_ANOS_COMPLETO || "",
-        defaultWidth: 120,
         minWidth: 100,
       },
       {
