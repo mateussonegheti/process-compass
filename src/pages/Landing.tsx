@@ -52,12 +52,19 @@ export default function Landing() {
             processos judiciais eletrônicos, garantindo conformidade com a
             Tabela de Temporalidade e a gestão documental do Poder Judiciário.
           </p>
-          <Link to="/login">
-            <Button size="lg" className="btn-accent text-lg px-10">
-              Entrar no SINVAL
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/login">
+              <Button size="lg" className="btn-accent text-lg px-10">
+                Entrar no SINVAL
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/demo">
+              <Button size="lg" variant="outline" className="text-lg px-10 border-snow/40 text-snow hover:bg-snow/10">
+                Experimentar Gratuitamente
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
