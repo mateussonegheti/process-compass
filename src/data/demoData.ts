@@ -18,7 +18,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     MOV_COMPLEMENTOS: "Vara Cível | Para julgamento | Procedência parcial | Certificado",
     MOV_DATAS: "15/03/2018 | 10/05/2018 | 22/08/2019 | 20/11/2020",
     PECAS_TIPOS: "Petição Inicial | Sentença | Acórdão",
-    PECAS_IDS: "506978 | 507102 | 508234",
+    PECAS_IDS: "DEMO-PEC-A1 | DEMO-PEC-A2 | DEMO-PEC-A3",
   },
   {
     ID: "demo-002",
@@ -36,7 +36,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     MOV_COMPLEMENTOS: "2ª Vara Cível | Para sentença | Improcedência | Definitivo | Certificado",
     MOV_DATAS: "02/08/2017 | 15/01/2018 | 10/06/2019 | 01/03/2021 | 15/06/2021",
     PECAS_TIPOS: "Petição Inicial | Decisão | Sentença | Acórdão",
-    PECAS_IDS: "402311 | 403556 | 405678 | 407890",
+    PECAS_IDS: "DEMO-PEC-B1 | DEMO-PEC-B2 | DEMO-PEC-B3 | DEMO-PEC-B4",
   },
   {
     ID: "demo-003",
@@ -54,7 +54,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     MOV_COMPLEMENTOS: "Vara Criminal | Para julgamento | Condenação | Certificado",
     MOV_DATAS: "10/01/2016 | 22/04/2017 | 15/03/2018 | 30/09/2019",
     PECAS_TIPOS: "Petição Inicial | Sentença",
-    PECAS_IDS: "301234 | 302456",
+    PECAS_IDS: "DEMO-PEC-C1 | DEMO-PEC-C2",
   },
   {
     ID: "demo-004",
@@ -72,7 +72,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     MOV_COMPLEMENTOS: "1ª Vara Fazenda Pública | Para decisão | Deferimento | Definitivo | Certificado",
     MOV_DATAS: "05/06/2019 | 20/09/2019 | 15/02/2020 | 10/10/2022 | 12/12/2022",
     PECAS_TIPOS: "Petição Inicial | Decisão | Sentença | Voto Relator | Acórdão",
-    PECAS_IDS: "608912 | 609100 | 610345 | 611200 | 611500",
+    PECAS_IDS: "DEMO-PEC-D1 | DEMO-PEC-D2 | DEMO-PEC-D3 | DEMO-PEC-D4 | DEMO-PEC-D5",
   },
   {
     ID: "demo-005",
@@ -90,7 +90,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     MOV_COMPLEMENTOS: "Vara da Fazenda | Para julgamento | Procedência | Certificado",
     MOV_DATAS: "18/04/2015 | 30/08/2016 | 14/02/2017 | 25/08/2018",
     PECAS_TIPOS: "Petição Inicial | Termo de Audiência | Sentença",
-    PECAS_IDS: "201567 | 203890 | 205123",
+    PECAS_IDS: "DEMO-PEC-E1 | DEMO-PEC-E2 | DEMO-PEC-E3",
   },
 ];
 
