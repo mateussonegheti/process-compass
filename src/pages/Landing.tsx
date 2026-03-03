@@ -60,7 +60,11 @@ export default function Landing() {
               </Button>
             </Link>
             <Link to="/demo">
-              <Button size="lg" variant="outline" className="text-lg px-10 border-snow/40 text-snow hover:bg-snow/10">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-lg px-10 bg-transparent border-snow/40 text-snow hover:bg-snow/10 hover:text-snow"
+              >
                 Experimentar Gratuitamente
               </Button>
             </Link>
