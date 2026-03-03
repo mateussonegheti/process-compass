@@ -233,6 +233,11 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const naoTemMovArquivado = processo.POSSUI_MOV_ARQUIVADO?.toLowerCase() === "não";
   const prazoIncompleto = processo.PRAZO_5_ANOS_COMPLETO?.toLowerCase() === "não";
   const temDivergenciaClassificacao = formData.divergenciaClassificacao === "Sim";
+  const assuntoPrincipalCompleto = (processo.ASSUNTO_PRINCIPAL || "")
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(" > ") || processo.ASSUNTO_PRINCIPAL || "N/A";
 
   const adicionarPeca = () => {
     setPecas([...pecas, { id: crypto.randomUUID(), tipo: "", idProjudi: "" }]);
@@ -393,7 +398,11 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
                 2.2 Assunto principal (PROJUDI)
                 <Lock className="h-3 w-3 text-muted-foreground" />
               </Label>
-              <Input value={processo.ASSUNTO_PRINCIPAL || "N/A"} disabled className="bg-muted" />
+              {modoDemonstracao ? (
+                <Textarea value={assuntoPrincipalCompleto} disabled className="bg-muted min-h-[76px]" />
+              ) : (
+                <Input value={processo.ASSUNTO_PRINCIPAL || "N/A"} disabled className="bg-muted" />
+              )}
             </div>
           </div>
 
@@ -453,6 +462,16 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
                       Código {temporalidadeInfo.codigo} — {temporalidadeInfo.nome}
                     </span>
                   </div>
+                  {modoDemonstracao && hierarquiaCnj.length > 0 && (
+                    <div className="space-y-1 rounded-md border bg-background/80 p-2">
+                      <p className="text-xs font-medium text-muted-foreground">Níveis disponíveis para verificação</p>
+                      {hierarquiaCnj.map((item) => (
+                        <div key={`nivel-${item.codigo}`} className="text-xs">
+                          <span className="font-medium">Nível {item.level + 1}:</span> {item.codigo} - {item.nome}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : processo.ASSUNTO_PRINCIPAL ? (
                 <Badge variant="destructive" className="gap-1">

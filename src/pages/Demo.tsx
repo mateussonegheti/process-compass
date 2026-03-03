@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   FileText, LayoutDashboard, ClipboardList, LogOut, FileSearch,
   Loader2, User, CheckCircle2, Clock, Activity, Users, AlertTriangle,
-  Eye,
+  Eye, Settings, Edit,
 } from "lucide-react";
 import sinvalIcon from "@/assets/sinval-icon.png";
 import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
 import { ProcessoFila, AvaliacaoDocumental, SessaoAvaliacao } from "@/types/cogede";
 import { toast } from "sonner";
+import { useTemporalidade } from "@/hooks/useTemporalidade";
 import {
   DEMO_PROCESSOS,
   DEMO_AVALIACOES_CONCLUIDAS,
@@ -23,9 +24,28 @@ import {
 } from "@/data/demoData";
 
 export default function Demo() {
+  interface DemoAvaliacaoItem {
+    id: string;
+    processo_id: string;
+    codigo_processo: string;
+    numero_cnj: string;
+    possui_assunto: string;
+    assunto_principal: string;
+    possui_mov_arquivado: string;
+    prazo_5_anos_completo: string;
+    data_inicio: string;
+    data_fim: string | null;
+    destinacao_permanente: string;
+    status_avaliacao: string;
+    tem_ocorrencia: boolean;
+    avaliacao_anterior?: Record<string, unknown>;
+  }
+
   const navigate = useNavigate();
   const [processos, setProcessos] = useState<ProcessoFila[]>([...DEMO_PROCESSOS]);
-  const [avaliacoesConcluidas, setAvaliacoesConcluidas] = useState(DEMO_AVALIACOES_CONCLUIDAS);
+  const [avaliacoesConcluidas, setAvaliacoesConcluidas] = useState<DemoAvaliacaoItem[]>(
+    DEMO_AVALIACOES_CONCLUIDAS as DemoAvaliacaoItem[]
+  );
   const [sessao, setSessao] = useState<SessaoAvaliacao>({
     responsavel: DEMO_PROFILE.nome,
     processoAtual: undefined,
@@ -33,6 +53,10 @@ export default function Demo() {
   });
   const [carregando, setCarregando] = useState(false);
   const [abaSelecionada, setAbaSelecionada] = useState("avaliacao");
+  const [avaliacaoAnterior, setAvaliacaoAnterior] = useState<Record<string, unknown> | null>(null);
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [avaliacaoIdEdicao, setAvaliacaoIdEdicao] = useState<string | null>(null);
+  const { consultarTemporalidade } = useTemporalidade();
   const [stats, setStats] = useState(DEMO_STATS);
 
   const pendentes = processos.filter((p) => p.STATUS_AVALIACAO === "PENDENTE");
@@ -69,6 +93,54 @@ export default function Demo() {
         const processoAtual = sessao.processoAtual;
         if (!processoAtual) return;
 
+        if (modoEdicao && avaliacaoIdEdicao) {
+          setAvaliacoesConcluidas((prev) =>
+            prev.map((item) =>
+              item.id === avaliacaoIdEdicao
+                ? {
+                    ...item,
+                    data_fim: new Date().toISOString(),
+                    destinacao_permanente: avaliacao.destinacaoPermanente || item.destinacao_permanente,
+                    tem_ocorrencia: !!(avaliacao.documentoNaoLocalizado || avaliacao.documentoDuplicado || avaliacao.erroTecnico),
+                    assunto_principal: processoAtual.ASSUNTO_PRINCIPAL,
+                    possui_assunto: processoAtual.POSSUI_ASSUNTO,
+                    possui_mov_arquivado: processoAtual.POSSUI_MOV_ARQUIVADO,
+                    prazo_5_anos_completo: processoAtual.PRAZO_5_ANOS_COMPLETO,
+                    avaliacao_anterior: {
+                      descricao_assunto_faltante: avaliacao.descricaoAssuntoFaltante,
+                      assunto_tpu: avaliacao.assuntoTpu,
+                      hierarquia_correta: avaliacao.hierarquiaCorreta,
+                      divergencia_hierarquia: avaliacao.divergenciaHierarquia,
+                      destinacao_permanente: avaliacao.destinacaoPermanente,
+                      descricao_situacao_arquivamento: avaliacao.descricaoSituacaoArquivamento,
+                      inconsistencia_prazo: avaliacao.inconsistenciaPrazo,
+                      pecas_tipos: avaliacao.pecasTipos,
+                      pecas_ids: avaliacao.pecasIds,
+                      pecas_combinado: avaliacao.pecasCombinado,
+                      observacoes_pecas: avaliacao.observacoesPecas,
+                      documento_nao_localizado: avaliacao.documentoNaoLocalizado,
+                      documento_duplicado: avaliacao.documentoDuplicado,
+                      erro_tecnico: avaliacao.erroTecnico,
+                      ocorrencias_outro_detalhe: avaliacao.ocorrenciasOutroDetalhe,
+                      divergencia_classificacao: avaliacao.divergenciaClassificacao,
+                      divergencias_detalhes: avaliacao.divergenciasDetalhes,
+                      processo_vazio: avaliacao.processoVazio,
+                      observacoes_gerais: avaliacao.observacoesGerais,
+                    },
+                  }
+                : item
+            )
+          );
+
+          setSessao((prev) => ({ ...prev, processoAtual: undefined }));
+          setAvaliacaoAnterior(null);
+          setModoEdicao(false);
+          setAvaliacaoIdEdicao(null);
+          toast.success("Avaliação atualizada no demo!");
+          setCarregando(false);
+          return;
+        }
+
         // Marcar como concluído
         const updated = processos.map((p) =>
           p.ID === processoAtual.ID
@@ -83,11 +155,36 @@ export default function Demo() {
             processo_id: processoAtual.ID || "",
             codigo_processo: processoAtual.CODIGO_PROCESSO,
             numero_cnj: processoAtual.NUMERO_CNJ,
+            possui_assunto: processoAtual.POSSUI_ASSUNTO,
+            assunto_principal: processoAtual.ASSUNTO_PRINCIPAL,
+            possui_mov_arquivado: processoAtual.POSSUI_MOV_ARQUIVADO,
+            prazo_5_anos_completo: processoAtual.PRAZO_5_ANOS_COMPLETO,
             data_inicio: processoAtual.DATA_INICIO_AVALIACAO || new Date().toISOString(),
             data_fim: new Date().toISOString(),
             destinacao_permanente: avaliacao.destinacaoPermanente || "Não informada",
             status_avaliacao: "CONCLUIDO",
             tem_ocorrencia: !!(avaliacao.documentoNaoLocalizado || avaliacao.documentoDuplicado || avaliacao.erroTecnico),
+            avaliacao_anterior: {
+              descricao_assunto_faltante: avaliacao.descricaoAssuntoFaltante,
+              assunto_tpu: avaliacao.assuntoTpu,
+              hierarquia_correta: avaliacao.hierarquiaCorreta,
+              divergencia_hierarquia: avaliacao.divergenciaHierarquia,
+              destinacao_permanente: avaliacao.destinacaoPermanente,
+              descricao_situacao_arquivamento: avaliacao.descricaoSituacaoArquivamento,
+              inconsistencia_prazo: avaliacao.inconsistenciaPrazo,
+              pecas_tipos: avaliacao.pecasTipos,
+              pecas_ids: avaliacao.pecasIds,
+              pecas_combinado: avaliacao.pecasCombinado,
+              observacoes_pecas: avaliacao.observacoesPecas,
+              documento_nao_localizado: avaliacao.documentoNaoLocalizado,
+              documento_duplicado: avaliacao.documentoDuplicado,
+              erro_tecnico: avaliacao.erroTecnico,
+              ocorrencias_outro_detalhe: avaliacao.ocorrenciasOutroDetalhe,
+              divergencia_classificacao: avaliacao.divergenciaClassificacao,
+              divergencias_detalhes: avaliacao.divergenciasDetalhes,
+              processo_vazio: avaliacao.processoVazio,
+              observacoes_gerais: avaliacao.observacoesGerais,
+            },
           },
           ...prev,
         ]);
@@ -118,13 +215,23 @@ export default function Demo() {
         setCarregando(false);
       }, 600);
     },
-    [sessao.processoAtual, processos]
+    [sessao.processoAtual, processos, modoEdicao, avaliacaoIdEdicao]
   );
 
   const handleFinalizarAvaliacao = useCallback(() => {
     if (!sessao.processoAtual) return;
     setCarregando(true);
     setTimeout(() => {
+      if (modoEdicao) {
+        setSessao((prev) => ({ ...prev, processoAtual: undefined }));
+        setAvaliacaoAnterior(null);
+        setModoEdicao(false);
+        setAvaliacaoIdEdicao(null);
+        toast.info("Edição finalizada no demo.");
+        setCarregando(false);
+        return;
+      }
+
       // Voltar para pendente
       setProcessos((prev) =>
         prev.map((p) =>
@@ -137,9 +244,50 @@ export default function Demo() {
       toast.info("Avaliação finalizada. Processo devolvido à fila.");
       setCarregando(false);
     }, 400);
-  }, [sessao.processoAtual]);
+  }, [sessao.processoAtual, modoEdicao]);
 
-  const progressPercent = stats.totalProcessos > 0 ? (stats.concluidos / stats.totalProcessos) * 100 : 0;
+  const handleEditarAvaliacaoDemo = (avaliacao: DemoAvaliacaoItem) => {
+    const processoExistente = processos.find((p) => p.ID === avaliacao.processo_id);
+    const processoParaEdicao: ProcessoFila =
+      processoExistente || {
+        ID: avaliacao.processo_id,
+        CODIGO_PROCESSO: avaliacao.codigo_processo,
+        NUMERO_CNJ: avaliacao.numero_cnj,
+        POSSUI_ASSUNTO: avaliacao.possui_assunto,
+        ASSUNTO_PRINCIPAL: avaliacao.assunto_principal,
+        POSSUI_MOV_ARQUIVADO: avaliacao.possui_mov_arquivado,
+        DATA_DISTRIBUICAO: "",
+        DATA_ARQUIVAMENTO_DEF: "",
+        PRAZO_5_ANOS_COMPLETO: avaliacao.prazo_5_anos_completo,
+        STATUS_AVALIACAO: "CONCLUIDO",
+        DATA_INICIO_AVALIACAO: avaliacao.data_inicio,
+        DATA_FIM: avaliacao.data_fim || undefined,
+      };
+
+    setSessao((prev) => ({ ...prev, processoAtual: processoParaEdicao }));
+    setAvaliacaoAnterior(avaliacao.avaliacao_anterior || null);
+    setModoEdicao(true);
+    setAvaliacaoIdEdicao(avaliacao.id);
+    setAbaSelecionada("avaliacao");
+    toast.info(`Editando avaliação ${avaliacao.codigo_processo} no demo`);
+  };
+
+  const formatarAssuntoCompleto = (assunto: string) =>
+    assunto
+      .split("|")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join(" > ") || "—";
+
+  const totalProcessos = useMemo(() => DEMO_PROCESSOS.length + DEMO_AVALIACOES_CONCLUIDAS.length, []);
+  const concluidosTotal = DEMO_AVALIACOES_CONCLUIDAS.length + concluidos.length;
+
+  const avaliacoesEmAndamento = useMemo(
+    () => processos.filter((p) => p.STATUS_AVALIACAO === "EM_ANALISE"),
+    [processos]
+  );
+
+  const progressPercent = totalProcessos > 0 ? (concluidosTotal / totalProcessos) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -192,7 +340,7 @@ export default function Demo() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada} className="space-y-6">
-          <TabsList className="grid w-full max-w-3xl grid-cols-3">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4">
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
               Avaliação
@@ -204,6 +352,10 @@ export default function Demo() {
             <TabsTrigger value="dashboard" className="gap-2">
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="configuracoes" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Configurações
             </TabsTrigger>
           </TabsList>
 
@@ -269,6 +421,8 @@ export default function Demo() {
                 onSalvarEProximo={handleSalvarEProximo}
                 onFinalizarAvaliacao={handleFinalizarAvaliacao}
                 carregando={carregando}
+                avaliacaoAnterior={avaliacaoAnterior}
+                modoEdicao={modoEdicao}
                 modoDemonstracao
               />
             )}
@@ -298,16 +452,33 @@ export default function Demo() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Processo</TableHead>
+                        <TableHead>Assunto principal</TableHead>
+                        <TableHead>Temporalidade</TableHead>
+                        <TableHead>Prazo 5 anos</TableHead>
                         <TableHead>Início</TableHead>
                         <TableHead>Fim</TableHead>
                         <TableHead>Destinação</TableHead>
                         <TableHead>Ocorrência</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {avaliacoesConcluidas.map((av) => (
                         <TableRow key={av.id}>
                           <TableCell className="font-mono text-sm">{av.codigo_processo}</TableCell>
+                          <TableCell className="max-w-[280px]">
+                            <span className="text-sm truncate block" title={formatarAssuntoCompleto(av.assunto_principal)}>
+                              {formatarAssuntoCompleto(av.assunto_principal)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              const temporalidade = consultarTemporalidade(av.assunto_principal);
+                              if (!temporalidade) return <span className="text-muted-foreground">—</span>;
+                              return <Badge variant="outline" className="text-xs">{temporalidade.temporalidade}</Badge>;
+                            })()}
+                          </TableCell>
+                          <TableCell>{av.prazo_5_anos_completo || "—"}</TableCell>
                           <TableCell className="text-sm">
                             {new Date(av.data_inicio).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
                           </TableCell>
@@ -327,6 +498,12 @@ export default function Demo() {
                             ) : (
                               <Badge variant="outline" className="text-xs">Não</Badge>
                             )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditarAvaliacaoDemo(av)}>
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -348,7 +525,7 @@ export default function Demo() {
                       <Activity className="h-5 w-5 text-blue-700" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{stats.totalProcessos}</p>
+                      <p className="text-2xl font-bold">{totalProcessos}</p>
                       <p className="text-sm text-muted-foreground">Total</p>
                     </div>
                   </div>
@@ -374,7 +551,7 @@ export default function Demo() {
                       <CheckCircle2 className="h-5 w-5 text-green-700" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{stats.concluidos}</p>
+                      <p className="text-2xl font-bold">{concluidosTotal}</p>
                       <p className="text-sm text-muted-foreground">Concluídos</p>
                     </div>
                   </div>
@@ -404,7 +581,7 @@ export default function Demo() {
               <CardContent className="space-y-3">
                 <Progress value={progressPercent} className="h-3" />
                 <p className="text-sm text-muted-foreground">
-                  {stats.concluidos} de {stats.totalProcessos} processos avaliados ({progressPercent.toFixed(0)}%)
+                  {concluidosTotal} de {totalProcessos} processos avaliados ({progressPercent.toFixed(0)}%)
                 </p>
               </CardContent>
             </Card>
@@ -457,6 +634,94 @@ export default function Demo() {
                     </TableRow>
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Activity className="h-5 w-5 text-blue-600" />
+                  Avaliações em Andamento
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {avaliacoesEmAndamento.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma avaliação em andamento no demo.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {avaliacoesEmAndamento.map((p) => (
+                      <div key={p.ID} className="flex items-center justify-between rounded-md border p-3">
+                        <div>
+                          <p className="font-medium">{DEMO_PROFILE.nome}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{p.CODIGO_PROCESSO}</p>
+                        </div>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">Em análise</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Dados dos Processos Avaliados</CardTitle>
+                <CardDescription>Espelho da estrutura oficial com dados fictícios</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Número CNJ</TableHead>
+                      <TableHead>Assunto principal</TableHead>
+                      <TableHead>Prazo</TableHead>
+                      <TableHead>Guarda</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {avaliacoesConcluidas.map((av) => (
+                      <TableRow key={`dash-${av.id}`}>
+                        <TableCell className="font-mono text-sm">{av.codigo_processo}</TableCell>
+                        <TableCell className="font-mono text-sm">{av.numero_cnj}</TableCell>
+                        <TableCell className="max-w-[280px]">
+                          <span className="truncate block" title={formatarAssuntoCompleto(av.assunto_principal)}>
+                            {formatarAssuntoCompleto(av.assunto_principal)}
+                          </span>
+                        </TableCell>
+                        <TableCell>{av.prazo_5_anos_completo || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={av.destinacao_permanente === "Guarda Permanente" ? "default" : "secondary"}>
+                            {av.destinacao_permanente === "Guarda Permanente" ? "I" : "P"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="configuracoes" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Settings className="h-5 w-5" />
+                  Configurações (Demo)
+                </CardTitle>
+                <CardDescription>Origem da fila e opções de extração em ambiente de demonstração</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4 grid gap-2 md:grid-cols-2 text-sm">
+                  <div><span className="text-muted-foreground">Origem da fila:</span> <span className="font-medium">Dados fictícios locais (demoData)</span></div>
+                  <div><span className="text-muted-foreground">Lote ativo:</span> <span className="font-medium">Lote Demonstração - 1ª Vara Cível</span></div>
+                  <div><span className="text-muted-foreground">Total de processos:</span> <span className="font-medium">{totalProcessos}</span></div>
+                  <div><span className="text-muted-foreground">Extração:</span> <span className="font-medium">Consolidado simulado</span></div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Nesta página, os dados não são sensíveis e servem apenas para testes de interface e fluxo.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
