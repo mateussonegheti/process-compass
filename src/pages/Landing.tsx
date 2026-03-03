@@ -222,8 +222,7 @@ export default function Landing() {
       <footer className="py-8 border-t border-border bg-background">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
           <p>
-            SINVAL — Sistema Integrado de Avaliação · Desenvolvido para a COGEDE
-            / TJES
+            SINVAL — Sistema Integrado de Avaliação
           </p>
         </div>
       </footer>
