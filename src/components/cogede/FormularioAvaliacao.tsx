@@ -23,6 +23,7 @@ interface FormularioAvaliacaoProps {
   carregando: boolean;
   avaliacaoAnterior?: Record<string, unknown>; // Dados da avaliação anterior para edição
   modoEdicao?: boolean; // Indica se estamos editando uma avaliação existente
+  modoDemonstracao?: boolean;
 }
 
 // Interface para divergência de classificação (mantida para compatibilidade)
@@ -58,7 +59,7 @@ const initialFormData = {
   observacoesGerais: "",
 };
 
-export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao }: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao, modoDemonstracao = false }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
@@ -643,6 +644,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
           erroTecnico: ocorrencias.erroTecnico,
           ocorrenciasOutroDetalhe: ocorrencias.outroDetalhe
         })}
+        modoDemonstracao={modoDemonstracao}
       />
 
       {/* Seção 5 - Inconsistências */}

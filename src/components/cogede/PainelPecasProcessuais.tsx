@@ -71,6 +71,7 @@ interface PainelPecasProcessuaisProps {
     erroTecnico: boolean;
     outroDetalhe: string;
   }) => void;
+  modoDemonstracao?: boolean;
 }
 
 // URL base do Projudi para visualização de peças
@@ -133,7 +134,8 @@ export function PainelPecasProcessuais({
   observacoesPecas,
   onObservacoesChange,
   ocorrencias,
-  onOcorrenciasChange
+  onOcorrenciasChange,
+  modoDemonstracao = false,
 }: PainelPecasProcessuaisProps) {
   const [movimentoSelecionado, setMovimentoSelecionado] = useState<MovimentoProcessual | null>(null);
   const [modoIdentificacao, setModoIdentificacao] = useState(false);
@@ -212,6 +214,28 @@ export function PainelPecasProcessuais({
 
   // Gerar URL da peça
   const gerarUrlPeca = (idPeca: string) => `${PROJUDI_BASE_URL}${idPeca}`;
+
+  const abrirDocumento = (idPeca: string, tipoPeca?: string) => {
+    if (modoDemonstracao) {
+      const nomeTipo = tipoPeca || "Documento";
+      const conteudo = [
+        "DOCUMENTO FICTÍCIO - MODO DEMONSTRAÇÃO",
+        "",
+        `Peça: ${nomeTipo}`,
+        `ID: ${idPeca}`,
+        "",
+        "Este arquivo é sintético e não contém dados reais.",
+      ].join("\n");
+
+      const blob = new Blob([conteudo], { type: "text/plain;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      return;
+    }
+
+    window.open(gerarUrlPeca(idPeca), "_blank", "noopener,noreferrer");
+  };
 
   return (
     <Card>
@@ -306,7 +330,7 @@ export function PainelPecasProcessuais({
                               className="h-6 px-2 text-xs"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(gerarUrlPeca(movimento.idPeca), '_blank');
+                                abrirDocumento(movimento.idPeca, movimento.tipoInformado);
                               }}
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
@@ -374,7 +398,7 @@ export function PainelPecasProcessuais({
                         variant="outline"
                         size="sm"
                         className="h-7"
-                        onClick={() => window.open(gerarUrlPeca(movimentoSelecionado.idPeca), '_blank')}
+                        onClick={() => abrirDocumento(movimentoSelecionado.idPeca, movimentoSelecionado.tipoInformado)}
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
                         Visualizar
@@ -443,12 +467,12 @@ export function PainelPecasProcessuais({
                         <Label className="text-xs text-muted-foreground">Link para visualização</Label>
                         <div className="flex items-center gap-2">
                           <code className="flex-1 bg-muted px-2 py-1 rounded text-xs truncate">
-                            {gerarUrlPeca(idPecaEditavel)}
+                            {modoDemonstracao ? `documento-demo-${idPecaEditavel || "sem-id"}.txt` : gerarUrlPeca(idPecaEditavel)}
                           </code>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => window.open(gerarUrlPeca(idPecaEditavel), '_blank')}
+                            onClick={() => abrirDocumento(idPecaEditavel, tipoIdentificado || movimentoSelecionado?.tipoInformado)}
                           >
                             <ExternalLink className="h-3 w-3" />
                           </Button>

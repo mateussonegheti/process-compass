@@ -269,6 +269,7 @@ export default function Demo() {
                 onSalvarEProximo={handleSalvarEProximo}
                 onFinalizarAvaliacao={handleFinalizarAvaliacao}
                 carregando={carregando}
+                modoDemonstracao
               />
             )}
           </TabsContent>
