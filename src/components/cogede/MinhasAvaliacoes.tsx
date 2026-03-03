@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logger } from "@/lib/logger";
 import { ProcessoFila } from "@/types/cogede";
+import { useTemporalidade } from "@/hooks/useTemporalidade";
 
 interface AvaliacaoComProcesso {
   id: string;
@@ -23,6 +24,10 @@ interface AvaliacaoComProcesso {
   lote_nome?: string;
   status_avaliacao: string;
   tem_ocorrencia: boolean;
+  possui_assunto: string;
+  assunto_principal: string;
+  possui_mov_arquivado: string;
+  prazo_5_anos_completo: string;
 }
 
 interface MinhasAvaliacoesProps {
@@ -32,6 +37,7 @@ interface MinhasAvaliacoesProps {
 
 export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoesProps) {
   const { profile } = useAuth();
+  const { consultarTemporalidade } = useTemporalidade();
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoComProcesso[]>([]);
   const [loading, setLoading] = useState(true);
   const [mostrarTodos, setMostrarTodos] = useState(false);
@@ -73,7 +79,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
         const processoIds = avaliacoesData.map(a => a.processo_id);
         let query = supabase
           .from("processos_fila")
-          .select("id, codigo_processo, numero_cnj, lote_id, status_avaliacao")
+          .select("id, codigo_processo, numero_cnj, lote_id, status_avaliacao, possui_assunto, assunto_principal, possui_mov_arquivado, prazo_5_anos_completo")
           .in("id", processoIds);
         
         // Filtrar por lote apenas se NÃO estiver mostrando todos
@@ -121,6 +127,10 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
               lote_nome: lotesMap.get(processo.lote_id) || "—",
               status_avaliacao: processo.status_avaliacao,
               tem_ocorrencia: temOcorrencia,
+              possui_assunto: processo.possui_assunto || "",
+              assunto_principal: processo.assunto_principal || "",
+              possui_mov_arquivado: processo.possui_mov_arquivado || "",
+              prazo_5_anos_completo: processo.prazo_5_anos_completo || "",
             };
           });
 
@@ -219,6 +229,26 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
     });
   };
 
+  const formatarDataHora = (dataIso: string | null) => {
+    if (!dataIso) return "—";
+    const data = new Date(dataIso);
+    return data.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatarAssuntoCompleto = (assunto: string) => {
+    return assunto
+      .split("|")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join(" > ") || assunto || "—";
+  };
+
   if (loading) {
     return (
       <Card>
@@ -273,8 +303,13 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
                   <TableHead className="w-[40px]">Status</TableHead>
                   <TableHead>Código</TableHead>
                   <TableHead>Número CNJ</TableHead>
+                  <TableHead>Assunto principal (PROJUDI)</TableHead>
+                  <TableHead>Temporalidade</TableHead>
+                  <TableHead>Prazo 5 anos</TableHead>
+                  <TableHead>Mov. arquivado</TableHead>
                   {mostrarTodos && <TableHead>Lote</TableHead>}
                   <TableHead>Guarda</TableHead>
+                  <TableHead>Início</TableHead>
                   <TableHead>Avaliado em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -308,6 +343,27 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
                     </TableCell>
                     <TableCell className="font-mono">{av.codigo_processo}</TableCell>
                     <TableCell className="font-mono">{av.numero_cnj}</TableCell>
+                    <TableCell className="max-w-[320px]">
+                      <div className="truncate" title={formatarAssuntoCompleto(av.assunto_principal)}>
+                        {formatarAssuntoCompleto(av.assunto_principal)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const temporalidade = consultarTemporalidade(av.assunto_principal);
+                        if (!temporalidade) {
+                          return <span className="text-muted-foreground">—</span>;
+                        }
+
+                        return (
+                          <Badge variant="outline" className="text-xs">
+                            {temporalidade.temporalidade}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>{av.prazo_5_anos_completo || "—"}</TableCell>
+                    <TableCell>{av.possui_mov_arquivado || "—"}</TableCell>
                     {mostrarTodos && (
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
@@ -320,6 +376,7 @@ export function MinhasAvaliacoes({ onEditarAvaliacao, loteId }: MinhasAvaliacoes
                         {av.destinacao_permanente === "Sim" ? "I (Permanente)" : av.destinacao_permanente === "Não" ? "P (Parcial)" : "—"}
                       </Badge>
                     </TableCell>
+                    <TableCell>{formatarDataHora(av.data_inicio)}</TableCell>
                     <TableCell>{formatarData(av.data_fim)}</TableCell>
                     <TableCell className="text-right">
                       <Button

@@ -713,6 +713,7 @@ export function PainelSupervisor({
 
   // Agrupar colunas
   const gruposUnicos = [...new Set(COLUNAS_EXPORTACAO.map((c) => c.grupo))];
+  const loteAtivoInfo = lotes.find((l) => l.id === loteId) || lotes.find((l) => l.ativo);
 
   return (
     <Card>
@@ -726,6 +727,32 @@ export function PainelSupervisor({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+          <Label className="text-sm font-medium">Origem da Fila e Configuração</Label>
+          <div className="grid gap-2 md:grid-cols-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Origem:</span>{" "}
+              <span className="font-medium">Supabase / tabela processos_fila</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Lote ativo:</span>{" "}
+              <span className="font-medium">
+                {loteAtivoInfo
+                  ? loteAtivoInfo.nome || `Lote ${new Date(loteAtivoInfo.created_at).toLocaleDateString("pt-BR")}`
+                  : "Nenhum lote ativo"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Total da fila:</span>{" "}
+              <span className="font-medium">{loteAtivoInfo?.total_processos ?? 0} processos</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Extração disponível:</span>{" "}
+              <span className="font-medium">CSV consolidado de avaliações</span>
+            </div>
+          </div>
+        </div>
+
         {/* Upload de Processos */}
         <div className="space-y-3">
           <Label className="text-sm font-medium">Fonte de Dados</Label>

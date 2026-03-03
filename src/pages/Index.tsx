@@ -538,7 +538,7 @@ export default function Index() {
       
       <main className="container mx-auto px-4 py-6">
         <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada} className="space-y-6">
-          <TabsList className={`grid w-full max-w-3xl ${podeVerDashboard ? "grid-cols-5" : "grid-cols-2"}`}>
+          <TabsList className={`grid w-full max-w-3xl ${podeVerDashboard ? "grid-cols-5" : "grid-cols-3"}`}>
             <TabsTrigger value="avaliacao" className="gap-2">
               <FileText className="h-4 w-4" />
               Avaliação
@@ -547,12 +547,10 @@ export default function Index() {
               <ClipboardList className="h-4 w-4" />
               Minhas Avaliações
             </TabsTrigger>
-            {podeVerDashboard && (
-              <TabsTrigger value="configuracoes" className="gap-2">
-                <Settings className="h-4 w-4" />
-                Configurações
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="configuracoes" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Configurações
+            </TabsTrigger>
             {podeVerDashboard && (
               <TabsTrigger value="dashboard" className="gap-2">
                 <LayoutDashboard className="h-4 w-4" />
@@ -604,18 +602,16 @@ export default function Index() {
             )}
           </TabsContent>
 
-          {podeVerDashboard && (
-            <TabsContent value="configuracoes" className="space-y-6">
-              <PainelSupervisor
-                onProcessosCarregados={handleProcessosCarregados}
-                onLoteAtivado={refetch}
-                processosCount={processos.length}
-                uploading={uploading}
-                podeCarregarPlanilha={podeCarregarPlanilha}
-                loteId={loteAtivo?.id}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="configuracoes" className="space-y-6">
+            <PainelSupervisor
+              onProcessosCarregados={handleProcessosCarregados}
+              onLoteAtivado={refetch}
+              processosCount={processos.length}
+              uploading={uploading}
+              podeCarregarPlanilha={podeCarregarPlanilha}
+              loteId={loteAtivo?.id}
+            />
+          </TabsContent>
 
           {podeVerDashboard && (
             <TabsContent value="dashboard" className="space-y-6">
