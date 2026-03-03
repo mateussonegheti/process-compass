@@ -69,16 +69,12 @@ export default function Landing() {
           </h2>
           <div className="space-y-4 text-muted-foreground leading-relaxed text-center max-w-3xl mx-auto">
             <p>
-              O SINVAL nasceu da necessidade prática enfrentada pela{" "}
-              <strong className="text-foreground">
-                Coordenação de Gestão de Documentos Eletrônicos (COGEDE)
-              </strong>{" "}
-              do Tribunal de Justiça do Espírito Santo. Diante do volume
-              crescente de processos judiciais eletrônicos que precisam ser
-              avaliados antes da destinação final — seja eliminação, guarda
-              temporária ou guarda permanente — ficou evidente que o modelo
-              manual em planilhas era lento, propenso a erros e difícil de
-              supervisionar.
+              O SINVAL nasceu da necessidade prática enfrentada pelos
+              Tribunais de Justiça. Diante do volume crescente de processos
+              judiciais eletrônicos que precisam ser avaliados antes da
+              destinação final — seja eliminação, guarda temporária ou guarda
+              permanente — ficou evidente que o modelo manual em planilhas era
+              lento, propenso a erros e difícil de supervisionar.
             </p>
             <p>
               O sistema foi concebido para substituir esse fluxo por uma
