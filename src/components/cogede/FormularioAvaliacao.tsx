@@ -24,6 +24,8 @@ interface FormularioAvaliacaoProps {
   avaliacaoAnterior?: Record<string, unknown>; // Dados da avaliação anterior para edição
   modoEdicao?: boolean; // Indica se estamos editando uma avaliação existente
   modoDemonstracao?: boolean;
+  mockTemporalidade?: import("@/hooks/useTemporalidade").TemporalidadeInfo | null;
+  mockHierarquia?: import("@/hooks/useTemporalidade").HierarchyPathItem[];
 }
 
 // Interface para divergência de classificação (mantida para compatibilidade)

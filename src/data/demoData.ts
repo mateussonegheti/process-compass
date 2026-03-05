@@ -147,6 +147,62 @@ export const DEMO_PROFILE = {
   email: "demo@sinval.app",
 };
 
+// Mock temporalidade data para demo (simula a tabela CNJ)
+import type { TemporalidadeInfo, HierarchyPathItem } from "@/hooks/useTemporalidade";
+
+export const DEMO_TEMPORALIDADE: Record<number, TemporalidadeInfo> = {
+  8826: {
+    codigo: 8826,
+    nome: "Aposentadoria por Tempo de Contribuição",
+    temporalidade: "5 anos",
+    tipoGuarda: "Temporal",
+    hierarchyLevel: 3,
+  },
+  9985: {
+    codigo: 9985,
+    nome: "Indenização por Dano Moral",
+    temporalidade: "5 anos",
+    tipoGuarda: "Temporal",
+    hierarchyLevel: 3,
+  },
+  10028: {
+    codigo: 10028,
+    nome: "Mandado de Segurança",
+    temporalidade: "Guarda Permanente",
+    tipoGuarda: "Permanente",
+    hierarchyLevel: 2,
+  },
+  7619: {
+    codigo: 7619,
+    nome: "Processo Administrativo Disciplinar",
+    temporalidade: "10 anos",
+    tipoGuarda: "Temporal",
+    hierarchyLevel: 3,
+  },
+};
+
+export const DEMO_HIERARQUIA: Record<number, HierarchyPathItem[]> = {
+  8826: [
+    { codigo: 1, nome: "DIREITO PREVIDENCIÁRIO", level: 0 },
+    { codigo: 8800, nome: "Benefícios em Espécie", level: 1 },
+    { codigo: 8826, nome: "Aposentadoria por Tempo de Contribuição", level: 2 },
+  ],
+  9985: [
+    { codigo: 2, nome: "DIREITO CIVIL", level: 0 },
+    { codigo: 9580, nome: "Responsabilidade Civil", level: 1 },
+    { codigo: 9985, nome: "Indenização por Dano Moral", level: 2 },
+  ],
+  10028: [
+    { codigo: 3, nome: "DIREITO ADMINISTRATIVO", level: 0 },
+    { codigo: 10028, nome: "Mandado de Segurança", level: 1 },
+  ],
+  7619: [
+    { codigo: 3, nome: "DIREITO ADMINISTRATIVO", level: 0 },
+    { codigo: 7600, nome: "Servidor Público Civil", level: 1 },
+    { codigo: 7619, nome: "Processo Administrativo Disciplinar", level: 2 },
+  ],
+};
+
 // Estatísticas fake para o dashboard
 export const DEMO_STATS = {
   totalProcessos: 8,
