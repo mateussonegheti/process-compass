@@ -20,7 +20,10 @@ import {
   DEMO_AVALIACOES_CONCLUIDAS,
   DEMO_STATS,
   DEMO_PROFILE,
+  DEMO_TEMPORALIDADE,
+  DEMO_HIERARQUIA,
 } from "@/data/demoData";
+import { extrairCodigoAssunto } from "@/lib/temporalidadeParser";
 
 export default function Demo() {
   const navigate = useNavigate();
