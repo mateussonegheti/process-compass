@@ -265,16 +265,23 @@ export default function Demo() {
             </Card>
 
             {/* Formulário de Avaliação */}
-            {sessao.processoAtual && (
-              <FormularioAvaliacao
-                processo={sessao.processoAtual}
-                responsavel={sessao.responsavel}
-                onSalvarEProximo={handleSalvarEProximo}
-                onFinalizarAvaliacao={handleFinalizarAvaliacao}
-                carregando={carregando}
-                modoDemonstracao
-              />
-            )}
+            {sessao.processoAtual && (() => {
+              const codigo = extrairCodigoAssunto(sessao.processoAtual.ASSUNTO_PRINCIPAL || "");
+              const mockTemp = codigo !== null ? (DEMO_TEMPORALIDADE[codigo] ?? null) : null;
+              const mockHier = codigo !== null ? (DEMO_HIERARQUIA[codigo] ?? []) : [];
+              return (
+                <FormularioAvaliacao
+                  processo={sessao.processoAtual}
+                  responsavel={sessao.responsavel}
+                  onSalvarEProximo={handleSalvarEProximo}
+                  onFinalizarAvaliacao={handleFinalizarAvaliacao}
+                  carregando={carregando}
+                  modoDemonstracao
+                  mockTemporalidade={mockTemp}
+                  mockHierarquia={mockHier}
+                />
+              );
+            })()}
           </TabsContent>
 
           {/* ===== ABA MINHAS AVALIAÇÕES ===== */}
