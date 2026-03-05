@@ -231,7 +231,7 @@ export default function Demo() {
                       {emAnalise.length} em análise
                     </Badge>
                     <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      {concluidos.length + avaliacoesConcluidas.length - DEMO_AVALIACOES_CONCLUIDAS.length} concluídos
+                      {processos.filter(p => p.STATUS_AVALIACAO === "CONCLUIDO").length + avaliacoesConcluidas.length - DEMO_AVALIACOES_CONCLUIDAS.length} concluídos
                     </Badge>
                   </div>
                 </div>
