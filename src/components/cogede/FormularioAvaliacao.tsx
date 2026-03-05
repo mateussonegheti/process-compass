@@ -61,7 +61,7 @@ const initialFormData = {
   observacoesGerais: "",
 };
 
-export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao, modoDemonstracao = false }: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao, modoDemonstracao = false, mockTemporalidade, mockHierarquia }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
@@ -72,8 +72,10 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
 
   // Consultar temporalidade CNJ
   const { consultarTemporalidade, consultarHierarquia, loading: loadingTemporalidade } = useTemporalidade();
-  const temporalidadeInfo = consultarTemporalidade(processo.ASSUNTO_PRINCIPAL);
-  const hierarquiaCnj = consultarHierarquia(processo.ASSUNTO_PRINCIPAL);
+  
+  // Use mock data in demo mode, real data otherwise
+  const temporalidadeInfo = modoDemonstracao ? (mockTemporalidade ?? null) : consultarTemporalidade(processo.ASSUNTO_PRINCIPAL);
+  const hierarquiaCnj = modoDemonstracao ? (mockHierarquia ?? []) : consultarHierarquia(processo.ASSUNTO_PRINCIPAL);
 
   // Handlers para peças permanentes (novo painel)
   const handleAdicionarPecaPermanente = (peca: PecaPermanente) => {
