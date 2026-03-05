@@ -4,15 +4,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   FileText, LayoutDashboard, ClipboardList, LogOut, FileSearch,
-  Loader2, User, CheckCircle2, Clock, Activity, Users, AlertTriangle,
+  Loader2, User, AlertTriangle,
   Eye,
 } from "lucide-react";
 import sinvalIcon from "@/assets/sinval-icon.png";
 import { FormularioAvaliacao } from "@/components/cogede/FormularioAvaliacao";
+import { DemoDashboard } from "@/components/cogede/DemoDashboard";
 import { ProcessoFila, AvaliacaoDocumental, SessaoAvaliacao } from "@/types/cogede";
 import { toast } from "sonner";
 import {
@@ -349,126 +349,30 @@ export default function Demo() {
 
           {/* ===== ABA DASHBOARD ===== */}
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Progresso Geral */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-100">
-                      <Activity className="h-5 w-5 text-blue-700" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats.totalProcessos}</p>
-                      <p className="text-sm text-muted-foreground">Total</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-100">
-                      <Clock className="h-5 w-5 text-amber-700" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{pendentes.length}</p>
-                      <p className="text-sm text-muted-foreground">Pendentes</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-100">
-                      <CheckCircle2 className="h-5 w-5 text-green-700" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats.concluidos}</p>
-                      <p className="text-sm text-muted-foreground">Concluídos</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-100">
-                      <Clock className="h-5 w-5 text-purple-700" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats.tempoMedio}</p>
-                      <p className="text-sm text-muted-foreground">Tempo Médio</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Progresso */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Progresso do Lote</CardTitle>
-                <CardDescription>Lote Demonstração - 1ª Vara Cível</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Progress value={progressPercent} className="h-3" />
-                <p className="text-sm text-muted-foreground">
-                  {stats.concluidos} de {stats.totalProcessos} processos avaliados ({progressPercent.toFixed(0)}%)
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Avaliadores */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Users className="h-5 w-5" />
-                  Desempenho por Avaliador
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Avaliador</TableHead>
-                      <TableHead className="text-center">Concluídos</TableHead>
-                      <TableHead className="text-center">Em Análise</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {stats.avaliadores.map((av) => (
-                      <TableRow key={av.nome}>
-                        <TableCell className="font-medium">{av.nome}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            {av.concluidos}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                            {av.em_analise}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow>
-                      <TableCell className="font-medium">{DEMO_PROFILE.nome} (você)</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">
-                          {avaliacoesConcluidas.length - DEMO_AVALIACOES_CONCLUIDAS.length}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                          {emAnalise.length}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <DemoDashboard
+              totalProcessos={stats.totalProcessos}
+              pendentes={pendentes.length}
+              emAnalise={emAnalise.length}
+              concluidos={stats.concluidos + (avaliacoesConcluidas.length - DEMO_AVALIACOES_CONCLUIDAS.length)}
+              avaliadoresAtivos={
+                sessao.processoAtual
+                  ? [{ nome: DEMO_PROFILE.nome, processoCodigo: sessao.processoAtual.CODIGO_PROCESSO, loteNome: "Importação 27/02/2026" }]
+                  : []
+              }
+              processosConcluidos={avaliacoesConcluidas
+                .filter((_, i) => i < avaliacoesConcluidas.length - DEMO_AVALIACOES_CONCLUIDAS.length + 3)
+                .map(av => ({
+                  id: av.id,
+                  codigo: av.codigo_processo.replace(/[-.]/g, ""),
+                  numeroCnj: av.numero_cnj.replace(/[-.]/g, ""),
+                  dataDistribuicao: "30/10/2008",
+                  ano: "2008",
+                  dataArquivamento: av.data_fim ? new Date(av.data_fim).toLocaleDateString("pt-BR") : "—",
+                  guarda: av.destinacao_permanente === "Guarda Permanente" ? "I" : "P",
+                  arquivos: "355162 | 518845",
+                  responsavel: DEMO_PROFILE.nome,
+                }))}
+            />
           </TabsContent>
         </Tabs>
       </main>
