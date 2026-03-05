@@ -7,7 +7,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     CODIGO_PROCESSO: "0001234-56.2018.8.08.0001",
     NUMERO_CNJ: "0001234-56.2018.8.08.0001",
     POSSUI_ASSUNTO: "SIM",
-    ASSUNTO_PRINCIPAL: "8826 - Aposentadoria por Tempo de Contribuição",
+    ASSUNTO_PRINCIPAL: "8826 - Aposentadoria por Tempo de Contribuição < Benefícios em Espécie < DIREITO PREVIDENCIÁRIO",
     POSSUI_MOV_ARQUIVADO: "SIM",
     DATA_DISTRIBUICAO: "15/03/2018",
     DATA_ARQUIVAMENTO_DEF: "20/11/2020",
@@ -25,7 +25,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     CODIGO_PROCESSO: "0005678-90.2017.8.08.0024",
     NUMERO_CNJ: "0005678-90.2017.8.08.0024",
     POSSUI_ASSUNTO: "SIM",
-    ASSUNTO_PRINCIPAL: "9985 - Indenização por Dano Moral",
+    ASSUNTO_PRINCIPAL: "9985 - Indenização por Dano Moral < Responsabilidade Civil < DIREITO CIVIL",
     POSSUI_MOV_ARQUIVADO: "SIM",
     DATA_DISTRIBUICAO: "02/08/2017",
     DATA_ARQUIVAMENTO_DEF: "15/06/2021",
@@ -61,7 +61,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     CODIGO_PROCESSO: "0003456-78.2019.8.08.0035",
     NUMERO_CNJ: "0003456-78.2019.8.08.0035",
     POSSUI_ASSUNTO: "SIM",
-    ASSUNTO_PRINCIPAL: "10028 - Mandado de Segurança",
+    ASSUNTO_PRINCIPAL: "10028 - Mandado de Segurança < DIREITO ADMINISTRATIVO",
     POSSUI_MOV_ARQUIVADO: "SIM",
     DATA_DISTRIBUICAO: "05/06/2019",
     DATA_ARQUIVAMENTO_DEF: "12/12/2022",
@@ -79,7 +79,7 @@ export const DEMO_PROCESSOS: ProcessoFila[] = [
     CODIGO_PROCESSO: "0007890-12.2015.8.08.0048",
     NUMERO_CNJ: "0007890-12.2015.8.08.0048",
     POSSUI_ASSUNTO: "SIM",
-    ASSUNTO_PRINCIPAL: "7619 - Processo Administrativo Disciplinar",
+    ASSUNTO_PRINCIPAL: "7619 - Processo Administrativo Disciplinar < Servidor Público Civil < DIREITO ADMINISTRATIVO",
     POSSUI_MOV_ARQUIVADO: "SIM",
     DATA_DISTRIBUICAO: "18/04/2015",
     DATA_ARQUIVAMENTO_DEF: "25/08/2018",
@@ -145,6 +145,62 @@ export const DEMO_PROFILE = {
   user_id: "demo-user-001",
   nome: "Visitante Demonstração",
   email: "demo@sinval.app",
+};
+
+// Mock temporalidade data para demo (simula a tabela CNJ)
+import type { TemporalidadeInfo, HierarchyPathItem } from "@/hooks/useTemporalidade";
+
+export const DEMO_TEMPORALIDADE: Record<number, TemporalidadeInfo> = {
+  8826: {
+    codigo: 8826,
+    nome: "Aposentadoria por Tempo de Contribuição",
+    temporalidade: "5 anos",
+    tipoGuarda: "Temporal",
+    hierarchyLevel: 3,
+  },
+  9985: {
+    codigo: 9985,
+    nome: "Indenização por Dano Moral",
+    temporalidade: "5 anos",
+    tipoGuarda: "Temporal",
+    hierarchyLevel: 3,
+  },
+  10028: {
+    codigo: 10028,
+    nome: "Mandado de Segurança",
+    temporalidade: "Guarda Permanente",
+    tipoGuarda: "Permanente",
+    hierarchyLevel: 2,
+  },
+  7619: {
+    codigo: 7619,
+    nome: "Processo Administrativo Disciplinar",
+    temporalidade: "10 anos",
+    tipoGuarda: "Temporal",
+    hierarchyLevel: 3,
+  },
+};
+
+export const DEMO_HIERARQUIA: Record<number, HierarchyPathItem[]> = {
+  8826: [
+    { codigo: 1, nome: "DIREITO PREVIDENCIÁRIO", level: 0 },
+    { codigo: 8800, nome: "Benefícios em Espécie", level: 1 },
+    { codigo: 8826, nome: "Aposentadoria por Tempo de Contribuição", level: 2 },
+  ],
+  9985: [
+    { codigo: 2, nome: "DIREITO CIVIL", level: 0 },
+    { codigo: 9580, nome: "Responsabilidade Civil", level: 1 },
+    { codigo: 9985, nome: "Indenização por Dano Moral", level: 2 },
+  ],
+  10028: [
+    { codigo: 3, nome: "DIREITO ADMINISTRATIVO", level: 0 },
+    { codigo: 10028, nome: "Mandado de Segurança", level: 1 },
+  ],
+  7619: [
+    { codigo: 3, nome: "DIREITO ADMINISTRATIVO", level: 0 },
+    { codigo: 7600, nome: "Servidor Público Civil", level: 1 },
+    { codigo: 7619, nome: "Processo Administrativo Disciplinar", level: 2 },
+  ],
 };
 
 // Estatísticas fake para o dashboard

@@ -24,6 +24,8 @@ interface FormularioAvaliacaoProps {
   avaliacaoAnterior?: Record<string, unknown>; // Dados da avaliação anterior para edição
   modoEdicao?: boolean; // Indica se estamos editando uma avaliação existente
   modoDemonstracao?: boolean;
+  mockTemporalidade?: import("@/hooks/useTemporalidade").TemporalidadeInfo | null;
+  mockHierarquia?: import("@/hooks/useTemporalidade").HierarchyPathItem[];
 }
 
 // Interface para divergência de classificação (mantida para compatibilidade)
@@ -59,7 +61,7 @@ const initialFormData = {
   observacoesGerais: "",
 };
 
-export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao, modoDemonstracao = false }: FormularioAvaliacaoProps) {
+export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, onFinalizarAvaliacao, carregando, avaliacaoAnterior, modoEdicao, modoDemonstracao = false, mockTemporalidade, mockHierarquia }: FormularioAvaliacaoProps) {
   const [pecas, setPecas] = useState<PecaProcessual[]>([]);
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
@@ -70,8 +72,10 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
 
   // Consultar temporalidade CNJ
   const { consultarTemporalidade, consultarHierarquia, loading: loadingTemporalidade } = useTemporalidade();
-  const temporalidadeInfo = consultarTemporalidade(processo.ASSUNTO_PRINCIPAL);
-  const hierarquiaCnj = consultarHierarquia(processo.ASSUNTO_PRINCIPAL);
+  
+  // Use mock data in demo mode, real data otherwise
+  const temporalidadeInfo = modoDemonstracao ? (mockTemporalidade ?? null) : consultarTemporalidade(processo.ASSUNTO_PRINCIPAL);
+  const hierarquiaCnj = modoDemonstracao ? (mockHierarquia ?? []) : consultarHierarquia(processo.ASSUNTO_PRINCIPAL);
 
   // Handlers para peças permanentes (novo painel)
   const handleAdicionarPecaPermanente = (peca: PecaPermanente) => {
