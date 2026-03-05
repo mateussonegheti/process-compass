@@ -40,7 +40,7 @@ export default function Demo() {
 
   const pendentes = processos.filter((p) => p.STATUS_AVALIACAO === "PENDENTE");
   const emAnalise = processos.filter((p) => p.STATUS_AVALIACAO === "EM_ANALISE");
-  const concluidos = processos.filter((p) => p.STATUS_AVALIACAO === "CONCLUIDO");
+  
 
   const handleIniciarAvaliacao = useCallback(() => {
     const proximo = processos.find((p) => p.STATUS_AVALIACAO === "PENDENTE");
@@ -142,7 +142,7 @@ export default function Demo() {
     }, 400);
   }, [sessao.processoAtual]);
 
-  const progressPercent = stats.totalProcessos > 0 ? (stats.concluidos / stats.totalProcessos) * 100 : 0;
+  
 
   return (
     <div className="min-h-screen bg-background">
