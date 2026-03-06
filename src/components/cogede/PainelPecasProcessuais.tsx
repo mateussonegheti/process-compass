@@ -242,6 +242,7 @@ export function PainelPecasProcessuais({
     if (prevIdx !== -1) {
       handleSelecionarMovimento(movimentos[prevIdx]);
       setFocusPanel("list");
+      setTimeout(() => (listContainerRef.current?.closest('[tabindex="0"]') as HTMLElement)?.focus(), 50);
     } else {
       setMovimentoSelecionado(null);
       setTipoIdentificado("");
