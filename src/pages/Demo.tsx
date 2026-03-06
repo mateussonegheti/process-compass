@@ -362,15 +362,15 @@ export default function Demo() {
               }
               processosConcluidos={avaliacoesConcluidas
                 .filter((_, i) => i < avaliacoesConcluidas.length - DEMO_AVALIACOES_CONCLUIDAS.length + 3)
-                .map(av => ({
+                .map((av, idx) => ({
                   id: av.id,
                   codigo: av.codigo_processo.replace(/[-.]/g, ""),
                   numeroCnj: av.numero_cnj.replace(/[-.]/g, ""),
-                  dataDistribuicao: "30/10/2008",
-                  ano: "2008",
+                  dataDistribuicao: "15/03/2018",
+                  ano: "2018",
                   dataArquivamento: av.data_fim ? new Date(av.data_fim).toLocaleDateString("pt-BR") : "—",
                   guarda: av.destinacao_permanente === "Guarda Permanente" ? "I" : "P",
-                  arquivos: "355162 | 518845",
+                  arquivos: `FIC-${String(100 + idx * 2).padStart(3, "0")} | FIC-${String(101 + idx * 2).padStart(3, "0")}`,
                   responsavel: DEMO_PROFILE.nome,
                 }))}
             />
