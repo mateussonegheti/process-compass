@@ -178,6 +178,18 @@ export function PainelPecasProcessuais({
     return [];
   }, [movimentosProps, dadosConcatenados]);
 
+  // Classificação automática em background
+  const {
+    getClassificacao,
+    processando: classificacaoProcessando,
+    progresso: classificacaoProgresso,
+  } = useClassificacaoPecas({
+    movimentos,
+    habilitado: movimentos.length > 0,
+    baseUrl: PROJUDI_BASE_URL,
+    modoDemonstracao,
+  });
+
   // Verificar se um movimento já foi identificado como permanente (por movimentoId ou idPeca)
   const isPecaPermanente = useCallback((movimentoId: string, idPeca?: string) => {
     return pecasPermanentes.some(p => p.movimentoId === movimentoId || (idPeca && p.idPeca === idPeca));
