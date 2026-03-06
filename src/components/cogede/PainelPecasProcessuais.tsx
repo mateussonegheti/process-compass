@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ExternalLink, 
@@ -15,7 +16,8 @@ import {
   ChevronRight,
   CheckCircle2,
   XCircle,
-  FileText
+  FileText,
+  Keyboard
 } from "lucide-react";
 import { TIPOS_PECA } from "@/types/cogede";
 
@@ -143,6 +145,10 @@ export function PainelPecasProcessuais({
   const [idPecaEditavel, setIdPecaEditavel] = useState("");
   const [temDivergencia, setTemDivergencia] = useState(false);
 
+  // Refs for cards and scroll container
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const listContainerRef = useRef<HTMLDivElement>(null);
+
   // Fazer parse dos movimentos: usa props direto ou dados concatenados do CSV (SEM MOCK)
   const movimentos = useMemo(() => {
     if (movimentosProps && movimentosProps.length > 0) {
@@ -154,6 +160,7 @@ export function PainelPecasProcessuais({
     // Se não há dados, retornar lista vazia (sem mock)
     return [];
   }, [movimentosProps, dadosConcatenados]);
+
   // Verificar se um movimento já foi identificado como permanente (por movimentoId ou idPeca)
   const isPecaPermanente = useCallback((movimentoId: string, idPeca?: string) => {
     return pecasPermanentes.some(p => p.movimentoId === movimentoId || (idPeca && p.idPeca === idPeca));
@@ -165,14 +172,25 @@ export function PainelPecasProcessuais({
     return peca?.temDivergencia || false;
   }, [pecasPermanentes]);
 
-  // Selecionar movimento
-  const handleSelecionarMovimento = (movimento: MovimentoProcessual) => {
+  // Auto-scroll to selected card
+  const scrollToCard = useCallback((movimentoId: string) => {
+    requestAnimationFrame(() => {
+      const el = cardRefs.current.get(movimentoId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+  }, []);
+
+  // Selecionar movimento (with auto-scroll)
+  const handleSelecionarMovimento = useCallback((movimento: MovimentoProcessual) => {
     setMovimentoSelecionado(movimento);
     setModoIdentificacao(false);
     setTipoIdentificado(movimento.tipoInformado);
     setIdPecaEditavel(movimento.idPeca);
     setTemDivergencia(false);
-  };
+    scrollToCard(movimento.id);
+  }, [scrollToCard]);
 
   // Iniciar identificação de peça permanente
   const handleIniciarIdentificacao = () => {
@@ -189,7 +207,6 @@ export function PainelPecasProcessuais({
       idPeca: idPecaEditavel,
       temDivergencia,
       tipoInformadoSistema: temDivergencia ? movimentoSelecionado.tipoInformado : undefined,
-      // O tipo real identificado na divergência é sempre o tipo já selecionado pelo avaliador
       tipoRealIdentificado: temDivergencia ? tipoIdentificado : undefined
     };
 
@@ -206,7 +223,6 @@ export function PainelPecasProcessuais({
   // Remover identificação
   const handleRemoverIdentificacao = () => {
     if (!movimentoSelecionado) return;
-    // Remove by idPeca to handle both fresh and restored entries
     onRemoverPecaPermanente(movimentoSelecionado.idPeca);
     setMovimentoSelecionado(null);
     setModoIdentificacao(false);
@@ -215,7 +231,12 @@ export function PainelPecasProcessuais({
   // Gerar URL da peça
   const gerarUrlPeca = (idPeca: string) => `${PROJUDI_BASE_URL}${idPeca}`;
 
-  const abrirDocumento = (idPeca: string, tipoPeca?: string) => {
+  const abrirDocumento = useCallback((idPeca: string, tipoPeca?: string, movimento?: MovimentoProcessual) => {
+    // Update selection to the card whose document is being opened
+    if (movimento) {
+      handleSelecionarMovimento(movimento);
+    }
+
     if (modoDemonstracao) {
       const nomeTipo = tipoPeca || "Documento";
       const conteudo = [
@@ -235,7 +256,81 @@ export function PainelPecasProcessuais({
     }
 
     window.open(gerarUrlPeca(idPeca), "_blank", "noopener,noreferrer");
-  };
+  }, [modoDemonstracao, handleSelecionarMovimento]);
+
+  // Keyboard navigation
+  const selectedIndex = useMemo(() => {
+    if (!movimentoSelecionado) return -1;
+    return movimentos.findIndex(m => m.id === movimentoSelecionado.id);
+  }, [movimentoSelecionado, movimentos]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (movimentos.length === 0) return;
+
+    const navigate = (newIndex: number) => {
+      if (newIndex >= 0 && newIndex < movimentos.length) {
+        handleSelecionarMovimento(movimentos[newIndex]);
+      }
+    };
+
+    switch (e.key) {
+      case "ArrowDown": {
+        e.preventDefault();
+        const next = selectedIndex < 0 ? 0 : Math.min(selectedIndex + 1, movimentos.length - 1);
+        navigate(next);
+        break;
+      }
+      case "ArrowUp": {
+        e.preventDefault();
+        const prev = selectedIndex <= 0 ? 0 : selectedIndex - 1;
+        navigate(prev);
+        break;
+      }
+      case "Enter": {
+        e.preventDefault();
+        if (movimentoSelecionado) {
+          abrirDocumento(movimentoSelecionado.idPeca, movimentoSelecionado.tipoInformado, movimentoSelecionado);
+        }
+        break;
+      }
+      case " ": {
+        e.preventDefault();
+        if (movimentoSelecionado) {
+          if (isPecaPermanente(movimentoSelecionado.id, movimentoSelecionado.idPeca)) {
+            // Already marked — unmark
+            handleRemoverIdentificacao();
+          } else {
+            // Start identification mode
+            handleIniciarIdentificacao();
+          }
+        }
+        break;
+      }
+      case "ArrowRight": {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          // Jump to next non-evaluated movement
+          const startIdx = selectedIndex < 0 ? 0 : selectedIndex + 1;
+          for (let i = startIdx; i < movimentos.length; i++) {
+            if (!isPecaPermanente(movimentos[i].id, movimentos[i].idPeca)) {
+              navigate(i);
+              break;
+            }
+          }
+        }
+        break;
+      }
+    }
+  }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente]);
+
+  // Progress indicator
+  const progressInfo = useMemo(() => {
+    if (movimentos.length === 0) return null;
+    const avaliadas = movimentos.filter(m => isPecaPermanente(m.id, m.idPeca)).length;
+    const total = movimentos.length;
+    const percent = Math.round((avaliadas / total) * 100);
+    return { avaliadas, total, percent };
+  }, [movimentos, isPecaPermanente]);
 
   return (
     <Card>
@@ -252,14 +347,39 @@ export function PainelPecasProcessuais({
         <p className="text-sm text-muted-foreground mt-1">
           Movimentos processuais e identificação de peças de guarda permanente
         </p>
+
+        {/* Progress indicator */}
+        {progressInfo && (
+          <div className="mt-3 space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                Peças avaliadas: <strong className="text-foreground">{progressInfo.avaliadas}</strong> / {progressInfo.total}
+              </span>
+              <span className="font-medium text-foreground">{progressInfo.percent}%</span>
+            </div>
+            <Progress value={progressInfo.percent} className="h-2" />
+          </div>
+        )}
+
+        {/* Keyboard shortcuts hint */}
+        {movimentos.length > 0 && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Keyboard className="h-3 w-3" />
+            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→ próxima não avaliada</span>
+          </div>
+        )}
       </CardHeader>
       
       <CardContent>
         {/* Layout side-by-side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[500px]">
+        <div
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[500px] outline-none"
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+        >
           
           {/* Área A - Lista de Movimentos */}
-          <div className="border rounded-lg">
+          <div className="border rounded-lg focus:outline-none" ref={listContainerRef}>
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h3 className="font-medium text-sm flex items-center gap-2">
                 <FileText className="h-4 w-4" />
@@ -287,6 +407,10 @@ export function PainelPecasProcessuais({
                   return (
                     <div
                       key={movimento.id}
+                      ref={(el) => {
+                        if (el) cardRefs.current.set(movimento.id, el);
+                        else cardRefs.current.delete(movimento.id);
+                      }}
                       className={`
                         p-3 rounded-lg border cursor-pointer transition-all
                         ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-muted/30'}
@@ -330,7 +454,7 @@ export function PainelPecasProcessuais({
                               className="h-6 px-2 text-xs"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                abrirDocumento(movimento.idPeca, movimento.tipoInformado);
+                                abrirDocumento(movimento.idPeca, movimento.tipoInformado, movimento);
                               }}
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
