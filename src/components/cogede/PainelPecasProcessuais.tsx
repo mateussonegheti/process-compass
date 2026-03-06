@@ -638,6 +638,53 @@ export function PainelPecasProcessuais({
                     </div>
                   </div>
 
+                  {/* Classificação automática sugerida */}
+                  {(() => {
+                    const cls = getClassificacao(movimentoSelecionado.id);
+                    if (cls?.status === "concluido" && cls.resultado) {
+                      return (
+                        <div className={`rounded-lg p-3 border space-y-2 ${CONFIANCA_STYLES[cls.resultado.confianca]}`}>
+                          <div className="flex items-center gap-2">
+                            <Bot className="h-4 w-4" />
+                            <span className="font-medium text-sm">Classificação sugerida: {cls.resultado.label}</span>
+                          </div>
+                          <div className="text-xs">
+                            Confiança: <strong>{cls.resultado.confianca}</strong> · Score: {cls.resultado.score}
+                          </div>
+                          <div className="text-xs space-y-0.5">
+                            {cls.resultado.regrasDetectadas.slice(0, 6).map((r, i) => (
+                              <div key={i}>✔ {r}</div>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setTipoIdentificado(cls.resultado!.label);
+                                handleIniciarIdentificacao();
+                              }}
+                            >
+                              <ThumbsUp className="h-3 w-3 mr-1" />
+                              Aceitar sugestão
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs"
+                              onClick={handleIniciarIdentificacao}
+                            >
+                              <ThumbsDown className="h-3 w-3 mr-1" />
+                              Corrigir
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   {/* Verificar se já foi identificado */}
                   {isPecaPermanente(movimentoSelecionado.id, movimentoSelecionado.idPeca) ? (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
