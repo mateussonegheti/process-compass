@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
@@ -319,19 +319,6 @@ export function PainelPecasProcessuais({
       return;
     }
 
-    // Ctrl+→ → focus identification panel and auto-open identification
-    if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight") {
-      e.preventDefault();
-      if (movimentoSelecionado) {
-        setFocusPanel("identification");
-        if (!modoIdentificacao) {
-          handleIniciarIdentificacao();
-        } else {
-          setTimeout(() => tipoSelectRef.current?.focus(), 50);
-        }
-      }
-      return;
-    }
 
     // Ctrl+← → focus list panel
     if ((e.ctrlKey || e.metaKey) && e.key === "ArrowLeft") {
@@ -400,14 +387,6 @@ export function PainelPecasProcessuais({
     }
   }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente, modoIdentificacao, tipoIdentificado, idPecaEditavel, handleSalvarIdentificacao, handleIniciarIdentificacao]);
 
-  // Progress indicator
-  const progressInfo = useMemo(() => {
-    if (movimentos.length === 0) return null;
-    const avaliadas = movimentos.filter(m => isPecaPermanente(m.id, m.idPeca)).length;
-    const total = movimentos.length;
-    const percent = Math.round((avaliadas / total) * 100);
-    return { avaliadas, total, percent };
-  }, [movimentos, isPecaPermanente]);
 
   return (
     <Card>
@@ -425,25 +404,13 @@ export function PainelPecasProcessuais({
           Movimentos processuais e identificação de peças de guarda permanente
         </p>
 
-        {/* Progress indicator */}
-        {progressInfo && (
-          <div className="mt-3 space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                Peças avaliadas: <strong className="text-foreground">{progressInfo.avaliadas}</strong> / {progressInfo.total}
-              </span>
-              <span className="font-medium text-foreground">{progressInfo.percent}%</span>
-            </div>
-            <Progress value={progressInfo.percent} className="h-2" />
-          </div>
-        )}
 
 
         {/* Keyboard shortcuts hint */}
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Keyboard className="h-3 w-3" />
-            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→ identificar · Ctrl+← voltar lista · Ctrl+Space tipo · Ctrl+Enter salvar · Esc fechar identificação</span>
+            <span>↑↓ navegar · Enter abrir · Space identificar · Ctrl+← voltar lista · Ctrl+Space tipo · Ctrl+Enter salvar · Esc fechar identificação</span>
           </div>
         )}
       </CardHeader>
