@@ -113,6 +113,7 @@ export default function Demo() {
           setProcessos(updatedWithNext);
           setSessao((prev) => ({ ...prev, processoAtual: { ...proximo, STATUS_AVALIACAO: "EM_ANALISE" } }));
           toast.success("Avaliação salva! Próximo processo carregado.");
+          window.scrollTo({ top: 0, behavior: "smooth" });
         } else {
           setProcessos(updated);
           setSessao((prev) => ({ ...prev, processoAtual: undefined }));
