@@ -510,6 +510,7 @@ export default function Index() {
         }));
         
         toast.info("Próximo processo carregado automaticamente");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setSessao(prev => ({ ...prev, processoAtual: undefined }));
         toast.info("Todos os processos foram avaliados!");
