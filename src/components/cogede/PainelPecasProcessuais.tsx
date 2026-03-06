@@ -412,6 +412,16 @@ export function PainelPecasProcessuais({
           </div>
         )}
 
+        {/* Classification progress */}
+        {classificacaoProcessando && classificacaoProgresso.total > 0 && (
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Bot className="h-3 w-3" />
+              <span>Classificando peças: {classificacaoProgresso.concluidos}/{classificacaoProgresso.total}</span>
+              <Loader2 className="h-3 w-3 animate-spin ml-auto" />
+            </div>
+            <Progress value={(classificacaoProgresso.concluidos / classificacaoProgresso.total) * 100} className="h-1.5" />
+          </div>
         {/* Keyboard shortcuts hint */}
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
