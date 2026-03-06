@@ -165,6 +165,7 @@ export function PainelPecasProcessuais({
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const listContainerRef = useRef<HTMLDivElement>(null);
   const identificationPanelRef = useRef<HTMLDivElement>(null);
+  const tipoSelectRef = useRef<HTMLButtonElement>(null);
 
   // Fazer parse dos movimentos: usa props direto ou dados concatenados do CSV (SEM MOCK)
   const movimentos = useMemo(() => {
@@ -241,15 +242,21 @@ export function PainelPecasProcessuais({
 
     onAdicionarPecaPermanente(novaPeca);
     
-    // After saving, auto-advance to next non-evaluated piece
+    // After saving, auto-advance to PREVIOUS piece (upward — evaluation goes bottom-to-top)
     const currentIdx = movimentos.findIndex(m => m.id === movimentoSelecionado.id);
-    const nextIdx = movimentos.findIndex((m, i) => i > currentIdx && !isPecaPermanente(m.id, m.idPeca));
+    let prevIdx = -1;
+    for (let i = currentIdx - 1; i >= 0; i--) {
+      if (!isPecaPermanente(movimentos[i].id, movimentos[i].idPeca)) {
+        prevIdx = i;
+        break;
+      }
+    }
     
     setModoIdentificacao(false);
     setTemDivergencia(false);
     
-    if (nextIdx !== -1) {
-      handleSelecionarMovimento(movimentos[nextIdx]);
+    if (prevIdx !== -1) {
+      handleSelecionarMovimento(movimentos[prevIdx]);
       setFocusPanel("list");
     } else {
       setMovimentoSelecionado(null);
@@ -335,6 +342,15 @@ export function PainelPecasProcessuais({
       e.preventDefault();
       setFocusPanel("list");
       listContainerRef.current?.focus();
+      return;
+    }
+
+    // Ctrl+Space → focus tipo select
+    if ((e.ctrlKey || e.metaKey) && e.key === " ") {
+      e.preventDefault();
+      if (movimentoSelecionado && modoIdentificacao) {
+        tipoSelectRef.current?.click();
+      }
       return;
     }
 
@@ -428,7 +444,7 @@ export function PainelPecasProcessuais({
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Keyboard className="h-3 w-3" />
-            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→/← alternar painel · Ctrl+Enter salvar</span>
+            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→/← alternar painel · Ctrl+Space tipo · Ctrl+Enter salvar</span>
           </div>
         )}
       </CardHeader>
@@ -720,7 +736,7 @@ export function PainelPecasProcessuais({
                       <div className="space-y-2">
                         <Label>Tipo da peça identificada</Label>
                         <Select value={tipoIdentificado} onValueChange={setTipoIdentificado}>
-                          <SelectTrigger>
+                          <SelectTrigger ref={tipoSelectRef}>
                             <SelectValue placeholder="Selecione o tipo..." />
                           </SelectTrigger>
                           <SelectContent>
