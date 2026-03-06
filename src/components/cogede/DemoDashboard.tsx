@@ -49,16 +49,16 @@ interface DemoDashboardProps {
 }
 
 const DEMO_PROCESSOS_CONCLUIDOS: DemoProcessoConcluido[] = [
-  { id: "dc-1", codigo: "2420089160220", numeroCnj: "99160226520088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "20/02/2009", guarda: "P", arquivos: "355162 | 518845 | 518472", responsavel: "Maria Silva" },
-  { id: "dc-2", codigo: "2420089160386", numeroCnj: "99160381920088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "19/12/2008", guarda: "P", arquivos: "355438 | 501523 | 506106", responsavel: "Maria Silva" },
-  { id: "dc-3", codigo: "2420089160238", numeroCnj: "99160235020088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "05/10/2010", guarda: "P", arquivos: "355163 | 3203862 | 321...", responsavel: "Maria Silva" },
-  { id: "dc-4", codigo: "2420089160246", numeroCnj: "99160243520088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "15/01/2009", guarda: "P", arquivos: "355175 | 464951 | 464361", responsavel: "Maria Silva" },
-  { id: "dc-5", codigo: "2420089160428", numeroCnj: "99160425620088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "09/06/2009", guarda: "P", arquivos: "355529 | 438719 | 437599", responsavel: "João Santos" },
-  { id: "dc-6", codigo: "2420089161186", numeroCnj: "99161188020088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "15/12/2009", guarda: "P", arquivos: "356516 | 492941 | 1025...", responsavel: "Maria Silva" },
-  { id: "dc-7", codigo: "2420089160469", numeroCnj: "99160469320088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "29/08/2014", guarda: "P", arquivos: "355596 | 424755 | 4767...", responsavel: "João Santos" },
-  { id: "dc-8", codigo: "2420089160352", numeroCnj: "99160352820088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "12/03/2010", guarda: "I", arquivos: "355412 | 489231", responsavel: "Maria Silva" },
-  { id: "dc-9", codigo: "2420089160501", numeroCnj: "99160501220088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "22/07/2011", guarda: "P", arquivos: "355628 | 612843 | 612901", responsavel: "João Santos" },
-  { id: "dc-10", codigo: "2420089160295", numeroCnj: "99160295620088130024", dataDistribuicao: "30/10/2008", ano: "2008", dataArquivamento: "03/04/2009", guarda: "P", arquivos: "355301 | 445872 | 445910", responsavel: "Maria Silva" },
+  { id: "dc-1", codigo: "0001111000001", numeroCnj: "00011112220178080001", dataDistribuicao: "10/03/2017", ano: "2017", dataArquivamento: "20/02/2019", guarda: "P", arquivos: "FIC-001 | FIC-002 | FIC-003", responsavel: "Maria Silva" },
+  { id: "dc-2", codigo: "0002222000002", numeroCnj: "00022223330178080002", dataDistribuicao: "15/06/2017", ano: "2017", dataArquivamento: "19/12/2018", guarda: "P", arquivos: "FIC-004 | FIC-005 | FIC-006", responsavel: "Maria Silva" },
+  { id: "dc-3", codigo: "0003333000003", numeroCnj: "00033334440168080003", dataDistribuicao: "22/01/2016", ano: "2016", dataArquivamento: "05/10/2020", guarda: "P", arquivos: "FIC-007 | FIC-008 | FIC-009", responsavel: "Maria Silva" },
+  { id: "dc-4", codigo: "0004444000004", numeroCnj: "00044445550188080004", dataDistribuicao: "08/09/2018", ano: "2018", dataArquivamento: "15/01/2021", guarda: "P", arquivos: "FIC-010 | FIC-011 | FIC-012", responsavel: "Maria Silva" },
+  { id: "dc-5", codigo: "0005555000005", numeroCnj: "00055556660158080005", dataDistribuicao: "03/04/2015", ano: "2015", dataArquivamento: "09/06/2019", guarda: "P", arquivos: "FIC-013 | FIC-014 | FIC-015", responsavel: "João Santos" },
+  { id: "dc-6", codigo: "0006666000006", numeroCnj: "00066667770178080006", dataDistribuicao: "18/11/2017", ano: "2017", dataArquivamento: "15/12/2020", guarda: "P", arquivos: "FIC-016 | FIC-017 | FIC-018", responsavel: "Maria Silva" },
+  { id: "dc-7", codigo: "0007777000007", numeroCnj: "00077778880168080007", dataDistribuicao: "27/07/2016", ano: "2016", dataArquivamento: "29/08/2022", guarda: "P", arquivos: "FIC-019 | FIC-020 | FIC-021", responsavel: "João Santos" },
+  { id: "dc-8", codigo: "0008888000008", numeroCnj: "00088889990188080008", dataDistribuicao: "14/02/2018", ano: "2018", dataArquivamento: "12/03/2021", guarda: "I", arquivos: "FIC-022 | FIC-023", responsavel: "Maria Silva" },
+  { id: "dc-9", codigo: "0009999000009", numeroCnj: "00099990010158080009", dataDistribuicao: "30/05/2015", ano: "2015", dataArquivamento: "22/07/2020", guarda: "P", arquivos: "FIC-024 | FIC-025 | FIC-026", responsavel: "João Santos" },
+  { id: "dc-10", codigo: "0010101000010", numeroCnj: "00101012220178080010", dataDistribuicao: "06/08/2017", ano: "2017", dataArquivamento: "03/04/2019", guarda: "P", arquivos: "FIC-027 | FIC-028 | FIC-029", responsavel: "Maria Silva" },
 ];
 
 type SortColumn = "CODIGO" | "NUMERO_CNJ" | "DATA_DISTRIBUICAO" | "ANO" | "DATA_ARQUIVAMENTO" | "GUARDA" | "ARQUIVOS" | "RESPONSAVEL";
