@@ -200,7 +200,7 @@ export function PainelPecasProcessuais({
   };
 
   // Salvar identificação da peça
-  const handleSalvarIdentificacao = () => {
+  const handleSalvarIdentificacao = useCallback(() => {
     if (!movimentoSelecionado) return;
 
     const novaPeca: PecaPermanente = {
@@ -214,13 +214,22 @@ export function PainelPecasProcessuais({
 
     onAdicionarPecaPermanente(novaPeca);
     
-    // Limpar formulário e voltar ao estado inicial
+    // After saving, auto-advance to next non-evaluated piece
+    const currentIdx = movimentos.findIndex(m => m.id === movimentoSelecionado.id);
+    const nextIdx = movimentos.findIndex((m, i) => i > currentIdx && !isPecaPermanente(m.id, m.idPeca));
+    
     setModoIdentificacao(false);
-    setMovimentoSelecionado(null);
-    setTipoIdentificado("");
-    setIdPecaEditavel("");
     setTemDivergencia(false);
-  };
+    
+    if (nextIdx !== -1) {
+      handleSelecionarMovimento(movimentos[nextIdx]);
+      setFocusPanel("list");
+    } else {
+      setMovimentoSelecionado(null);
+      setTipoIdentificado("");
+      setIdPecaEditavel("");
+    }
+  }, [movimentoSelecionado, tipoIdentificado, idPecaEditavel, temDivergencia, onAdicionarPecaPermanente, movimentos, isPecaPermanente, handleSelecionarMovimento]);
 
   // Remover identificação
   const handleRemoverIdentificacao = () => {
