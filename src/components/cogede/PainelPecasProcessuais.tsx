@@ -19,7 +19,7 @@ import {
   XCircle,
   FileText,
   Keyboard,
-  Bot,
+  
   Loader2,
   ShieldAlert,
 } from "lucide-react";
