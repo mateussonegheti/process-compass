@@ -408,6 +408,12 @@ export function PainelPecasProcessuais({
             ref={listContainerRef}
             tabIndex={-1}
           >
+            <div className="bg-muted/50 px-4 py-2 border-b">
+              <h3 className="font-medium text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Movimentos do Processo
+              </h3>
+            </div>
             
             <ScrollArea className="h-[450px]">
               <div className="p-2 space-y-2">
@@ -435,8 +441,10 @@ export function PainelPecasProcessuais({
                       }}
                       className={`
                         p-3 rounded-lg border cursor-pointer transition-all
-                        ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-muted/30'}
-                        ${isPermanente && !isSelected ? 'bg-green-50 border-green-200' : ''}
+                        ${isSelected && !isPermanente ? 'border-destructive bg-destructive/10 ring-1 ring-destructive' : ''}
+                        ${isSelected && isPermanente ? 'border-green-600 bg-green-100 ring-1 ring-green-600' : ''}
+                        ${!isSelected && isPermanente ? 'bg-green-50 border-green-200' : ''}
+                        ${!isSelected && !isPermanente ? 'border-border hover:border-primary/50 hover:bg-muted/30' : ''}
                         ${temDiverg && !isSelected ? 'bg-amber-50 border-amber-200' : ''}
                       `}
                       onClick={() => handleSelecionarMovimento(movimento)}
@@ -495,7 +503,11 @@ export function PainelPecasProcessuais({
           </div>
           
           {/* Área B - Identificação da Peça */}
-          <div className="border rounded-lg">
+          <div
+            className={`border rounded-lg transition-shadow ${focusPanel === "identification" ? "ring-2 ring-ring" : ""}`}
+            ref={identificationPanelRef}
+            tabIndex={-1}
+          >
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h3 className="font-medium text-sm flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
