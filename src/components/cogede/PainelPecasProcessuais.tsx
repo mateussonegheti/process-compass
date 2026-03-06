@@ -223,9 +223,14 @@ export function PainelPecasProcessuais({
   }, [scrollToCard]);
 
   // Iniciar identificação de peça permanente
-  const handleIniciarIdentificacao = () => {
+  const handleIniciarIdentificacao = useCallback(() => {
     setModoIdentificacao(true);
-  };
+    setFocusPanel("identification");
+    // Auto-focus the tipo select when opening identification
+    setTimeout(() => {
+      tipoSelectRef.current?.focus();
+    }, 100);
+  }, []);
 
   // Salvar identificação da peça
   const handleSalvarIdentificacao = useCallback(() => {
@@ -312,6 +317,13 @@ export function PainelPecasProcessuais({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (movimentos.length === 0) return;
 
+    const target = e.target as HTMLElement;
+    const isInputField = ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName) ||
+      target.getAttribute("role") === "combobox" ||
+      target.getAttribute("role") === "listbox" ||
+      target.getAttribute("role") === "option" ||
+      target.closest("[role='listbox']") !== null;
+
     const navigate = (newIndex: number) => {
       if (newIndex >= 0 && newIndex < movimentos.length) {
         handleSelecionarMovimento(movimentos[newIndex]);
@@ -327,12 +339,16 @@ export function PainelPecasProcessuais({
       return;
     }
 
-    // Ctrl+→ → focus identification panel
+    // Ctrl+→ → focus identification panel and auto-open identification
     if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight") {
       e.preventDefault();
       if (movimentoSelecionado) {
         setFocusPanel("identification");
-        identificationPanelRef.current?.focus();
+        if (!modoIdentificacao) {
+          handleIniciarIdentificacao();
+        } else {
+          setTimeout(() => tipoSelectRef.current?.focus(), 50);
+        }
       }
       return;
     }
@@ -353,6 +369,20 @@ export function PainelPecasProcessuais({
       }
       return;
     }
+
+    // Esc → close identification panel, return focus to list
+    if (e.key === "Escape") {
+      if (modoIdentificacao) {
+        e.preventDefault();
+        setModoIdentificacao(false);
+        setFocusPanel("list");
+        listContainerRef.current?.focus();
+      }
+      return;
+    }
+
+    // If focus is inside an input/select/textarea/combobox, skip navigation shortcuts
+    if (isInputField) return;
 
     switch (e.key) {
       case "ArrowDown": {
@@ -388,7 +418,7 @@ export function PainelPecasProcessuais({
         break;
       }
     }
-  }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente, modoIdentificacao, tipoIdentificado, idPecaEditavel, handleSalvarIdentificacao]);
+  }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente, modoIdentificacao, tipoIdentificado, idPecaEditavel, handleSalvarIdentificacao, handleIniciarIdentificacao]);
 
   // Progress indicator
   const progressInfo = useMemo(() => {
@@ -444,7 +474,7 @@ export function PainelPecasProcessuais({
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Keyboard className="h-3 w-3" />
-            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→/← alternar painel · Ctrl+Space tipo · Ctrl+Enter salvar</span>
+            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→ identificar · Ctrl+← voltar lista · Ctrl+Space tipo · Ctrl+Enter salvar · Esc fechar identificação</span>
           </div>
         )}
       </CardHeader>
