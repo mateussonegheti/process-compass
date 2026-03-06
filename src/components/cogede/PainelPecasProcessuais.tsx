@@ -422,6 +422,8 @@ export function PainelPecasProcessuais({
             </div>
             <Progress value={(classificacaoProgresso.concluidos / classificacaoProgresso.total) * 100} className="h-1.5" />
           </div>
+        )}
+
         {/* Keyboard shortcuts hint */}
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
