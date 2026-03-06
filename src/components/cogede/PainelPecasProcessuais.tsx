@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ExternalLink, 
   FileCheck, 
@@ -17,9 +18,15 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
-  Keyboard
+  Keyboard,
+  Bot,
+  Loader2,
+  ShieldAlert,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { TIPOS_PECA } from "@/types/cogede";
+import { useClassificacaoPecas, ClassificacaoPeca } from "@/hooks/useClassificacaoPecas";
 
 // Interface para movimento processual (virá da planilha de importação)
 export interface MovimentoProcessual {
