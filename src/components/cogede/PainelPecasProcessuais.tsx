@@ -373,10 +373,9 @@ export function PainelPecasProcessuais({
       <CardContent>
         {/* Layout side-by-side */}
         <div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[500px]"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[500px] outline-none"
           onKeyDown={handleKeyDown}
           tabIndex={0}
-          className-focus="outline-none"
         >
           
           {/* Área A - Lista de Movimentos */}
