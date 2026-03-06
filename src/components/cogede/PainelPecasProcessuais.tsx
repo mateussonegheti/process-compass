@@ -144,10 +144,12 @@ export function PainelPecasProcessuais({
   const [tipoIdentificado, setTipoIdentificado] = useState("");
   const [idPecaEditavel, setIdPecaEditavel] = useState("");
   const [temDivergencia, setTemDivergencia] = useState(false);
+  const [focusPanel, setFocusPanel] = useState<"list" | "identification">("list");
 
   // Refs for cards and scroll container
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const identificationPanelRef = useRef<HTMLDivElement>(null);
 
   // Fazer parse dos movimentos: usa props direto ou dados concatenados do CSV (SEM MOCK)
   const movimentos = useMemo(() => {
@@ -198,7 +200,7 @@ export function PainelPecasProcessuais({
   };
 
   // Salvar identificação da peça
-  const handleSalvarIdentificacao = () => {
+  const handleSalvarIdentificacao = useCallback(() => {
     if (!movimentoSelecionado) return;
 
     const novaPeca: PecaPermanente = {
@@ -212,13 +214,22 @@ export function PainelPecasProcessuais({
 
     onAdicionarPecaPermanente(novaPeca);
     
-    // Limpar formulário e voltar ao estado inicial
+    // After saving, auto-advance to next non-evaluated piece
+    const currentIdx = movimentos.findIndex(m => m.id === movimentoSelecionado.id);
+    const nextIdx = movimentos.findIndex((m, i) => i > currentIdx && !isPecaPermanente(m.id, m.idPeca));
+    
     setModoIdentificacao(false);
-    setMovimentoSelecionado(null);
-    setTipoIdentificado("");
-    setIdPecaEditavel("");
     setTemDivergencia(false);
-  };
+    
+    if (nextIdx !== -1) {
+      handleSelecionarMovimento(movimentos[nextIdx]);
+      setFocusPanel("list");
+    } else {
+      setMovimentoSelecionado(null);
+      setTipoIdentificado("");
+      setIdPecaEditavel("");
+    }
+  }, [movimentoSelecionado, tipoIdentificado, idPecaEditavel, temDivergencia, onAdicionarPecaPermanente, movimentos, isPecaPermanente, handleSelecionarMovimento]);
 
   // Remover identificação
   const handleRemoverIdentificacao = () => {
@@ -273,15 +284,44 @@ export function PainelPecasProcessuais({
       }
     };
 
+    // Ctrl+Enter → save identification
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (movimentoSelecionado && modoIdentificacao && tipoIdentificado && idPecaEditavel) {
+        handleSalvarIdentificacao();
+      }
+      return;
+    }
+
+    // Ctrl+→ → focus identification panel
+    if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight") {
+      e.preventDefault();
+      if (movimentoSelecionado) {
+        setFocusPanel("identification");
+        identificationPanelRef.current?.focus();
+      }
+      return;
+    }
+
+    // Ctrl+← → focus list panel
+    if ((e.ctrlKey || e.metaKey) && e.key === "ArrowLeft") {
+      e.preventDefault();
+      setFocusPanel("list");
+      listContainerRef.current?.focus();
+      return;
+    }
+
     switch (e.key) {
       case "ArrowDown": {
         e.preventDefault();
+        setFocusPanel("list");
         const next = selectedIndex < 0 ? 0 : Math.min(selectedIndex + 1, movimentos.length - 1);
         navigate(next);
         break;
       }
       case "ArrowUp": {
         e.preventDefault();
+        setFocusPanel("list");
         const prev = selectedIndex <= 0 ? 0 : selectedIndex - 1;
         navigate(prev);
         break;
@@ -297,31 +337,15 @@ export function PainelPecasProcessuais({
         e.preventDefault();
         if (movimentoSelecionado) {
           if (isPecaPermanente(movimentoSelecionado.id, movimentoSelecionado.idPeca)) {
-            // Already marked — unmark
             handleRemoverIdentificacao();
           } else {
-            // Start identification mode
             handleIniciarIdentificacao();
           }
         }
         break;
       }
-      case "ArrowRight": {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          // Jump to next non-evaluated movement
-          const startIdx = selectedIndex < 0 ? 0 : selectedIndex + 1;
-          for (let i = startIdx; i < movimentos.length; i++) {
-            if (!isPecaPermanente(movimentos[i].id, movimentos[i].idPeca)) {
-              navigate(i);
-              break;
-            }
-          }
-        }
-        break;
-      }
     }
-  }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente]);
+  }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente, modoIdentificacao, tipoIdentificado, idPecaEditavel, handleSalvarIdentificacao]);
 
   // Progress indicator
   const progressInfo = useMemo(() => {
@@ -365,7 +389,7 @@ export function PainelPecasProcessuais({
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Keyboard className="h-3 w-3" />
-            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→ próxima não avaliada</span>
+            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→/← alternar painel · Ctrl+Enter salvar</span>
           </div>
         )}
       </CardHeader>
@@ -379,7 +403,11 @@ export function PainelPecasProcessuais({
         >
           
           {/* Área A - Lista de Movimentos */}
-          <div className="border rounded-lg focus:outline-none" ref={listContainerRef}>
+          <div
+            className={`border rounded-lg focus:outline-none transition-shadow ${focusPanel === "list" ? "ring-2 ring-ring" : ""}`}
+            ref={listContainerRef}
+            tabIndex={-1}
+          >
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h3 className="font-medium text-sm flex items-center gap-2">
                 <FileText className="h-4 w-4" />
@@ -413,8 +441,10 @@ export function PainelPecasProcessuais({
                       }}
                       className={`
                         p-3 rounded-lg border cursor-pointer transition-all
-                        ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/50 hover:bg-muted/30'}
-                        ${isPermanente && !isSelected ? 'bg-green-50 border-green-200' : ''}
+                        ${isSelected && !isPermanente ? 'border-destructive bg-destructive/10 ring-1 ring-destructive' : ''}
+                        ${isSelected && isPermanente ? 'border-green-600 bg-green-100 ring-1 ring-green-600' : ''}
+                        ${!isSelected && isPermanente ? 'bg-green-50 border-green-200' : ''}
+                        ${!isSelected && !isPermanente ? 'border-border hover:border-primary/50 hover:bg-muted/30' : ''}
                         ${temDiverg && !isSelected ? 'bg-amber-50 border-amber-200' : ''}
                       `}
                       onClick={() => handleSelecionarMovimento(movimento)}
@@ -473,7 +503,11 @@ export function PainelPecasProcessuais({
           </div>
           
           {/* Área B - Identificação da Peça */}
-          <div className="border rounded-lg">
+          <div
+            className={`border rounded-lg transition-shadow ${focusPanel === "identification" ? "ring-2 ring-ring" : ""}`}
+            ref={identificationPanelRef}
+            tabIndex={-1}
+          >
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h3 className="font-medium text-sm flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
@@ -654,6 +688,7 @@ export function PainelPecasProcessuais({
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
                         Salvar identificação da peça
+                        <kbd className="ml-2 text-xs opacity-70 bg-primary-foreground/20 px-1.5 py-0.5 rounded">Ctrl+Enter</kbd>
                       </Button>
                     </div>
                   )}
