@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ExternalLink, 
   FileCheck, 
@@ -17,9 +18,15 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
-  Keyboard
+  Keyboard,
+  Bot,
+  Loader2,
+  ShieldAlert,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { TIPOS_PECA } from "@/types/cogede";
+import { useClassificacaoPecas, ClassificacaoPeca } from "@/hooks/useClassificacaoPecas";
 
 // Interface para movimento processual (virá da planilha de importação)
 export interface MovimentoProcessual {
@@ -78,6 +85,14 @@ interface PainelPecasProcessuaisProps {
 
 // URL base do Projudi para visualização de peças
 const PROJUDI_BASE_URL = "https://projudi.tjmg.jus.br/projudi/listagens/DownloadArquivo?arquivo=";
+
+// Confiança → cor do badge
+const CONFIANCA_STYLES: Record<string, string> = {
+  alta: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  media: "bg-sky-100 text-sky-800 border-sky-300",
+  baixa: "bg-orange-100 text-orange-800 border-orange-300",
+  indefinida: "bg-muted text-muted-foreground",
+};
 
 // Função para parsear data no formato dd/mm/aaaa para ordenação
 function parseDataBR(dataStr: string): Date | null {
@@ -162,6 +177,18 @@ export function PainelPecasProcessuais({
     // Se não há dados, retornar lista vazia (sem mock)
     return [];
   }, [movimentosProps, dadosConcatenados]);
+
+  // Classificação automática em background
+  const {
+    getClassificacao,
+    processando: classificacaoProcessando,
+    progresso: classificacaoProgresso,
+  } = useClassificacaoPecas({
+    movimentos,
+    habilitado: movimentos.length > 0,
+    baseUrl: PROJUDI_BASE_URL,
+    modoDemonstracao,
+  });
 
   // Verificar se um movimento já foi identificado como permanente (por movimentoId ou idPeca)
   const isPecaPermanente = useCallback((movimentoId: string, idPeca?: string) => {
@@ -385,6 +412,18 @@ export function PainelPecasProcessuais({
           </div>
         )}
 
+        {/* Classification progress */}
+        {classificacaoProcessando && classificacaoProgresso.total > 0 && (
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Bot className="h-3 w-3" />
+              <span>Classificando peças: {classificacaoProgresso.concluidos}/{classificacaoProgresso.total}</span>
+              <Loader2 className="h-3 w-3 animate-spin ml-auto" />
+            </div>
+            <Progress value={(classificacaoProgresso.concluidos / classificacaoProgresso.total) * 100} className="h-1.5" />
+          </div>
+        )}
+
         {/* Keyboard shortcuts hint */}
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -431,6 +470,7 @@ export function PainelPecasProcessuais({
                   const isPermanente = isPecaPermanente(movimento.id, movimento.idPeca);
                   const temDiverg = temDivergenciaRegistrada(movimento.id, movimento.idPeca);
                   const isSelected = movimentoSelecionado?.id === movimento.id;
+                  const classificacao = getClassificacao(movimento.id);
                   
                   return (
                     <div
@@ -451,7 +491,7 @@ export function PainelPecasProcessuais({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="font-medium text-sm">{movimento.tipoInformado}</span>
                             <span className="text-xs text-muted-foreground">Mov. {movimento.codigo}</span>
                             {isPermanente && (
@@ -461,6 +501,40 @@ export function PainelPecasProcessuais({
                               <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
                             )}
                           </div>
+
+                          {/* Classification badge */}
+                          {classificacao && classificacao.status === "concluido" && classificacao.resultado && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <Bot className="h-3 w-3 text-muted-foreground" />
+                                    <span className={`text-xs px-1.5 py-0.5 rounded border ${CONFIANCA_STYLES[classificacao.resultado.confianca]}`}>
+                                      {classificacao.resultado.label}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      ({classificacao.resultado.confianca})
+                                    </span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs">
+                                  <p className="font-medium mb-1">Regras detectadas:</p>
+                                  <ul className="text-xs space-y-0.5">
+                                    {classificacao.resultado.regrasDetectadas.slice(0, 5).map((r, i) => (
+                                      <li key={i}>✔ {r}</li>
+                                    ))}
+                                  </ul>
+                                  <p className="text-xs mt-1 text-muted-foreground">Score: {classificacao.resultado.score}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {classificacao && classificacao.status === "processando" && (
+                            <div className="flex items-center gap-1 mb-1">
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                              <span className="text-[10px] text-muted-foreground">Classificando...</span>
+                            </div>
+                          )}
                           
                           {movimento.complemento && (
                             <p className="text-xs text-muted-foreground truncate">
@@ -563,6 +637,53 @@ export function PainelPecasProcessuais({
                       </Button>
                     </div>
                   </div>
+
+                  {/* Classificação automática sugerida */}
+                  {(() => {
+                    const cls = getClassificacao(movimentoSelecionado.id);
+                    if (cls?.status === "concluido" && cls.resultado) {
+                      return (
+                        <div className={`rounded-lg p-3 border space-y-2 ${CONFIANCA_STYLES[cls.resultado.confianca]}`}>
+                          <div className="flex items-center gap-2">
+                            <Bot className="h-4 w-4" />
+                            <span className="font-medium text-sm">Classificação sugerida: {cls.resultado.label}</span>
+                          </div>
+                          <div className="text-xs">
+                            Confiança: <strong>{cls.resultado.confianca}</strong> · Score: {cls.resultado.score}
+                          </div>
+                          <div className="text-xs space-y-0.5">
+                            {cls.resultado.regrasDetectadas.slice(0, 6).map((r, i) => (
+                              <div key={i}>✔ {r}</div>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setTipoIdentificado(cls.resultado!.label);
+                                handleIniciarIdentificacao();
+                              }}
+                            >
+                              <ThumbsUp className="h-3 w-3 mr-1" />
+                              Aceitar sugestão
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs"
+                              onClick={handleIniciarIdentificacao}
+                            >
+                              <ThumbsDown className="h-3 w-3 mr-1" />
+                              Corrigir
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Verificar se já foi identificado */}
                   {isPecaPermanente(movimentoSelecionado.id, movimentoSelecionado.idPeca) ? (
