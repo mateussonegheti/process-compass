@@ -389,7 +389,7 @@ export function PainelPecasProcessuais({
         {movimentos.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Keyboard className="h-3 w-3" />
-            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→ próxima não avaliada</span>
+            <span>↑↓ navegar · Enter abrir · Space marcar · Ctrl+→/← alternar painel · Ctrl+Enter salvar</span>
           </div>
         )}
       </CardHeader>
@@ -403,13 +403,11 @@ export function PainelPecasProcessuais({
         >
           
           {/* Área A - Lista de Movimentos */}
-          <div className="border rounded-lg focus:outline-none" ref={listContainerRef}>
-            <div className="bg-muted/50 px-4 py-2 border-b">
-              <h3 className="font-medium text-sm flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Movimentos do Processo
-              </h3>
-            </div>
+          <div
+            className={`border rounded-lg focus:outline-none transition-shadow ${focusPanel === "list" ? "ring-2 ring-ring" : ""}`}
+            ref={listContainerRef}
+            tabIndex={-1}
+          >
             
             <ScrollArea className="h-[450px]">
               <div className="p-2 space-y-2">
