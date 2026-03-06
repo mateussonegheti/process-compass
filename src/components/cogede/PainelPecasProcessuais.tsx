@@ -86,6 +86,14 @@ interface PainelPecasProcessuaisProps {
 // URL base do Projudi para visualização de peças
 const PROJUDI_BASE_URL = "https://projudi.tjmg.jus.br/projudi/listagens/DownloadArquivo?arquivo=";
 
+// Confiança → cor do badge
+const CONFIANCA_STYLES: Record<string, string> = {
+  alta: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  media: "bg-sky-100 text-sky-800 border-sky-300",
+  baixa: "bg-orange-100 text-orange-800 border-orange-300",
+  indefinida: "bg-muted text-muted-foreground",
+};
+
 // Função para parsear data no formato dd/mm/aaaa para ordenação
 function parseDataBR(dataStr: string): Date | null {
   if (!dataStr || dataStr.trim() === "") return null;
