@@ -688,6 +688,7 @@ export function PainelPecasProcessuais({
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
                         Salvar identificação da peça
+                        <kbd className="ml-2 text-xs opacity-70 bg-primary-foreground/20 px-1.5 py-0.5 rounded">Ctrl+Enter</kbd>
                       </Button>
                     </div>
                   )}
