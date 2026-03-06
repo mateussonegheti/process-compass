@@ -284,15 +284,44 @@ export function PainelPecasProcessuais({
       }
     };
 
+    // Ctrl+Enter → save identification
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (movimentoSelecionado && modoIdentificacao && tipoIdentificado && idPecaEditavel) {
+        handleSalvarIdentificacao();
+      }
+      return;
+    }
+
+    // Ctrl+→ → focus identification panel
+    if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight") {
+      e.preventDefault();
+      if (movimentoSelecionado) {
+        setFocusPanel("identification");
+        identificationPanelRef.current?.focus();
+      }
+      return;
+    }
+
+    // Ctrl+← → focus list panel
+    if ((e.ctrlKey || e.metaKey) && e.key === "ArrowLeft") {
+      e.preventDefault();
+      setFocusPanel("list");
+      listContainerRef.current?.focus();
+      return;
+    }
+
     switch (e.key) {
       case "ArrowDown": {
         e.preventDefault();
+        setFocusPanel("list");
         const next = selectedIndex < 0 ? 0 : Math.min(selectedIndex + 1, movimentos.length - 1);
         navigate(next);
         break;
       }
       case "ArrowUp": {
         e.preventDefault();
+        setFocusPanel("list");
         const prev = selectedIndex <= 0 ? 0 : selectedIndex - 1;
         navigate(prev);
         break;
@@ -308,31 +337,15 @@ export function PainelPecasProcessuais({
         e.preventDefault();
         if (movimentoSelecionado) {
           if (isPecaPermanente(movimentoSelecionado.id, movimentoSelecionado.idPeca)) {
-            // Already marked — unmark
             handleRemoverIdentificacao();
           } else {
-            // Start identification mode
             handleIniciarIdentificacao();
           }
         }
         break;
       }
-      case "ArrowRight": {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          // Jump to next non-evaluated movement
-          const startIdx = selectedIndex < 0 ? 0 : selectedIndex + 1;
-          for (let i = startIdx; i < movimentos.length; i++) {
-            if (!isPecaPermanente(movimentos[i].id, movimentos[i].idPeca)) {
-              navigate(i);
-              break;
-            }
-          }
-        }
-        break;
-      }
     }
-  }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente]);
+  }, [movimentos, selectedIndex, movimentoSelecionado, handleSelecionarMovimento, abrirDocumento, isPecaPermanente, modoIdentificacao, tipoIdentificado, idPecaEditavel, handleSalvarIdentificacao]);
 
   // Progress indicator
   const progressInfo = useMemo(() => {
