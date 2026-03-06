@@ -458,6 +458,7 @@ export function PainelPecasProcessuais({
                   const isPermanente = isPecaPermanente(movimento.id, movimento.idPeca);
                   const temDiverg = temDivergenciaRegistrada(movimento.id, movimento.idPeca);
                   const isSelected = movimentoSelecionado?.id === movimento.id;
+                  const classificacao = getClassificacao(movimento.id);
                   
                   return (
                     <div
@@ -478,7 +479,7 @@ export function PainelPecasProcessuais({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="font-medium text-sm">{movimento.tipoInformado}</span>
                             <span className="text-xs text-muted-foreground">Mov. {movimento.codigo}</span>
                             {isPermanente && (
@@ -488,6 +489,40 @@ export function PainelPecasProcessuais({
                               <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
                             )}
                           </div>
+
+                          {/* Classification badge */}
+                          {classificacao && classificacao.status === "concluido" && classificacao.resultado && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <Bot className="h-3 w-3 text-muted-foreground" />
+                                    <span className={`text-xs px-1.5 py-0.5 rounded border ${CONFIANCA_STYLES[classificacao.resultado.confianca]}`}>
+                                      {classificacao.resultado.label}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      ({classificacao.resultado.confianca})
+                                    </span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs">
+                                  <p className="font-medium mb-1">Regras detectadas:</p>
+                                  <ul className="text-xs space-y-0.5">
+                                    {classificacao.resultado.regrasDetectadas.slice(0, 5).map((r, i) => (
+                                      <li key={i}>✔ {r}</li>
+                                    ))}
+                                  </ul>
+                                  <p className="text-xs mt-1 text-muted-foreground">Score: {classificacao.resultado.score}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {classificacao && classificacao.status === "processando" && (
+                            <div className="flex items-center gap-1 mb-1">
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                              <span className="text-[10px] text-muted-foreground">Classificando...</span>
+                            </div>
+                          )}
                           
                           {movimento.complemento && (
                             <p className="text-xs text-muted-foreground truncate">
