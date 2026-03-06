@@ -144,10 +144,12 @@ export function PainelPecasProcessuais({
   const [tipoIdentificado, setTipoIdentificado] = useState("");
   const [idPecaEditavel, setIdPecaEditavel] = useState("");
   const [temDivergencia, setTemDivergencia] = useState(false);
+  const [focusPanel, setFocusPanel] = useState<"list" | "identification">("list");
 
   // Refs for cards and scroll container
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const identificationPanelRef = useRef<HTMLDivElement>(null);
 
   // Fazer parse dos movimentos: usa props direto ou dados concatenados do CSV (SEM MOCK)
   const movimentos = useMemo(() => {
