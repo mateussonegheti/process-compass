@@ -698,18 +698,22 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
       {/* Botões de Ação */}
       <div className="sticky bottom-4 bg-background/95 backdrop-blur p-4 rounded-lg border shadow-lg">
         <div className="flex gap-3">
-          {/* Botão Finalizar Avaliação - apenas se não estiver em modo edição */}
+          {/* Botão Finalizar Avaliação com confirmação */}
           {!modoEdicao && onFinalizarAvaliacao && (
-            <Button 
-              onClick={onFinalizarAvaliacao} 
-              disabled={carregando} 
-              variant="outline"
-              size="lg"
-              className="flex-1"
-            >
-              <XCircle className="h-5 w-5 mr-2" />
-              Finalizar avaliação
-            </Button>
+            <AlertDialog>
+              <Button 
+                asChild
+                disabled={carregando} 
+                variant="outline"
+                size="lg"
+                className="flex-1"
+              >
+                <AlertDialogAction className="bg-transparent border border-input text-foreground hover:bg-accent hover:text-accent-foreground" asChild={false} onClick={(e) => e.preventDefault()}>
+                  <XCircle className="h-5 w-5 mr-2" />
+                  Finalizar avaliação
+                </AlertDialogAction>
+              </Button>
+            </AlertDialog>
           )}
           
           {/* Botão Salvar */}
