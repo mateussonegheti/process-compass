@@ -1,4 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +76,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
   const [pecasPermanentes, setPecasPermanentes] = useState<PecaPermanente[]>([]);
+  const [confirmarFinalizar, setConfirmarFinalizar] = useState(false);
 
   // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
   useInactivityTimeout(processo.ID, true);
@@ -688,18 +699,34 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
       {/* Botões de Ação */}
       <div className="sticky bottom-4 bg-background/95 backdrop-blur p-4 rounded-lg border shadow-lg">
         <div className="flex gap-3">
-          {/* Botão Finalizar Avaliação - apenas se não estiver em modo edição */}
+          {/* Botão Finalizar Avaliação com confirmação */}
           {!modoEdicao && onFinalizarAvaliacao && (
-            <Button 
-              onClick={onFinalizarAvaliacao} 
-              disabled={carregando} 
-              variant="outline"
-              size="lg"
-              className="flex-1"
-            >
-              <XCircle className="h-5 w-5 mr-2" />
-              Finalizar avaliação
-            </Button>
+            <AlertDialog open={confirmarFinalizar} onOpenChange={setConfirmarFinalizar}>
+              <Button 
+                onClick={() => setConfirmarFinalizar(true)}
+                disabled={carregando} 
+                variant="outline"
+                size="lg"
+                className="flex-1"
+              >
+                <XCircle className="h-5 w-5 mr-2" />
+                Finalizar avaliação
+              </Button>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar finalização</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza de que deseja finalizar esta avaliação? Após confirmar, a avaliação será encerrada.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={onFinalizarAvaliacao}>
+                    Confirmar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           
           {/* Botão Salvar */}
