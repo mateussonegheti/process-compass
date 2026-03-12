@@ -76,6 +76,7 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const [formData, setFormData] = useState(initialFormData);
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
   const [pecasPermanentes, setPecasPermanentes] = useState<PecaPermanente[]>([]);
+  const [confirmarFinalizar, setConfirmarFinalizar] = useState(false);
 
   // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
   useInactivityTimeout(processo.ID, true);
