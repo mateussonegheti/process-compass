@@ -700,19 +700,31 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         <div className="flex gap-3">
           {/* Botão Finalizar Avaliação com confirmação */}
           {!modoEdicao && onFinalizarAvaliacao && (
-            <AlertDialog>
+            <AlertDialog open={confirmarFinalizar} onOpenChange={setConfirmarFinalizar}>
               <Button 
-                asChild
+                onClick={() => setConfirmarFinalizar(true)}
                 disabled={carregando} 
                 variant="outline"
                 size="lg"
                 className="flex-1"
               >
-                <AlertDialogAction className="bg-transparent border border-input text-foreground hover:bg-accent hover:text-accent-foreground" asChild={false} onClick={(e) => e.preventDefault()}>
-                  <XCircle className="h-5 w-5 mr-2" />
-                  Finalizar avaliação
-                </AlertDialogAction>
+                <XCircle className="h-5 w-5 mr-2" />
+                Finalizar avaliação
               </Button>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar finalização</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza de que deseja finalizar esta avaliação? Após confirmar, a avaliação será encerrada.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={onFinalizarAvaliacao}>
+                    Confirmar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
             </AlertDialog>
           )}
           
