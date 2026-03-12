@@ -13,8 +13,8 @@ import { logger } from "@/lib/logger";
  * @param enabled - Se deve estar ativo (default: true)
  */
 export function useInactivityTimeout(processoId: string | undefined, enabled = true) {
-  const timeoutIdRef = useRef<NodeJS.Timeout>();
-  const checkIntervalRef = useRef<NodeJS.Timeout>();
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout>>();
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval>>();
   const lastActivityRef = useRef<number>(Date.now());
 
   const updateUltimaInteracao = useCallback(async () => {
