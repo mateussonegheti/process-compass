@@ -2,3 +2,6 @@ project_id = "suvbaofilczyxquuinwj"
 
 [functions.delete-user]
 verify_jwt = false
+
+[functions.classificacao-inteligente]
+verify_jwt = false
