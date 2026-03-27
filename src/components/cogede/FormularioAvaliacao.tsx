@@ -22,6 +22,7 @@ import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU } from 
 import { toast } from "sonner";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { PainelPecasProcessuais, PecaPermanente, DadosMovimentosConcatenados } from "./PainelPecasProcessuais";
+import { SugestaoInteligente } from "./SugestaoInteligente";
 import { useTemporalidade } from "@/hooks/useTemporalidade";
 import { Clock, ShieldCheck, HelpCircle, BookOpen } from "lucide-react";
 
@@ -77,6 +78,17 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
   const [pecasPermanentes, setPecasPermanentes] = useState<PecaPermanente[]>([]);
   const [confirmarFinalizar, setConfirmarFinalizar] = useState(false);
+  const [sugestaoAceita, setSugestaoAceita] = useState<string | null>(null);
+
+  // Callback when AI suggestion is accepted — pre-fill the TPU field
+  const handleAceitarSugestao = useCallback((tipo: string) => {
+    setSugestaoAceita(tipo);
+    // Try to find a matching TPU assunto
+    const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
+    if (match) {
+      setFormData(prev => ({ ...prev, assuntoTpu: match }));
+    }
+  }, []);
 
   // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
   useInactivityTimeout(processo.ID, true);
@@ -384,7 +396,14 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         </CardContent>
       </Card>
 
-      {/* Seção 2 - Assunto/TPU */}
+      {/* Sugestão Inteligente de Classificação */}
+      <SugestaoInteligente
+        processoId={processo.ID}
+        onAceitarSugestao={handleAceitarSugestao}
+        modoDemonstracao={modoDemonstracao}
+      />
+
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
