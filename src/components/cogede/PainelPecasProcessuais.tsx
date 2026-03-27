@@ -820,11 +820,20 @@ export function PainelPecasProcessuais({
 
                           // High confidence auto-filled
                           if (sugestao.confianca >= 0.85 && wasAutoFilled) {
+                            const sinaisResumo = sugestao.sinaisDetectados.slice(0, 2).map(s => {
+                              const parts = s.split(": ");
+                              return parts[1] || parts[0];
+                            }).join(" + ");
                             return (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                                <Sparkles className="h-3 w-3" />
-                                Preenchido automaticamente com base no tipo informado ({confiancaPct}%)
-                              </p>
+                              <div className="mt-1 space-y-0.5">
+                                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                  <Sparkles className="h-3 w-3" />
+                                  Sugestão: {sugestao.tipo} ({confiancaPct}%)
+                                </p>
+                                <p className="text-xs text-muted-foreground pl-4">
+                                  Base: {sinaisResumo}
+                                </p>
+                              </div>
                             );
                           }
 
