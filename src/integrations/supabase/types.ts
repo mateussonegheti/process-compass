@@ -122,6 +122,60 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_sugestoes_ia: {
+        Row: {
+          avaliacao_id: string | null
+          confianca: number
+          created_at: string
+          features_extraidas: Json | null
+          id: string
+          justificativa: string | null
+          processo_id: string
+          risco_divergencia: boolean | null
+          tipo_sugerido: string
+          usuario_aceitou_sugestao: boolean | null
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          confianca?: number
+          created_at?: string
+          features_extraidas?: Json | null
+          id?: string
+          justificativa?: string | null
+          processo_id: string
+          risco_divergencia?: boolean | null
+          tipo_sugerido: string
+          usuario_aceitou_sugestao?: boolean | null
+        }
+        Update: {
+          avaliacao_id?: string | null
+          confianca?: number
+          created_at?: string
+          features_extraidas?: Json | null
+          id?: string
+          justificativa?: string | null
+          processo_id?: string
+          risco_divergencia?: boolean | null
+          tipo_sugerido?: string
+          usuario_aceitou_sugestao?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_sugestoes_ia_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_sugestoes_ia_processo_id_fkey"
+            columns: ["processo_id"]
+            isOneToOne: false
+            referencedRelation: "processos_fila"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lotes_importacao: {
         Row: {
           ativo: boolean
