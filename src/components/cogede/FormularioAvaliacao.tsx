@@ -80,10 +80,18 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const [confirmarFinalizar, setConfirmarFinalizar] = useState(false);
   const [sugestaoAceita, setSugestaoAceita] = useState<string | null>(null);
 
-  // Callback when AI suggestion is accepted — pre-fill the TPU field
-  const handleAceitarSugestao = useCallback((tipo: string) => {
+  // Callback when AI suggestion is applied (manual click)
+  const handleAplicarSugestao = useCallback((tipo: string) => {
     setSugestaoAceita(tipo);
-    // Try to find a matching TPU assunto
+    const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
+    if (match) {
+      setFormData(prev => ({ ...prev, assuntoTpu: match }));
+    }
+  }, []);
+
+  // Callback for auto-fill (high confidence >=0.85)
+  const handleAutoPreenchimento = useCallback((tipo: string, _confianca: number) => {
+    setSugestaoAceita(tipo);
     const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
     if (match) {
       setFormData(prev => ({ ...prev, assuntoTpu: match }));
