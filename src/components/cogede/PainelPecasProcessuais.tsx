@@ -214,7 +214,7 @@ export function PainelPecasProcessuais({
   const [tipoIdentificado, setTipoIdentificado] = useState("");
   const [idPecaEditavel, setIdPecaEditavel] = useState("");
   const [temDivergencia, setTemDivergencia] = useState(false);
-  const [focusPanel, setFocusPanel] = useState<"list" | "identification">("list");
+  const [sugestaoAplicada, setSugestaoAplicada] = useState<Record<string, boolean>>({});
 
   // Refs for cards and scroll container
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
