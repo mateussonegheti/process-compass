@@ -810,7 +810,7 @@ export function PainelPecasProcessuais({
 
                         {/* Inline per-piece suggestion */}
                         {movimentoSelecionado && (() => {
-                          const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+                          const sugestao = sugerirTipoPeca(movimentoSelecionado);
                           if (!sugestao) return null;
                           const confiancaPct = Math.round(sugestao.confianca * 100);
                           const wasAutoFilled = sugestaoAplicada[movimentoSelecionado.id];
