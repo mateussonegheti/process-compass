@@ -404,12 +404,6 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         </CardContent>
       </Card>
 
-      {/* Sugestão Inteligente de Classificação */}
-      <SugestaoInteligente
-        processoId={processo.ID}
-        onAceitarSugestao={handleAceitarSugestao}
-        modoDemonstracao={modoDemonstracao}
-      />
 
 
       <Card>
