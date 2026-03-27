@@ -22,7 +22,7 @@ import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU } from 
 import { toast } from "sonner";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { PainelPecasProcessuais, PecaPermanente, DadosMovimentosConcatenados } from "./PainelPecasProcessuais";
-import { SugestaoInteligente } from "./SugestaoInteligente";
+import { SugestaoClassificacao } from "./SugestaoClassificacao";
 import { useTemporalidade } from "@/hooks/useTemporalidade";
 import { Clock, ShieldCheck, HelpCircle, BookOpen } from "lucide-react";
 
@@ -80,10 +80,18 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const [confirmarFinalizar, setConfirmarFinalizar] = useState(false);
   const [sugestaoAceita, setSugestaoAceita] = useState<string | null>(null);
 
-  // Callback when AI suggestion is accepted — pre-fill the TPU field
-  const handleAceitarSugestao = useCallback((tipo: string) => {
+  // Callback when AI suggestion is applied (manual click)
+  const handleAplicarSugestao = useCallback((tipo: string) => {
     setSugestaoAceita(tipo);
-    // Try to find a matching TPU assunto
+    const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
+    if (match) {
+      setFormData(prev => ({ ...prev, assuntoTpu: match }));
+    }
+  }, []);
+
+  // Callback for auto-fill (high confidence >=0.85)
+  const handleAutoPreenchimento = useCallback((tipo: string, _confianca: number) => {
+    setSugestaoAceita(tipo);
     const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
     if (match) {
       setFormData(prev => ({ ...prev, assuntoTpu: match }));
@@ -396,12 +404,6 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         </CardContent>
       </Card>
 
-      {/* Sugestão Inteligente de Classificação */}
-      <SugestaoInteligente
-        processoId={processo.ID}
-        onAceitarSugestao={handleAceitarSugestao}
-        modoDemonstracao={modoDemonstracao}
-      />
 
 
       <Card>
@@ -430,6 +432,14 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
               <Input value={processo.ASSUNTO_PRINCIPAL || "N/A"} disabled className="bg-muted" />
             </div>
           </div>
+
+          {/* Sugestão de Classificação — inline, contextual */}
+          <SugestaoClassificacao
+            processoId={processo.ID}
+            onAplicarSugestao={handleAplicarSugestao}
+            onAutoPreenchimento={handleAutoPreenchimento}
+            modoDemonstracao={modoDemonstracao}
+          />
 
           {/* 2.2.1 Temporalidade CNJ + 2.3 Destinação permanente - lado a lado */}
           <div className="grid grid-cols-2 gap-4">
