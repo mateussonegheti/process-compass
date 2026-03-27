@@ -22,6 +22,7 @@ import { ProcessoFila, AvaliacaoDocumental, PecaProcessual, ASSUNTOS_TPU } from 
 import { toast } from "sonner";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { PainelPecasProcessuais, PecaPermanente, DadosMovimentosConcatenados } from "./PainelPecasProcessuais";
+import { SugestaoInteligente } from "./SugestaoInteligente";
 import { useTemporalidade } from "@/hooks/useTemporalidade";
 import { Clock, ShieldCheck, HelpCircle, BookOpen } from "lucide-react";
 
