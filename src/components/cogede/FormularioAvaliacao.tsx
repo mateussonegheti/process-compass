@@ -433,6 +433,14 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
             </div>
           </div>
 
+          {/* Sugestão de Classificação — inline, contextual */}
+          <SugestaoClassificacao
+            processoId={processo.ID}
+            onAplicarSugestao={handleAplicarSugestao}
+            onAutoPreenchimento={handleAutoPreenchimento}
+            modoDemonstracao={modoDemonstracao}
+          />
+
           {/* 2.2.1 Temporalidade CNJ + 2.3 Destinação permanente - lado a lado */}
           <div className="grid grid-cols-2 gap-4">
             <div className="p-3 rounded-lg border bg-muted/30">
