@@ -1,61 +1,55 @@
 
 
-# Consolidar Divergencias na Exportacao CSV
+## Refactoring: Per-Piece Intelligent Classification Suggestion
 
-## Resumo
+### Problem
+The classification suggestion currently operates at the **process level** (Section 2), showing one suggestion for the entire process. The user needs it **per piece** inside Section 4 (Peças Processuais), appearing contextually when the evaluator is identifying a specific piece.
 
-Substituir as 2 colunas separadas (`TIPO_INFORMADO_SISTEMA` e `TIPO_REAL_IDENTIFICADO`) por uma unica coluna consolidada que inclui tambem o ID da peca divergente.
+### What Changes
 
-## Formato da nova coluna
+**1. Remove process-level suggestion from FormularioAvaliacao.tsx**
+- Remove `SugestaoClassificacao` import and usage from Section 2
+- Remove `handleAplicarSugestao`, `handleAutoPreenchimento`, `sugestaoAceita` state
 
-| DIVERGENCIA_TIPO_INFORMADO_X_REAL |
-|---|
-| Despacho x Sentenca - 98758 |
-| Despacho x Sentenca - 98758 \| Voto de Sessao x Voto - 2503414 |
+**2. Integrate per-piece suggestion into PainelPecasProcessuais.tsx**
+- When identification mode opens for a piece, run a local heuristic to suggest the piece type based on:
+  - The piece's `tipoInformado` (system-reported type)
+  - Historical divergence patterns (types frequently corrected)
+  - Known problematic types ("Conclusão" → "Sentença", "Despacho" → "Decisão", etc.)
+- This is **client-side only** — no edge function call per piece. The heuristic uses the same rules already in the edge function but applied to each individual piece's `tipoInformado`.
 
-A coluna `CLASSIFICACAO_DIVERGENTE` (Sim/Nao) permanece inalterada.
+**3. Suggestion behavior inside identification panel (Area B)**
+- Appears below the "Tipo da peça identificada" select field
+- Confidence-based behavior:
+  - **High (≥ 0.85)**: Auto-select the tipo in the dropdown, show "Preenchido automaticamente com base no tipo informado"
+  - **Medium (0.6–0.85)**: Show "Sugestão: [tipo] (X%)" with [Aplicar] button
+  - **Low (< 0.6)**: Show nothing
+- Divergence risk alert when the `tipoInformado` is in the high-risk list
+- Never blocks manual selection
 
-## Mudancas tecnicas em `src/components/cogede/PainelSupervisor.tsx`
+**4. Client-side heuristic function**
+Create a utility `sugerirTipoPeca(tipoInformado: string, pecasPermanentesExistentes: PecaPermanente[]): { tipo: string; confianca: number; justificativa: string; riscoDivergencia: boolean } | null`
 
-### 1. Template de colunas (`COLUNAS_EXPORTACAO`)
+Rules:
+- If `tipoInformado` matches a known permanent type exactly (Sentença, Acórdão, Decisão, Petição Inicial, Termo de Audiência) → suggest same type, confidence 0.90
+- If `tipoInformado` is "Conclusão" or "Despacho" → suggest "Sentença", confidence 0.70, flag divergence risk
+- If `tipoInformado` is "Petição" → suggest "Petição Inicial", confidence 0.75
+- If `tipoInformado` is "Outros" → no suggestion (confidence < 0.6)
+- Otherwise → no suggestion
 
-- **Remover** estas 2 entradas:
-  - `{ key: "tipoInformadoSistema", label: "TIPO_INFORMADO_SISTEMA" }`
-  - `{ key: "tipoRealIdentificado", label: "TIPO_REAL_IDENTIFICADO" }`
-- **Adicionar** no mesmo local:
-  - `{ key: "divergenciaConsolidada", label: "DIVERGENCIA_TIPO_INFORMADO_X_REAL", grupo: "Ocorrencias" }`
+**5. Audit logging**
+- When a suggestion is applied (auto or manual), log to `avaliacoes_sugestoes_ia` with the piece-specific context (piece ID, tipo_sugerido, confidence, accepted)
+- The edge function `classificacao-inteligente` remains available for future use but is not called in this flow
 
-### 2. Carregamento dos dados (`carregarAvaliacoes`)
+**6. Remove the standalone SugestaoClassificacao.tsx component**
+- It will no longer be needed since the logic moves inline into PainelPecasProcessuais
 
-- Adicionar o campo `divergencias_detalhes` na query de SELECT da tabela `avaliacoes`
-- Mapear para a propriedade `divergenciasDetalhes` no objeto consolidado
+### Files Modified
+- `src/components/cogede/PainelPecasProcessuais.tsx` — add per-piece suggestion logic inside identification panel
+- `src/components/cogede/FormularioAvaliacao.tsx` — remove SugestaoClassificacao usage
+- `src/components/cogede/SugestaoClassificacao.tsx` — delete
 
-### 3. Logica de exportacao (`exportarAvaliacoes`)
+### Files Kept (no changes)
+- `supabase/functions/classificacao-inteligente/index.ts` — kept for future ML integration
+- `avaliacoes_sugestoes_ia` table — continues to be used for audit
 
-Adicionar tratamento especial para o campo `divergenciaConsolidada`:
-
-- Se `divergenciaClassificacao === "Sim"` e existe `divergenciasDetalhes`:
-  - Fazer parse do formato salvo: `Tipo1 -> Real1 (ID: id1) | Tipo2 -> Real2 (ID: id2)`
-  - Reformatar para: `Tipo1 x Real1 - id1 | Tipo2 x Real2 - id2`
-- Caso contrario: deixar vazio
-
-### 4. Tipo `AvaliacaoConsolidada`
-
-- Remover `tipoInformadoSistema` e `tipoRealIdentificado` (opcionais no tipo)
-- Adicionar `divergenciasDetalhes?: string`
-
-## Exemplo pratico
-
-Dado salvo no banco (`divergencias_detalhes`):
-```
-Despacho → Sentença (ID: 98758) | Voto de Sessão → Voto (ID: 2503414)
-```
-
-Exportado na planilha:
-```
-Despacho x Sentença - 98758 | Voto de Sessão x Voto - 2503414
-```
-
-## Arquivos afetados
-
-- `src/components/cogede/PainelSupervisor.tsx` (unico arquivo)
