@@ -78,6 +78,17 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
   const [pecasPermanentes, setPecasPermanentes] = useState<PecaPermanente[]>([]);
   const [confirmarFinalizar, setConfirmarFinalizar] = useState(false);
+  const [sugestaoAceita, setSugestaoAceita] = useState<string | null>(null);
+
+  // Callback when AI suggestion is accepted — pre-fill the TPU field
+  const handleAceitarSugestao = useCallback((tipo: string) => {
+    setSugestaoAceita(tipo);
+    // Try to find a matching TPU assunto
+    const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
+    if (match) {
+      setFormData(prev => ({ ...prev, assuntoTpu: match }));
+    }
+  }, []);
 
   // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
   useInactivityTimeout(processo.ID, true);
