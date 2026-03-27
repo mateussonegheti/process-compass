@@ -1,55 +1,72 @@
 
 
-## Refactoring: Per-Piece Intelligent Classification Suggestion
+## Refactoring: Multi-Signal Classification Heuristic
 
 ### Problem
-The classification suggestion currently operates at the **process level** (Section 2), showing one suggestion for the entire process. The user needs it **per piece** inside Section 4 (Peças Processuais), appearing contextually when the evaluator is identifying a specific piece.
+The current `sugerirTipoPeca` function only looks at `tipoInformado` (the system-reported piece type) and mirrors it back. It ignores the movement code/description and complemento fields, which often carry stronger evidence about the actual document type.
 
 ### What Changes
 
-**1. Remove process-level suggestion from FormularioAvaliacao.tsx**
-- Remove `SugestaoClassificacao` import and usage from Section 2
-- Remove `handleAplicarSugestao`, `handleAutoPreenchimento`, `sugestaoAceita` state
+**1. Rewrite `sugerirTipoPeca` to accept full movement context**
 
-**2. Integrate per-piece suggestion into PainelPecasProcessuais.tsx**
-- When identification mode opens for a piece, run a local heuristic to suggest the piece type based on:
-  - The piece's `tipoInformado` (system-reported type)
-  - Historical divergence patterns (types frequently corrected)
-  - Known problematic types ("Conclusão" → "Sentença", "Despacho" → "Decisão", etc.)
-- This is **client-side only** — no edge function call per piece. The heuristic uses the same rules already in the edge function but applied to each individual piece's `tipoInformado`.
+Change signature from `sugerirTipoPeca(tipoInformado)` to `sugerirTipoPeca(movimento: MovimentoProcessual)` so it can inspect `codigo` (which contains "219 - Procedência"), `complemento` ("SENTENÇA JULGADA PROCEDENTE"), and `tipoInformado`.
 
-**3. Suggestion behavior inside identification panel (Area B)**
-- Appears below the "Tipo da peça identificada" select field
-- Confidence-based behavior:
-  - **High (≥ 0.85)**: Auto-select the tipo in the dropdown, show "Preenchido automaticamente com base no tipo informado"
-  - **Medium (0.6–0.85)**: Show "Sugestão: [tipo] (X%)" with [Aplicar] button
-  - **Low (< 0.6)**: Show nothing
-- Divergence risk alert when the `tipoInformado` is in the high-risk list
-- Never blocks manual selection
+**2. Multi-signal heuristic with priority ordering**
 
-**4. Client-side heuristic function**
-Create a utility `sugerirTipoPeca(tipoInformado: string, pecasPermanentesExistentes: PecaPermanente[]): { tipo: string; confianca: number; justificativa: string; riscoDivergencia: boolean } | null`
+Priority 1 — Movement description (extracted from `codigo` field which is formatted as "CODE - Description"):
+- "Procedência", "Improcedência", "Parcial Procedência" → Sentença (+0.35)
+- "Julgamento" → Acórdão (+0.30)
+- "Audiência" → Termo de Audiência (+0.30)
+- "Homologação" → Sentença Homologação (+0.30)
 
-Rules:
-- If `tipoInformado` matches a known permanent type exactly (Sentença, Acórdão, Decisão, Petição Inicial, Termo de Audiência) → suggest same type, confidence 0.90
-- If `tipoInformado` is "Conclusão" or "Despacho" → suggest "Sentença", confidence 0.70, flag divergence risk
-- If `tipoInformado` is "Petição" → suggest "Petição Inicial", confidence 0.75
-- If `tipoInformado` is "Outros" → no suggestion (confidence < 0.6)
-- Otherwise → no suggestion
+Priority 2 — Complemento text (case-insensitive pattern matching):
+- Contains "SENTENÇA", "JULGADA PROCEDENTE", "JULGADA IMPROCEDENTE", "EXTINGO O PROCESSO", "RESOLUÇÃO DO MÉRITO" → Sentença (+0.35)
+- Contains "ACÓRDÃO" → Acórdão (+0.35)
+- Contains "VOTO" → Voto (+0.30)
+- Contains "ACORDO", "HOMOLOGAÇÃO DE ACORDO" → Sentença Homologação (+0.30)
+- Contains "AUDIÊNCIA" → Termo de Audiência (+0.30)
 
-**5. Audit logging**
-- When a suggestion is applied (auto or manual), log to `avaliacoes_sugestoes_ia` with the piece-specific context (piece ID, tipo_sugerido, confidence, accepted)
-- The edge function `classificacao-inteligente` remains available for future use but is not called in this flow
+Priority 3 — Tipo da peça (`tipoInformado`):
+- Direct match with known type → +0.15 (reinforcement only, not primary)
 
-**6. Remove the standalone SugestaoClassificacao.tsx component**
-- It will no longer be needed since the logic moves inline into PainelPecasProcessuais
+Priority 4 — Tipo informado as sole signal:
+- If no movement/complemento signals found, use tipoInformado alone → max confidence 0.60
+
+**3. Confidence scoring**
+
+- Base: 0.10
+- Movement signal: +0.35
+- Complemento signal: +0.35
+- Tipo peça alignment: +0.15
+- Tipo informado alignment: +0.05
+- Capped at 1.0
+- If only tipoInformado available: max 0.60
+
+**4. Rich justificativa generation**
+
+Build justificativa string from detected signals:
+- "Sugestão baseada no movimento 'Procedência' e no complemento 'Sentença julgada procedente', compatíveis com peça decisória do tipo Sentença."
+
+Add `sinais_detectados` array and `regra_aplicada` string to the return type.
+
+**5. Update UI text**
+
+Replace "Preenchido automaticamente com base no tipo informado" with contextual text showing actual signals:
+- High confidence: "Sugestão: Sentença (96%) — Base: Procedência + 'Sentença julgada procedente'" with auto-fill
+- Medium confidence: Same format with Aplicar button
+- Show signals detected below the suggestion
+
+**6. Update `avaliacoes_sugestoes_ia` table**
+
+Add two columns via migration:
+- `regra_aplicada text`
+- `sinais_detectados jsonb`
 
 ### Files Modified
-- `src/components/cogede/PainelPecasProcessuais.tsx` — add per-piece suggestion logic inside identification panel
-- `src/components/cogede/FormularioAvaliacao.tsx` — remove SugestaoClassificacao usage
-- `src/components/cogede/SugestaoClassificacao.tsx` — delete
+- `src/components/cogede/PainelPecasProcessuais.tsx` — rewrite heuristic function, update suggestion UI
+- Migration for `avaliacoes_sugestoes_ia` new columns
 
-### Files Kept (no changes)
-- `supabase/functions/classificacao-inteligente/index.ts` — kept for future ML integration
-- `avaliacoes_sugestoes_ia` table — continues to be used for audit
+### Files Kept
+- `supabase/functions/classificacao-inteligente/index.ts` — kept for future use, not called in this flow
+- `src/components/cogede/FormularioAvaliacao.tsx` — no changes needed
 
