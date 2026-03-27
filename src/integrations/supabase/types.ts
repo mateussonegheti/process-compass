@@ -131,7 +131,9 @@ export type Database = {
           id: string
           justificativa: string | null
           processo_id: string
+          regra_aplicada: string | null
           risco_divergencia: boolean | null
+          sinais_detectados: Json | null
           tipo_sugerido: string
           usuario_aceitou_sugestao: boolean | null
         }
@@ -143,7 +145,9 @@ export type Database = {
           id?: string
           justificativa?: string | null
           processo_id: string
+          regra_aplicada?: string | null
           risco_divergencia?: boolean | null
+          sinais_detectados?: Json | null
           tipo_sugerido: string
           usuario_aceitou_sugestao?: boolean | null
         }
@@ -155,7 +159,9 @@ export type Database = {
           id?: string
           justificativa?: string | null
           processo_id?: string
+          regra_aplicada?: string | null
           risco_divergencia?: boolean | null
+          sinais_detectados?: Json | null
           tipo_sugerido?: string
           usuario_aceitou_sugestao?: boolean | null
         }

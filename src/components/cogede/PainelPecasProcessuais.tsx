@@ -25,69 +25,166 @@ import {
 } from "lucide-react";
 import { TIPOS_PECA } from "@/types/cogede";
 
-// ── Per-piece heuristic suggestion ──────────────────────────────────────────
+// ── Multi-signal heuristic suggestion ────────────────────────────────────────
 interface SugestaoPeca {
   tipo: string;
   confianca: number;
   justificativa: string;
   riscoDivergencia: boolean;
+  regraAplicada: string;
+  sinaisDetectados: string[];
 }
 
-// Known permanent types that map directly
-const TIPOS_PERMANENTES_DIRETOS: Record<string, string> = {
-  "sentença": "Sentença",
-  "acórdão": "Acórdão",
-  "decisão": "Decisão",
-  "petição inicial": "Petição Inicial",
-  "termo de audiência": "Termo de Audiência",
-  "voto": "Voto",
-  "voto de sessão": "Voto de Sessão",
-  "voto relator": "Voto Relator",
-  "voto vogal": "Voto Vogal",
-  "ementa e acórdão": "Ementa e Acórdão",
-  "inteiro teor do acórdão": "Inteiro Teor do Acórdão",
-  "sentença homologaçao": "Sentença Homologaçao",
-  "sentença primeiro grau": "Sentença Primeiro Grau",
-  "petição inicial (atermação)": "Petição Inicial (Atermação)",
-  "ata de sessão": "Ata de Sessão",
-  "portaria": "Portaria",
-};
+// Movement description patterns → suggested type
+const MOVIMENTO_PATTERNS: { pattern: RegExp; tipo: string; peso: number; label: string }[] = [
+  { pattern: /proced[eê]ncia/i, tipo: "Sentença", peso: 0.35, label: "Procedência" },
+  { pattern: /improced[eê]ncia/i, tipo: "Sentença", peso: 0.35, label: "Improcedência" },
+  { pattern: /parcial\s*proced[eê]ncia/i, tipo: "Sentença", peso: 0.35, label: "Parcial Procedência" },
+  { pattern: /julgamento/i, tipo: "Acórdão", peso: 0.30, label: "Julgamento" },
+  { pattern: /audi[eê]ncia/i, tipo: "Termo de Audiência", peso: 0.30, label: "Audiência" },
+  { pattern: /homologa[çc][ãa]o/i, tipo: "Sentença Homologaçao", peso: 0.30, label: "Homologação" },
+];
 
-// Types that frequently need correction
+// Complemento text patterns → suggested type
+const COMPLEMENTO_PATTERNS: { pattern: RegExp; tipo: string; peso: number; label: string }[] = [
+  { pattern: /senten[çc]a/i, tipo: "Sentença", peso: 0.35, label: "Sentença (complemento)" },
+  { pattern: /julgad[ao]\s*procedente/i, tipo: "Sentença", peso: 0.35, label: "Julgada procedente" },
+  { pattern: /julgad[ao]\s*improcedente/i, tipo: "Sentença", peso: 0.35, label: "Julgada improcedente" },
+  { pattern: /extingo\s*o\s*processo/i, tipo: "Sentença", peso: 0.35, label: "Extingo o processo" },
+  { pattern: /resolu[çc][ãa]o\s*do\s*m[ée]rito/i, tipo: "Sentença", peso: 0.35, label: "Resolução do mérito" },
+  { pattern: /ac[óo]rd[ãa]o/i, tipo: "Acórdão", peso: 0.35, label: "Acórdão (complemento)" },
+  { pattern: /\bvoto\b/i, tipo: "Voto", peso: 0.30, label: "Voto (complemento)" },
+  { pattern: /homologa[çc][ãa]o\s*de\s*acordo/i, tipo: "Sentença Homologaçao", peso: 0.30, label: "Homologação de acordo" },
+  { pattern: /\bacordo\b/i, tipo: "Sentença Homologaçao", peso: 0.30, label: "Acordo (complemento)" },
+  { pattern: /audi[eê]ncia/i, tipo: "Termo de Audiência", peso: 0.30, label: "Audiência (complemento)" },
+];
+
+// Known permanent types for tipoInformado reinforcement
+const TIPOS_PERMANENTES_CONHECIDOS = new Set([
+  "sentença", "acórdão", "decisão", "petição inicial", "termo de audiência",
+  "voto", "voto de sessão", "voto relator", "voto vogal",
+  "ementa e acórdão", "inteiro teor do acórdão", "sentença homologaçao",
+  "sentença primeiro grau", "petição inicial (atermação)", "ata de sessão", "portaria",
+]);
+
+// High-risk types that frequently need correction (fallback only)
 const TIPOS_ALTO_RISCO: Record<string, { sugestao: string; confianca: number }> = {
-  "conclusão": { sugestao: "Sentença", confianca: 0.70 },
-  "despacho": { sugestao: "Sentença", confianca: 0.65 },
-  "petição": { sugestao: "Petição Inicial", confianca: 0.75 },
+  "conclusão": { sugestao: "Sentença", confianca: 0.55 },
+  "despacho": { sugestao: "Sentença", confianca: 0.50 },
+  "petição": { sugestao: "Petição Inicial", confianca: 0.55 },
 };
 
-function sugerirTipoPeca(tipoInformado: string): SugestaoPeca | null {
-  if (!tipoInformado) return null;
+function sugerirTipoPeca(movimento: MovimentoProcessual): SugestaoPeca | null {
+  if (!movimento) return null;
+
+  const codigoDesc = movimento.codigo || "";
+  const complemento = movimento.complemento || "";
+  const tipoInformado = movimento.tipoInformado || "";
   const tipoLower = tipoInformado.toLowerCase().trim();
 
-  // Direct match with known permanent types → high confidence
-  const direto = TIPOS_PERMANENTES_DIRETOS[tipoLower];
-  if (direto) {
-    return {
-      tipo: direto,
-      confianca: 0.90,
-      justificativa: `Identificamos peça do tipo "${direto}", padrão comum em classificações deste tipo.`,
-      riscoDivergencia: false,
-    };
+  let tipoSugerido = "";
+  let score = 0.10; // base
+  const sinais: string[] = [];
+  let regraAplicada = "";
+  let riscoDivergencia = false;
+
+  // --- Priority 1: Movement description ---
+  let movimentoMatch: typeof MOVIMENTO_PATTERNS[0] | null = null;
+  for (const rule of MOVIMENTO_PATTERNS) {
+    if (rule.pattern.test(codigoDesc)) {
+      movimentoMatch = rule;
+      break;
+    }
   }
 
-  // High-risk types that are frequently corrected
-  const risco = TIPOS_ALTO_RISCO[tipoLower];
-  if (risco) {
-    return {
-      tipo: risco.sugestao,
-      confianca: risco.confianca,
-      justificativa: `Tipo "${tipoInformado}" frequentemente corrigido para "${risco.sugestao}" em avaliações anteriores.`,
-      riscoDivergencia: true,
-    };
+  if (movimentoMatch) {
+    tipoSugerido = movimentoMatch.tipo;
+    score += movimentoMatch.peso;
+    sinais.push(`movimento: ${movimentoMatch.label}`);
+    regraAplicada = `movimento_${movimentoMatch.label.toLowerCase().replace(/\s+/g, "_")}`;
   }
 
-  // "Outros" or unknown → no suggestion
-  return null;
+  // --- Priority 2: Complemento text ---
+  let complementoMatch: typeof COMPLEMENTO_PATTERNS[0] | null = null;
+  for (const rule of COMPLEMENTO_PATTERNS) {
+    if (rule.pattern.test(complemento)) {
+      complementoMatch = rule;
+      break;
+    }
+  }
+
+  if (complementoMatch) {
+    // If no movement match, use complemento as primary
+    if (!tipoSugerido) {
+      tipoSugerido = complementoMatch.tipo;
+    }
+    // If types align, add full weight; if not, use complemento type
+    if (tipoSugerido === complementoMatch.tipo) {
+      score += complementoMatch.peso;
+    } else {
+      // Conflicting signals — use complemento (usually more specific)
+      tipoSugerido = complementoMatch.tipo;
+      score += complementoMatch.peso * 0.5;
+    }
+    sinais.push(`complemento: ${complementoMatch.label}`);
+    regraAplicada = regraAplicada
+      ? `${regraAplicada}_${complementoMatch.label.toLowerCase().replace(/\s+/g, "_")}`
+      : `complemento_${complementoMatch.label.toLowerCase().replace(/\s+/g, "_")}`;
+  }
+
+  // --- Priority 3: tipoInformado reinforcement ---
+  if (tipoSugerido) {
+    // Check if tipoInformado aligns with the suggested type
+    if (tipoLower === tipoSugerido.toLowerCase()) {
+      score += 0.15;
+      sinais.push(`tipo_peca: ${tipoInformado}`);
+    } else if (TIPOS_PERMANENTES_CONHECIDOS.has(tipoLower)) {
+      // tipoInformado is a known type but doesn't match suggestion — mild reinforcement
+      score += 0.05;
+      sinais.push(`tipo_informado: ${tipoInformado} (não alinhado)`);
+      riscoDivergencia = true;
+    }
+  }
+
+  // --- Priority 4: Only tipoInformado available (no movement/complemento signals) ---
+  if (!tipoSugerido) {
+    // No structural signals found; fall back to tipoInformado only
+    if (TIPOS_PERMANENTES_CONHECIDOS.has(tipoLower)) {
+      tipoSugerido = tipoInformado;
+      score = Math.min(score + 0.45, 0.60); // cap at 0.60 when sole signal
+      sinais.push(`tipo_informado: ${tipoInformado} (único sinal)`);
+      regraAplicada = "tipo_informado_unico";
+    } else {
+      // Check high-risk types
+      const risco = TIPOS_ALTO_RISCO[tipoLower];
+      if (risco) {
+        tipoSugerido = risco.sugestao;
+        score = Math.min(score + 0.35, 0.60);
+        sinais.push(`tipo_informado_risco: ${tipoInformado}`);
+        regraAplicada = "tipo_informado_alto_risco";
+        riscoDivergencia = true;
+      }
+    }
+  }
+
+  // No suggestion possible
+  if (!tipoSugerido || score < 0.6) return null;
+
+  // Cap score at 1.0
+  const confiancaFinal = Math.min(score, 1.0);
+
+  // Build justificativa from detected signals
+  const sinaisTexto = sinais.join(" + ");
+  const justificativa = `Sugestão baseada em ${sinaisTexto}, compatíveis com peça do tipo ${tipoSugerido}.`;
+
+  return {
+    tipo: tipoSugerido,
+    confianca: confiancaFinal,
+    justificativa,
+    riscoDivergencia,
+    regraAplicada,
+    sinaisDetectados: sinais,
+  };
 }
 
 // Interface para movimento processual (virá da planilha de importação)
@@ -274,7 +371,7 @@ export function PainelPecasProcessuais({
 
     // Per-piece heuristic: auto-fill if high confidence
     if (movimentoSelecionado) {
-      const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+      const sugestao = sugerirTipoPeca(movimentoSelecionado);
       if (sugestao && sugestao.confianca >= 0.85) {
         setTipoIdentificado(sugestao.tipo);
         setSugestaoAplicada(prev => ({ ...prev, [movimentoSelecionado.id]: true }));
@@ -713,7 +810,7 @@ export function PainelPecasProcessuais({
 
                         {/* Inline per-piece suggestion */}
                         {movimentoSelecionado && (() => {
-                          const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+                          const sugestao = sugerirTipoPeca(movimentoSelecionado);
                           if (!sugestao) return null;
                           const confiancaPct = Math.round(sugestao.confianca * 100);
                           const wasAutoFilled = sugestaoAplicada[movimentoSelecionado.id];
@@ -723,11 +820,20 @@ export function PainelPecasProcessuais({
 
                           // High confidence auto-filled
                           if (sugestao.confianca >= 0.85 && wasAutoFilled) {
+                            const sinaisResumo = sugestao.sinaisDetectados.slice(0, 2).map(s => {
+                              const parts = s.split(": ");
+                              return parts[1] || parts[0];
+                            }).join(" + ");
                             return (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                                <Sparkles className="h-3 w-3" />
-                                Preenchido automaticamente com base no tipo informado ({confiancaPct}%)
-                              </p>
+                              <div className="mt-1 space-y-0.5">
+                                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                  <Sparkles className="h-3 w-3" />
+                                  Sugestão: {sugestao.tipo} ({confiancaPct}%)
+                                </p>
+                                <p className="text-xs text-muted-foreground pl-4">
+                                  Base: {sinaisResumo}
+                                </p>
+                              </div>
                             );
                           }
 
