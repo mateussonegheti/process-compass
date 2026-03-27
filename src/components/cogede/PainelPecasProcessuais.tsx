@@ -271,11 +271,21 @@ export function PainelPecasProcessuais({
   const handleIniciarIdentificacao = useCallback(() => {
     setModoIdentificacao(true);
     setFocusPanel("identification");
+
+    // Per-piece heuristic: auto-fill if high confidence
+    if (movimentoSelecionado) {
+      const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+      if (sugestao && sugestao.confianca >= 0.85) {
+        setTipoIdentificado(sugestao.tipo);
+        setSugestaoAplicada(prev => ({ ...prev, [movimentoSelecionado.id]: true }));
+      }
+    }
+
     // Auto-focus the tipo select when opening identification
     setTimeout(() => {
       tipoSelectRef.current?.focus();
     }, 100);
-  }, []);
+  }, [movimentoSelecionado]);
 
   // Salvar identificação da peça
   const handleSalvarIdentificacao = useCallback(() => {
