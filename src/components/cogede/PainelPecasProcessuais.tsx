@@ -371,7 +371,7 @@ export function PainelPecasProcessuais({
 
     // Per-piece heuristic: auto-fill if high confidence
     if (movimentoSelecionado) {
-      const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+      const sugestao = sugerirTipoPeca(movimentoSelecionado);
       if (sugestao && sugestao.confianca >= 0.85) {
         setTipoIdentificado(sugestao.tipo);
         setSugestaoAplicada(prev => ({ ...prev, [movimentoSelecionado.id]: true }));
