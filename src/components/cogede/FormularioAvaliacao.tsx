@@ -78,25 +78,6 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
   const [divergencias, setDivergencias] = useState<DivergenciaClassificacao[]>([]);
   const [pecasPermanentes, setPecasPermanentes] = useState<PecaPermanente[]>([]);
   const [confirmarFinalizar, setConfirmarFinalizar] = useState(false);
-  const [sugestaoAceita, setSugestaoAceita] = useState<string | null>(null);
-
-  // Callback when AI suggestion is applied (manual click)
-  const handleAplicarSugestao = useCallback((tipo: string) => {
-    setSugestaoAceita(tipo);
-    const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
-    if (match) {
-      setFormData(prev => ({ ...prev, assuntoTpu: match }));
-    }
-  }, []);
-
-  // Callback for auto-fill (high confidence >=0.85)
-  const handleAutoPreenchimento = useCallback((tipo: string, _confianca: number) => {
-    setSugestaoAceita(tipo);
-    const match = ASSUNTOS_TPU.find(a => a.toLowerCase().includes(tipo.toLowerCase()));
-    if (match) {
-      setFormData(prev => ({ ...prev, assuntoTpu: match }));
-    }
-  }, []);
 
   // Ativar rastreamento de inatividade enquanto o formulário está sendo editado
   useInactivityTimeout(processo.ID, true);
