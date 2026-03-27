@@ -710,6 +710,66 @@ export function PainelPecasProcessuais({
                             ))}
                           </SelectContent>
                         </Select>
+
+                        {/* Inline per-piece suggestion */}
+                        {movimentoSelecionado && (() => {
+                          const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+                          if (!sugestao) return null;
+                          const confiancaPct = Math.round(sugestao.confianca * 100);
+                          const wasAutoFilled = sugestaoAplicada[movimentoSelecionado.id];
+
+                          // Low confidence → hide
+                          if (sugestao.confianca < 0.6) return null;
+
+                          // High confidence auto-filled
+                          if (sugestao.confianca >= 0.85 && wasAutoFilled) {
+                            return (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                                <Sparkles className="h-3 w-3" />
+                                Preenchido automaticamente com base no tipo informado ({confiancaPct}%)
+                              </p>
+                            );
+                          }
+
+                          // Medium confidence → show suggestion with apply button
+                          if (sugestao.confianca < 0.85) {
+                            return (
+                              <div className="mt-2 space-y-1.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Sparkles className="h-3 w-3" />
+                                    Sugestão:
+                                  </span>
+                                  <Badge variant="outline" className="text-xs font-medium">
+                                    {sugestao.tipo} ({confiancaPct}%)
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setTipoIdentificado(sugestao.tipo);
+                                      setSugestaoAplicada(prev => ({ ...prev, [movimentoSelecionado.id]: true }));
+                                    }}
+                                    className="h-6 px-2 text-xs text-primary hover:text-primary"
+                                  >
+                                    Aplicar
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground pl-4">
+                                  {sugestao.justificativa}
+                                </p>
+                                {sugestao.riscoDivergencia && (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 pl-4">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Este tipo de processo frequentemente apresenta divergência de classificação
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          return null;
+                        })()}
                       </div>
 
                       <div className="space-y-2">
