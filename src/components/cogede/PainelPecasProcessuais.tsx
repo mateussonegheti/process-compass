@@ -19,11 +19,76 @@ import {
   XCircle,
   FileText,
   Keyboard,
-  
+  Sparkles,
   Loader2,
   ShieldAlert,
 } from "lucide-react";
 import { TIPOS_PECA } from "@/types/cogede";
+
+// ── Per-piece heuristic suggestion ──────────────────────────────────────────
+interface SugestaoPeca {
+  tipo: string;
+  confianca: number;
+  justificativa: string;
+  riscoDivergencia: boolean;
+}
+
+// Known permanent types that map directly
+const TIPOS_PERMANENTES_DIRETOS: Record<string, string> = {
+  "sentença": "Sentença",
+  "acórdão": "Acórdão",
+  "decisão": "Decisão",
+  "petição inicial": "Petição Inicial",
+  "termo de audiência": "Termo de Audiência",
+  "voto": "Voto",
+  "voto de sessão": "Voto de Sessão",
+  "voto relator": "Voto Relator",
+  "voto vogal": "Voto Vogal",
+  "ementa e acórdão": "Ementa e Acórdão",
+  "inteiro teor do acórdão": "Inteiro Teor do Acórdão",
+  "sentença homologaçao": "Sentença Homologaçao",
+  "sentença primeiro grau": "Sentença Primeiro Grau",
+  "petição inicial (atermação)": "Petição Inicial (Atermação)",
+  "ata de sessão": "Ata de Sessão",
+  "portaria": "Portaria",
+};
+
+// Types that frequently need correction
+const TIPOS_ALTO_RISCO: Record<string, { sugestao: string; confianca: number }> = {
+  "conclusão": { sugestao: "Sentença", confianca: 0.70 },
+  "despacho": { sugestao: "Sentença", confianca: 0.65 },
+  "petição": { sugestao: "Petição Inicial", confianca: 0.75 },
+};
+
+function sugerirTipoPeca(tipoInformado: string): SugestaoPeca | null {
+  if (!tipoInformado) return null;
+  const tipoLower = tipoInformado.toLowerCase().trim();
+
+  // Direct match with known permanent types → high confidence
+  const direto = TIPOS_PERMANENTES_DIRETOS[tipoLower];
+  if (direto) {
+    return {
+      tipo: direto,
+      confianca: 0.90,
+      justificativa: `Identificamos peça do tipo "${direto}", padrão comum em classificações deste tipo.`,
+      riscoDivergencia: false,
+    };
+  }
+
+  // High-risk types that are frequently corrected
+  const risco = TIPOS_ALTO_RISCO[tipoLower];
+  if (risco) {
+    return {
+      tipo: risco.sugestao,
+      confianca: risco.confianca,
+      justificativa: `Tipo "${tipoInformado}" frequentemente corrigido para "${risco.sugestao}" em avaliações anteriores.`,
+      riscoDivergencia: true,
+    };
+  }
+
+  // "Outros" or unknown → no suggestion
+  return null;
+}
 
 // Interface para movimento processual (virá da planilha de importação)
 export interface MovimentoProcessual {
@@ -150,6 +215,7 @@ export function PainelPecasProcessuais({
   const [idPecaEditavel, setIdPecaEditavel] = useState("");
   const [temDivergencia, setTemDivergencia] = useState(false);
   const [focusPanel, setFocusPanel] = useState<"list" | "identification">("list");
+  const [sugestaoAplicada, setSugestaoAplicada] = useState<Record<string, boolean>>({});
 
   // Refs for cards and scroll container
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -205,11 +271,21 @@ export function PainelPecasProcessuais({
   const handleIniciarIdentificacao = useCallback(() => {
     setModoIdentificacao(true);
     setFocusPanel("identification");
+
+    // Per-piece heuristic: auto-fill if high confidence
+    if (movimentoSelecionado) {
+      const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+      if (sugestao && sugestao.confianca >= 0.85) {
+        setTipoIdentificado(sugestao.tipo);
+        setSugestaoAplicada(prev => ({ ...prev, [movimentoSelecionado.id]: true }));
+      }
+    }
+
     // Auto-focus the tipo select when opening identification
     setTimeout(() => {
       tipoSelectRef.current?.focus();
     }, 100);
-  }, []);
+  }, [movimentoSelecionado]);
 
   // Salvar identificação da peça
   const handleSalvarIdentificacao = useCallback(() => {
@@ -634,6 +710,66 @@ export function PainelPecasProcessuais({
                             ))}
                           </SelectContent>
                         </Select>
+
+                        {/* Inline per-piece suggestion */}
+                        {movimentoSelecionado && (() => {
+                          const sugestao = sugerirTipoPeca(movimentoSelecionado.tipoInformado);
+                          if (!sugestao) return null;
+                          const confiancaPct = Math.round(sugestao.confianca * 100);
+                          const wasAutoFilled = sugestaoAplicada[movimentoSelecionado.id];
+
+                          // Low confidence → hide
+                          if (sugestao.confianca < 0.6) return null;
+
+                          // High confidence auto-filled
+                          if (sugestao.confianca >= 0.85 && wasAutoFilled) {
+                            return (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                                <Sparkles className="h-3 w-3" />
+                                Preenchido automaticamente com base no tipo informado ({confiancaPct}%)
+                              </p>
+                            );
+                          }
+
+                          // Medium confidence → show suggestion with apply button
+                          if (sugestao.confianca < 0.85) {
+                            return (
+                              <div className="mt-2 space-y-1.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Sparkles className="h-3 w-3" />
+                                    Sugestão:
+                                  </span>
+                                  <Badge variant="outline" className="text-xs font-medium">
+                                    {sugestao.tipo} ({confiancaPct}%)
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setTipoIdentificado(sugestao.tipo);
+                                      setSugestaoAplicada(prev => ({ ...prev, [movimentoSelecionado.id]: true }));
+                                    }}
+                                    className="h-6 px-2 text-xs text-primary hover:text-primary"
+                                  >
+                                    Aplicar
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground pl-4">
+                                  {sugestao.justificativa}
+                                </p>
+                                {sugestao.riscoDivergencia && (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 pl-4">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Este tipo de processo frequentemente apresenta divergência de classificação
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          return null;
+                        })()}
                       </div>
 
                       <div className="space-y-2">
