@@ -396,7 +396,14 @@ export function FormularioAvaliacao({ processo, responsavel, onSalvarEProximo, o
         </CardContent>
       </Card>
 
-      {/* Seção 2 - Assunto/TPU */}
+      {/* Sugestão Inteligente de Classificação */}
+      <SugestaoInteligente
+        processoId={processo.ID}
+        onAceitarSugestao={handleAceitarSugestao}
+        modoDemonstracao={modoDemonstracao}
+      />
+
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
